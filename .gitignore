@@ -1,0 +1,12 @@
+# ANRM 参考手册(原始资料,不纳入项目仓库)
+ANRM肌骨神经康复/
+
+# 依赖
+node_modules/
+
+# Claude 会话数据
+.claude/
+
+# 系统文件
+.DS_Store
+Thumbs.db

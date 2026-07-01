@@ -1,0 +1,20 @@
+@media print {
+  .sidebar, .btn, .bodymap__toggle, .exam-cat__toggle, .chip-group .chip input[type="checkbox"],
+  .chip-group .chip input[type="radio"], .disclaimer, .tabs, .form-actions,
+  .int-cat__toggle, .plan-card__notes .btn, .exam-panel__header .btn {
+    display: none !important;
+  }
+
+  .app-shell { display: block; }
+  .main { padding: 0; overflow: visible; }
+  .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; margin-bottom: 12pt; }
+  .panel__title { font-size: 14pt; }
+
+  .exam-item__ref { color: #666; }
+  .exam-summary__item--pos { background: #fff0f0; color: #c00; }
+  .badge { border: 1px solid #999; color: #333; }
+  .badge--abnormal { background: #fff0f0; color: #c00; border-color: #c00; }
+  .bodymap__figure svg { max-width: 180px; }
+
+  @page { margin: 15mm; size: A4; }
+}
