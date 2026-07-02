@@ -53,7 +53,7 @@ export function useAgent() {
       regionSummary?: string;
       patientId?: string;
     }) => {
-      const names = fields.interventionIds
+      fields.interventionIds
         .map((id) => INTERVENTIONS_CATALOG.find((i) => i.id === id)?.name ?? id)
         .join("、");
       if (fields.diagnosisLevels && fields.mechanisms && fields.regionSummary) {

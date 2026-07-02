@@ -2,13 +2,14 @@
  * Agent 工具函数 — 供各 UI 组件嵌入调用的"智能建议"生成器。
  * 所有函数为纯计算,从 agent-memory 读取数据做推断,不写任何数据。
  */
-import { getAgentStats, getInterventionEffectiveness, getVasHistory } from "./agent-memory";
+import { getInterventionEffectiveness } from "./agent-memory";
 import { INTERVENTIONS_CATALOG } from "../treatment/interventions-catalog";
 import type { FollowupRecord } from "../followup/followup.repository";
 
 /** P3-2: 计算患者优先级分数(越高越靠前) */
 export function calcPatientPriority(
-  patientId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+_calcPatientPriority_patientId: string,
   vasSeries: Array<{ vas: number }>,
   pendingFollowups: FollowupRecord[],
   hasIncompleteDiagnosis: boolean,
@@ -116,7 +117,7 @@ export function suggestFollowupInterval(
 /** P3-12: 自动趋势总结(用于患者概览) */
 export function generateTrendSummary(
   vasHistory: Array<{ date: string; vas: number }>,
-  sessionCount: number,
+  _unused2: number,
 ): { summary: string; trend: "improving" | "stable" | "worsening" } {
   if (vasHistory.length < 2) {
     return { summary: "数据不足,完成 2 次以上就诊后 Agent 将自动生成趋势解读。", trend: "stable" };

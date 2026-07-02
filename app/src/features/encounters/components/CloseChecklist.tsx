@@ -3,7 +3,7 @@
  * 关闭前自动检测:是否没做查体/没写诊断/没建治疗计划/没存 SOAP。
  * 仅供提醒,不强制阻断(治疗师最终决定)。
  */
-import { useState } from "react";
+
 import { useExamSessions } from "../../exam/useExam";
 import { useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useTreatmentPlans } from "../../treatment/useTreatment";

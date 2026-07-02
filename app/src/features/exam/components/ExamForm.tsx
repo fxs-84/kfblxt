@@ -172,7 +172,7 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
       if (arr) arr.push(item);
     }
     // 按使用频率逆序排列(常用在前)
-    for (const [cat, items] of map) {
+    for (const [_cat, items] of map) {
       items.sort((a, b) => (examFreq[b.id] ?? 0) - (examFreq[a.id] ?? 0));
     }
     return map;

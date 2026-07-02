@@ -6,8 +6,6 @@ import { PatientFormPage } from "../features/patients/pages/PatientFormPage";
 import { PatientDetailPage } from "../features/patients/pages/PatientDetailPage";
 import { PatientViewPage } from "../features/share/PatientViewPage";
 
-const isGitHubPages = location.hostname.includes('github.io');
-
 export const router = createBrowserRouter([
   {
     path: "/",

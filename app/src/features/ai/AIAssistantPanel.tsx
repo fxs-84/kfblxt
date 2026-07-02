@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { analyzeAsync } from "./llm-engine";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";

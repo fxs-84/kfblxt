@@ -7,7 +7,6 @@ import { BodyMap } from "../../components/bodymap/BodyMap";
 import { formatDate } from "../../lib/format";
 import { regionLabel } from "../../components/bodymap/regions";
 import { MyWorkStats } from "../../components/auth/MyWorkStats";
-import { AgentInsights } from "../agent/AgentInsights";
 
 function isThisMonth(d: Date): boolean {
   const now = new Date();
