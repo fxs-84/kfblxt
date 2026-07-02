@@ -9,7 +9,6 @@ interface SharePanelProps { encounterId: string; patientId: string; intervention
 
 export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   const { data: shares = [] } = useSharesByEncounter(encounterId);
-  const createShare = useCreateShare();
   const revokeShare = useRevokeShare();
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
