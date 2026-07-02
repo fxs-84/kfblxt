@@ -2,13 +2,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages 仓库名为 "-",故 base 为 "/-/"。本地 dev 不走这个。
+// GitHub Pages base = 仓库名
 const isGitHubPages = process.env.DEPLOY_TARGET === 'github-pages';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: isGitHubPages ? '/-/' : '/',
+  base: isGitHubPages ? '/kfblxt/' : '/',
   test: {
     environment: 'jsdom',
     globals: true,

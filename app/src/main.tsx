@@ -7,7 +7,7 @@ import "./styles/layout.css";
 import "./styles/print.css";
 import { router } from "./app/router";
 
-const basename = location.hostname.includes('github.io') ? '/-/' : '/';
+const basename = location.hostname.includes('github.io') ? '/kfblxt/' : '/';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
