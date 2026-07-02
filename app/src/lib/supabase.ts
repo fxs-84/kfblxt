@@ -23,6 +23,6 @@ export const supabase = new Proxy({} as SupabaseClient, {
   get(_, prop) {
     const s = getSupabase();
     if (!s) throw new Error("Supabase 未配置——请将 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY 写入 .env.local");
-    return (s as Record<string | symbol, unknown>)[prop];
+    return (s as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
