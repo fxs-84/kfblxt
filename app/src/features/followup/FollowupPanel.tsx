@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePatientFollowups, useCreateFollowup, useCompleteFollowup, useNoShowFollowup } from "./useFollowup";
+import { suggestFollowupInterval } from "../agent/agent-utils";
+import { getVasHistory } from "../agent/agent-memory";
 import { formatDate } from "../../lib/format";
 import { useSession } from "../../components/auth/useSession";
 import { MyFilterToggle, applyMyFilter } from "../../components/auth/MyFilterToggle";
@@ -35,6 +37,8 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
     [followups, onlyMine, session.userId],
   );
   const pending = filteredFollowups.filter((f) => f.status === "待复诊");
+  const vasHistForFU = getVasHistory(patientId).map((v) => ({ vas: v.vas }));
+  const fuSuggestion = vasHistForFU.length >= 2 ? suggestFollowupInterval(vasHistForFU) : null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -65,6 +69,11 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               style={{ padding: "2px 6px", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: "var(--text-xs)" }} />
+            {fuSuggestion && (
+              <span className="badge badge--normal" style={{ fontSize: "10px" }} title={fuSuggestion.rationale}>
+                🧠 {fuSuggestion.intervalDays}天
+              </span>
+            )}
             <input placeholder="备注" value={note} onChange={(e) => setNote(e.target.value)}
               style={{ flex: 1, minWidth: 150, padding: "2px 6px", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: "var(--text-xs)" }} />
             <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "3px 12px" }}

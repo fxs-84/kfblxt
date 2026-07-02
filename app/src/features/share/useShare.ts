@@ -13,7 +13,13 @@ export function useSharesByEncounter(encounterId: string | undefined) {
 export function useShareByToken(token: string | undefined) {
   return useQuery({
     queryKey: ["shares", "token", token],
-    queryFn: () => findShareByToken(token as string),
+    queryFn: async () => {
+      // 先试 Supabase(跨设备可用),再试 localStorage
+      const { findShareByTokenSupabase } = await import("./share-supabase");
+      const supabaseResult = await findShareByTokenSupabase(token as string);
+      if (supabaseResult) return supabaseResult;
+      return findShareByToken(token as string);
+    },
     enabled: Boolean(token),
   });
 }

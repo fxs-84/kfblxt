@@ -23,6 +23,17 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
   const [saving, setSaving] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
 
+  /* P1: 智能关联——选消费时自动填上次金额/卡次 */
+  const lastConsumption = useMemo(() => {
+    return records.filter((r) => r.type === "消费").sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  }, [records]);
+
+  const lastRecharge = useMemo(() => {
+    return records.filter((r) => r.type === "充值").sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  }, [records]);
+
+  const hasActivePackage = balance.sessionBalance > 0 || balance.balance > 0;
+
   const filteredRecords = useMemo(
     () => applyMyFilter(records, onlyMine, session.userId),
     [records, onlyMine, session.userId],
@@ -87,6 +98,35 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
 
       {showForm && (
         <div style={{ padding: "0 var(--space-5) var(--space-4)", borderBottom: "1px solid var(--color-border)" }}>
+          {/* P1: 智能关联 — 显示上次消费/充值,一键填充 */}
+          <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap", marginBottom: "var(--space-2)", alignItems: "center" }}>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", fontWeight: 500 }}>🧠 快速填写:</span>
+            {lastConsumption && (
+              <button className="goal-tpl-chip" type="button" onClick={() => {
+                setType("消费");
+                setAmount(String(lastConsumption.amount));
+                if (lastConsumption.sessions) setSessions(String(lastConsumption.sessions));
+                setNote(lastConsumption.note);
+              }}>
+                上次消费 ¥{fmn(lastConsumption.amount)}
+              </button>
+            )}
+            {lastRecharge && (
+              <button className="goal-tpl-chip" type="button" onClick={() => {
+                setType("充值");
+                setAmount(String(lastRecharge.amount));
+                if (lastRecharge.sessions) setSessions(String(lastRecharge.sessions));
+                setNote(lastRecharge.note);
+              }}>
+                上次充值 ¥{fmn(lastRecharge.amount)}
+              </button>
+            )}
+            {hasActivePackage && (
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginLeft: "auto" }}>
+                当前余额 ¥{fmn(balance.balance)} {balance.sessionBalance > 0 ? `· ${balance.sessionBalance}次` : ""}
+              </span>
+            )}
+          </div>
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
             <select className="exam-grade" value={type} onChange={(e) => setType(e.target.value as BillingType)}>
               {BILLING_TYPES.map((t) => <option key={t}>{t}</option>)}

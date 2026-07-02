@@ -6,6 +6,7 @@ import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { EncounterForm } from "../../encounters/components/EncounterForm";
 import { EncounterTable } from "../../encounters/components/EncounterTable";
 import { EncounterSummary } from "../../encounters/components/EncounterSummary";
+import { CloseChecklist } from "../../encounters/components/CloseChecklist";
 import { VasTrendChart } from "../../encounters/components/VasTrendChart";
 import { vasSeries, aggregateRegions } from "../../encounters/encounter.select";
 import { BodyMap } from "../../../components/bodymap/BodyMap";
@@ -16,6 +17,7 @@ import { TreatmentPanel } from "../../treatment/components/TreatmentPanel";
 import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
 import { BillingPanel } from "../../billing/BillingPanel";
+import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
@@ -45,6 +47,7 @@ export function PatientDetailPage() {
   const [examEncounterId, setExamEncounterId] = useState<string | null>(null);
   const [summaryEncounterId, setSummaryEncounterId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [checklistEid, setChecklistEid] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleConfirmDelete = async () => {
@@ -69,11 +72,16 @@ export function PatientDetailPage() {
     if (!sessionByEncounter.has(s.encounterId)) sessionByEncounter.set(s.encounterId, s);
   }
 
-  const handleCloseEncounter = async (eid: string) => {
+  const handleCloseEncounter = async (eid: string, force = false) => {
+    if (!force) {
+      setChecklistEid(eid);
+      return;
+    }
     setClosing(true);
     await closeEncounter.mutateAsync(eid);
     setSummaryEncounterId(eid);
     setExamEncounterId(null);
+    setChecklistEid(null);
     setClosing(false);
   };
 
@@ -119,23 +127,26 @@ export function PatientDetailPage() {
       </nav>
 
       {tab === "overview" && (
-        <div className="overview-grid">
-          <div className="card panel">
-            <div className="panel__head"><h3 className="panel__title">症状定位图</h3><span className="panel__hint">颜色越深 = 历次 VAS 峰值越高</span></div>
-            {regions.length === 0 ? <div className="empty">尚无标记。</div> : <BodyMap value={regions} intensity={intensity} />}
-          </div>
-          <div className="card panel">
-            <div className="panel__head"><h3 className="panel__title">VAS 疼痛趋势</h3><span className="panel__hint">绿/黄/红 = 轻/中/重</span></div>
-            <VasTrendChart data={series} />
-            <div className="stat-row">
-              <div className="stat"><span className="stat__value">{list.length}</span><span className="stat__label">就诊次数</span></div>
-              <div className="stat"><span className="stat__value">{latestVas ?? "—"}</span><span className="stat__label">最新 VAS</span></div>
-              <div className="stat"><span className="stat__value">{peakVas ?? "—"}</span><span className="stat__label">峰值 VAS</span></div>
+        <>
+          <TrendSummaryCard patientId={patient.id} />
+          <div className="overview-grid">
+            <div className="card panel">
+              <div className="panel__head"><h3 className="panel__title">症状定位图</h3><span className="panel__hint">颜色越深 = 历次 VAS 峰值越高</span></div>
+              {regions.length === 0 ? <div className="empty">尚无标记。</div> : <BodyMap value={regions} intensity={intensity} />}
+            </div>
+            <div className="card panel">
+              <div className="panel__head"><h3 className="panel__title">VAS 疼痛趋势</h3><span className="panel__hint">绿/黄/红 = 轻/中/重</span></div>
+              <VasTrendChart data={series} />
+              <div className="stat-row">
+                <div className="stat"><span className="stat__value">{list.length}</span><span className="stat__label">就诊次数</span></div>
+                <div className="stat"><span className="stat__value">{latestVas ?? "—"}</span><span className="stat__label">最新 VAS</span></div>
+                <div className="stat"><span className="stat__value">{peakVas ?? "—"}</span><span className="stat__label">峰值 VAS</span></div>
+              </div>
             </div>
           </div>
           <BillingPanel patientId={patient.id} />
           <FollowupPanel patientId={patient.id} />
-        </div>
+        </>
       )}
 
       {tab === "encounters" && (
@@ -180,6 +191,20 @@ export function PatientDetailPage() {
             if (!enc) return null;
             return (
               <EncounterSummary encounter={enc} patientName={patient.name} patientSex={patient.sex} />
+            );
+          })()}
+
+          {checklistEid && (() => {
+            const enc = list.find((e) => e.id === checklistEid);
+            if (!enc) return null;
+            return (
+              <CloseChecklist
+                encounterId={checklistEid}
+                hasSoap={Boolean(enc.soapNote)}
+                closing={closing}
+                onConfirm={() => handleCloseEncounter(checklistEid, true)}
+                onCancel={() => setChecklistEid(null)}
+              />
             );
           })()}
         </>

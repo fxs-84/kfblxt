@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { analyzeAsync } from "./llm-engine";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";
@@ -7,6 +7,7 @@ import type { ExamSession } from "../exam/exam.types";
 import type { EncounterRecord } from "../encounters/encounter.repository";
 import type { DiagnosisRecord } from "../diagnosis/diagnosis.repository";
 import type { NeuroLevel, Mechanism, SpinalSegment, NerveTrunk } from "../diagnosis/localization.types";
+import { getInterventionEffectiveness, rankDiagnosisByHistory } from "../agent/agent-memory";
 
 /* ---- 浏览器语音 ---- */
 declare global { interface Window { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec; } }
@@ -112,13 +113,48 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
     setAiLoading(true);
     analyzeAsync(ctx).then((result) => {
       if (cancelled) return;
-      setAiResult(result);
+      // P1: 按历史模式重新排序定位建议
+      const regionSummary = encounter!.chiefComplaint.regions.join(" ");
+      const mechanismHints = result.localizationSuggestions
+        .filter((s) => s.level === "特定体征")
+        .map((s) => s.rationale.slice(0, 20));
+      const allLevels = result.localizationSuggestions.map((s) => s.level);
+      const rankedLevels = rankDiagnosisByHistory(allLevels, regionSummary, mechanismHints);
+      if (rankedLevels.length > 0) {
+        const scored = result.localizationSuggestions.map((s) => {
+          const idx = rankedLevels.indexOf(s.level);
+          const histConf = idx >= 0 ? Math.max(0.5, 0.95 - idx * 0.1) : 0;
+          return { ...s, confidence: Math.max(s.confidence, histConf), matchedHistory: idx >= 0 };
+        });
+        scored.sort((a, b) => {
+          if (a.matchedHistory !== b.matchedHistory) return a.matchedHistory ? -1 : 1;
+          return b.confidence - a.confidence;
+        });
+        setAiResult({ ...result, localizationSuggestions: scored });
+      } else {
+        setAiResult(result);
+      }
       setAiMode(result.completeness === "高置信" || result.interventionSuggestions.some((s) => s.priority >= 8) ? "llm" : "rules");
       setAiLoading(false);
     }).catch(() => {
       if (cancelled) return;
-      // 规则引擎兜底
-      setAiResult({ ...analyze(ctx), narrative: generateNarrative(ctx) });
+      const rules = { ...analyze(ctx), narrative: generateNarrative(ctx) };
+      // 同样应用历史排序
+      const regionSummary = encounter!.chiefComplaint.regions.join(" ");
+      const allLevels = rules.localizationSuggestions.map((s) => s.level);
+      const rankedLevels = rankDiagnosisByHistory(allLevels, regionSummary, []);
+      if (rankedLevels.length > 0) {
+        const scored = rules.localizationSuggestions.map((s) => {
+          const idx = rankedLevels.indexOf(s.level);
+          return { ...s, confidence: idx >= 0 ? Math.max(s.confidence, 0.85 - idx * 0.1) : s.confidence, matchedHistory: idx >= 0 };
+        });
+        scored.sort((a, b) => {
+          if ((a as { matchedHistory?: boolean }).matchedHistory !== (b as { matchedHistory?: boolean }).matchedHistory) return (a as { matchedHistory?: boolean }).matchedHistory ? -1 : 1;
+          return b.confidence - a.confidence;
+        });
+        rules.localizationSuggestions = scored;
+      }
+      setAiResult(rules);
       setAiMode("rules");
       setAiLoading(false);
     });
@@ -191,6 +227,9 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                           <span className={`badge badge--${s.confidence >= 0.8 ? "abnormal" : s.confidence >= 0.6 ? "caution" : "normal"}`}
                             style={{ fontSize: "10px" }}>{Math.round(s.confidence * 100)}%</span>
                           <strong style={{ fontSize: "var(--text-sm)" }}>{s.level}</strong>
+                          {(s as { matchedHistory?: boolean }).matchedHistory && (
+                            <span className="badge badge--normal" style={{ fontSize: "10px", marginLeft: "var(--space-1)" }}>🧠 历史匹配</span>
+                          )}
                         </div>
                         <p className="ai-suggestion__text">{s.rationale}</p>
                       </div>
@@ -228,6 +267,16 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                             <div className="ai-suggestion__head">
                               <span className="badge badge--normal" style={{ fontSize: "10px" }}>★{s.priority}</span>
                               <strong style={{ fontSize: "var(--text-sm)" }}>{s.name}</strong>
+                              {(() => {
+                                const eff = getInterventionEffectiveness(s.interventionId);
+                                if (eff.total === 0) return null;
+                                const color = eff.rate >= 0.7 ? "var(--color-normal)" : eff.rate >= 0.4 ? "var(--color-caution)" : "var(--color-abnormal)";
+                                return (
+                                  <span className="badge" style={{ fontSize: "10px", marginLeft: "var(--space-1)", background: eff.rate >= 0.7 ? "var(--color-normal-weak)" : "var(--color-caution-weak)", color }}>
+                                    用过{eff.total}次 有效{Math.round(eff.rate * 100)}%
+                                  </span>
+                                );
+                              })()}
                               {backfill?.onAdoptIntervention && (
                                 <button
                                   className="btn btn--primary" style={{ marginLeft: "auto", fontSize: "10px", padding: "1px 8px" }}

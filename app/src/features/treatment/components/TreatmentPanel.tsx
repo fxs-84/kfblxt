@@ -3,6 +3,7 @@ import { useTreatmentPlans, useCreateTreatmentPlan, useProgressNotes, useCreateP
 import { INTERVENTIONS_CATALOG } from "../interventions-catalog";
 import { INTERVENTION_CATEGORIES, TREATMENT_PHASES, OUTCOME_RATINGS, GOAL_TEMPLATES, GOAL_DOMAINS, type TreatmentPhase, type TreatmentGoal, type OutcomeRating } from "../treatment.types";
 import type { TreatmentPlanRecord } from "../treatment.repository";
+import { predictOutcome } from "../../agent/agent-utils";
 import { formatDate } from "../../../lib/format";
 
 interface TreatmentPanelProps { encounterId: string }
@@ -181,7 +182,9 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
         </div>
       )}
 
-      {notePlanId && <ProgressNoteForm planId={notePlanId} encounterId={encounterId} onDone={() => setNotePlanId(null)} />}
+      {notePlanId && (() => { const activePlan = plans.find((p) => p.id === notePlanId); return (
+        <ProgressNoteForm planId={notePlanId} encounterId={encounterId} interventionIds={activePlan?.interventionIds ?? []} onDone={() => setNotePlanId(null)} />
+      );})()}
     </div>
   );
 }
@@ -223,8 +226,8 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
   );
 }
 
-interface ProgressNoteFormProps { planId: string; encounterId: string; onDone: () => void; }
-function ProgressNoteForm({ planId, encounterId, onDone }: ProgressNoteFormProps) {
+interface ProgressNoteFormProps { planId: string; encounterId: string; interventionIds: string[]; onDone: () => void; }
+function ProgressNoteForm({ planId, encounterId, interventionIds, onDone }: ProgressNoteFormProps) {
   const createNote = useCreateProgressNote();
   const [node, setNode] = useState<"立即" | "短期" | "长期">("立即");
   const [vasAfter, setVasAfter] = useState<number | undefined>();
@@ -232,6 +235,7 @@ function ProgressNoteForm({ planId, encounterId, onDone }: ProgressNoteFormProps
   const [adjustment, setAdjustment] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const prediction = interventionIds.length > 0 ? predictOutcome(interventionIds) : null;
 
   const handleSave = async () => {
     setError(null);
@@ -261,6 +265,11 @@ function ProgressNoteForm({ planId, encounterId, onDone }: ProgressNoteFormProps
         </select>
         <input placeholder="调整方案(可选)" value={adjustment} onChange={(e) => setAdjustment(e.target.value)}
           style={{ flex: 1, minWidth: 120, padding: "2px 4px", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: "var(--text-xs)" }} />
+        {prediction && prediction.predicted !== "不确定" && (
+          <span className="badge badge--caution" style={{ fontSize: "10px" }} title={prediction.basis}>
+            🧠 预判:{prediction.predicted}({Math.round(prediction.confidence * 100)}%)
+          </span>
+        )}
         <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "2px 12px" }}
           disabled={saving} onClick={handleSave}>{saving ? "…" : "保存复评"}</button>
         <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }} onClick={onDone}>取消</button>

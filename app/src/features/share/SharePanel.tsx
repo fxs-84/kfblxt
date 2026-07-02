@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { useSharesByEncounter, useCreateShare, useRevokeShare } from "./useShare";
+import { useSharesByEncounter, useRevokeShare } from "./useShare";
+import { createSupabaseShare } from "./share-supabase";
+import { generateHomeworkTemplate } from "../agent/agent-utils";
+import { useTreatmentPlans } from "../treatment/useTreatment";
 import { formatDate } from "../../lib/format";
 
-interface SharePanelProps { encounterId: string; patientId: string }
+interface SharePanelProps { encounterId: string; patientId: string; interventionIds?: string[] }
 
 export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   const { data: shares = [] } = useSharesByEncounter(encounterId);
@@ -13,16 +16,27 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   const [homework, setHomework] = useState("");
   const [nextVisit, setNextVisit] = useState("");
   const [saving, setSaving] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+
+  /* P3-10: 智能作业模板 */
+  const { data: encounterPlans = [] } = useTreatmentPlans(encounterId);
+  const handleFillHomework = () => {
+    const ids = encounterPlans.flatMap((p) => p.interventionIds);
+    if (ids.length === 0) return;
+    setHomework(generateHomeworkTemplate(ids));
+  };
 
   const handleGenerate = async () => {
     setSaving(true);
-    await createShare.mutateAsync({
+    // 优先走 Supabase(跨设备可用),不可用则回退 localStorage
+    const share = await createSupabaseShare({
       encounterId,
       patientId,
       homework: homework.trim() || undefined,
       nextVisit: nextVisit ? new Date(nextVisit) : undefined,
       message: message.trim() ? `${message.trim()}\n\n---\nANRM 神经科学康复中心` : undefined,
     });
+    setShareToken(share.token);
     setShowForm(false); setMessage(""); setHomework(""); setNextVisit("");
     setSaving(false);
   };
@@ -48,7 +62,10 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
         <div style={{ padding: "0 var(--space-5) var(--space-4)", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
             <div className="field">
-              <label>家庭作业 / 居家训练指导</label>
+              <label>家庭作业 / 居家训练指导
+                <button type="button" className="btn btn--ghost" style={{ fontSize: "10px", padding: "0 6px", marginLeft: "var(--space-2)" }}
+                  onClick={handleFillHomework} title="根据治疗计划自动生成">🧠 自动生成</button>
+              </label>
               <textarea rows={3} value={homework} onChange={(e) => setHomework(e.target.value)}
                 placeholder="如:每天 VOR 训练 30 下×3 组;肩胛骨稳定训练 1min/侧×2 组;注意保持收下巴"
                 style={{ width: "100%", padding: "var(--space-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", font: "inherit", resize: "vertical" }} />

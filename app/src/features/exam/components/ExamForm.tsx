@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCreateExamSession } from "../useExam";
 import { EXAM_CATALOG } from "../exam-catalog";
 import { EXAM_CATEGORIES, CATEGORY_LABELS, type ExamCategory, type ExamResult, type ExamDataType } from "../exam.types";
+import { getExamFrequency, recordExamUsage, recordLastExam } from "../../agent/agent-memory";
 
 interface ExamFormProps {
   encounterId: string;
@@ -161,12 +162,21 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
     setExpanded(next);
   };
 
-  const itemsByCategory = new Map<ExamCategory, Array<typeof EXAM_CATALOG[number]>>();
-  for (const cat of EXAM_CATEGORIES) itemsByCategory.set(cat, []);
-  for (const item of EXAM_CATALOG) {
-    const arr = itemsByCategory.get(item.category);
-    if (arr) arr.push(item);
-  }
+  /* P2: 按使用频率排序查体项(常用排前面) + 高亮 */
+  const examFreq = useMemo(() => getExamFrequency(), []);
+  const itemsByCategory = useMemo(() => {
+    const map = new Map<ExamCategory, Array<typeof EXAM_CATALOG[number]>>();
+    for (const cat of EXAM_CATEGORIES) map.set(cat, []);
+    for (const item of EXAM_CATALOG) {
+      const arr = map.get(item.category);
+      if (arr) arr.push(item);
+    }
+    // 按使用频率逆序排列(常用在前)
+    for (const [cat, items] of map) {
+      items.sort((a, b) => (examFreq[b.id] ?? 0) - (examFreq[a.id] ?? 0));
+    }
+    return map;
+  }, [examFreq]);
 
   const setResult = (id: string, r: ExamResult) => {
     setResults((prev) => {
@@ -181,6 +191,12 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
   const handleSave = async () => {
     setSaving(true);
     await createExam.mutateAsync({ encounterId, results });
+    // P2: 记录查体频率(供下次智能排序)
+    const usedIds = Object.keys(results);
+    if (usedIds.length > 0) {
+      recordExamUsage(usedIds);
+      recordLastExam(encounterId, usedIds);
+    }
     onDone();
   };
 
@@ -214,6 +230,7 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
                         <div className="exam-item__label">
                           <span>{item.name}</span>
                           {item.pendingConfirmation && <span className="exam-item__flag" title="待医师确认">⚠</span>}
+                          {(examFreq[item.id] ?? 0) >= 3 && <span className="badge badge--normal" style={{ fontSize: "9px", marginLeft: 2 }} title={`已使用 ${examFreq[item.id]} 次`}>常用</span>}
                           {item.normalRef && <span className="exam-item__ref">{item.normalRef}</span>}
                         </div>
                         <ExamField

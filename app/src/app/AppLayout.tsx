@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { LoginDialog } from "../components/auth/LoginDialog";
 import { resetSession, useSession } from "../components/auth/useSession";
+import { AgentMonitor } from "../features/agent/AgentMonitor";
 
 const NAV = [
   { to: "/", label: "工作台", end: true, icon: "M3 12l9-9 9 9M5 10v10h14V10" },
@@ -58,6 +59,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
+      <AgentMonitor />
       <LoginDialog
         open={loginOpen}
         current={session}

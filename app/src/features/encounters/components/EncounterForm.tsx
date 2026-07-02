@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useState, useEffect } from "react";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -37,6 +37,42 @@ export function EncounterForm({ patientId, onDone }: EncounterFormProps) {
   });
 
   const [symptomOpen, setSymptomOpen] = useState<Set<SymptomGroup>>(new Set(["疼痛", "感觉异常"]));
+
+  /* P2: 体区→症状组映射 */
+  const REGION_TO_GROUPS: Record<string, SymptomGroup[]> = {
+    "head": ["疼痛","前庭/平衡","视听/颅神经","认知/精神"],
+    "neck": ["疼痛","前庭/平衡","感觉异常","视听/颅神经"],
+    "chest": ["疼痛","自主神经","感觉异常"],
+    "forearm": ["感觉异常","运动障碍","功能受限","疼痛"],
+    "hand": ["感觉异常","运动障碍","功能受限"],
+    "quadriceps": ["疼痛","运动障碍","步态/姿势","功能受限"],
+    "hamstring": ["疼痛","运动障碍","步态/姿势"],
+    "calves": ["感觉异常","步态/姿势","运动障碍","疼痛"],
+    "foot": ["感觉异常","步态/姿势","功能受限"],
+    "knees": ["疼痛","步态/姿势","功能受限"],
+    "gluteal": ["疼痛","感觉异常","步态/姿势"],
+    "lower-back": ["疼痛","感觉异常","运动障碍","功能受限"],
+    "upper-back": ["疼痛","感觉异常","运动障碍"],
+    "trapezius": ["疼痛","感觉异常","运动障碍"],
+    "abs": ["自主神经","运动障碍"],
+  };
+
+  const watchedRegions = useWatch({ control, name: "chiefComplaint.regions" }) ?? [];
+
+  /* 选体区时自动展开最相关的症状组 */
+  useEffect(() => {
+    const regions = watchedRegions as string[];
+    if (regions.length === 0) return;
+    const scored = new Map<SymptomGroup, number>();
+    for (const r of regions) {
+      const base = r.replace(/^left-|^right-|-内侧$|-外侧$|-中$/g, "");
+      const groups = REGION_TO_GROUPS[base];
+      if (groups) for (const g of groups) scored.set(g, (scored.get(g) ?? 0) + 1);
+    }
+    if (scored.size === 0) return;
+    const top = [...scored.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([g]) => g);
+    setSymptomOpen((prev) => { const n = new Set(prev); for (const g of top) n.add(g); return n; });
+  }, [JSON.stringify(watchedRegions)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = (g: SymptomGroup) => {
     const next = new Set(symptomOpen);

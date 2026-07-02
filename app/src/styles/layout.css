@@ -1468,3 +1468,48 @@ body {
 .timeline__summary { font-size: var(--text-sm); color: var(--color-text); }
 .timeline__author { font-size: var(--text-xs); color: var(--color-text-muted); }
 .timeline__author strong { color: var(--color-text); font-weight: 600; }
+
+/* ===== 结束就诊清单 ===== */
+.checklist-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(15,28,43,0.35);
+  display: grid; place-items: center;
+  animation: checklist-fade-in 0.2s ease-out;
+}
+@keyframes checklist-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.checklist-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 400px; max-width: calc(100vw - 32px);
+  overflow: hidden;
+}
+.checklist-card__head {
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  background: linear-gradient(135deg, #f5f9fc, #ffffff);
+}
+.checklist-card__body {
+  padding: var(--space-3) var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.checklist-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border);
+}
+.checklist-item:last-child { border-bottom: none; }
+.checklist-item__icon {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; font-size: var(--text-xs); font-weight: 700;
+}
+.checklist-item--done .checklist-item__icon {
+  background: var(--color-normal-weak); color: var(--color-normal);
+}
+.checklist-item--pending .checklist-item__icon {
+  background: var(--color-caution-weak); color: var(--color-caution);
+}
+.checklist-item__label { font-size: var(--text-sm); }
+.checklist-card__actions {
+  padding: var(--space-4) var(--space-6); display: flex;
+  gap: var(--space-3); justify-content: flex-end;
+  border-top: 1px solid var(--color-border);
+}
