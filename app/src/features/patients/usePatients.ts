@@ -30,3 +30,21 @@ export function useCreatePatient() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+export function useDeletePatient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // RBAC:只有 admin 可软删除患者
+      if (!can(getSession().role, "patient:delete")) {
+        throw new Error("仅管理员可删除患者档案");
+      }
+      await patientRepository.remove(id);
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: [...KEY, id] });
+    },
+  });
+}

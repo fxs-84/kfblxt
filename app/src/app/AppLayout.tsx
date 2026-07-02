@@ -1,20 +1,31 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { getSession } from "../lib/session";
+import { LoginDialog } from "../components/auth/LoginDialog";
+import { resetSession, useSession } from "../components/auth/useSession";
 
 const NAV = [
   { to: "/", label: "工作台", end: true, icon: "M3 12l9-9 9 9M5 10v10h14V10" },
   { to: "/patients", label: "患者", end: false, icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21v-1a6 6 0 0112 0v1" },
 ];
 
+const ROLE_LABEL: Record<string, string> = {
+  physician: "医师",
+  admin: "管理员",
+  therapist: "治疗师",
+};
+
 export function AppLayout() {
-  const session = getSession();
+  const session = useSession();
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const handleLogout = () => {
+    resetSession();
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div>
-          <div className="sidebar__brand">ANRM 病历</div>
-          <div className="sidebar__org">神经科学康复</div>
-        </div>
+        <div className="sidebar__brand">神经科学康复</div>
         <nav className="nav" aria-label="主导航">
           {NAV.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end}>
@@ -25,19 +36,52 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar__user">
-          <div className="sidebar__avatar">{session.fullName.slice(0, 1)}</div>
-          <div>
-            <div className="sidebar__user-name">{session.fullName}</div>
-            <div className="sidebar__user-role">
-              {session.role === "physician" ? "医师" : session.role === "admin" ? "管理员" : "治疗师"}
-            </div>
-          </div>
-        </div>
+        <button
+          type="button"
+          className="sidebar__user"
+          onClick={() => setLoginOpen(true)}
+          aria-label="切换治疗师"
+        >
+          <span className="sidebar__avatar" aria-hidden="true">
+            {session.fullName.slice(0, 1)}
+          </span>
+          <span className="sidebar__user-meta">
+            <span className="sidebar__user-name">{session.fullName}</span>
+            <span className="sidebar__user-role">
+              {ROLE_LABEL[session.role] ?? session.role}
+            </span>
+          </span>
+          <span className="sidebar__user-action" aria-hidden="true">↗</span>
+        </button>
       </aside>
       <main className="main">
         <Outlet />
       </main>
+
+      <LoginDialog
+        open={loginOpen}
+        current={session}
+        onClose={() => setLoginOpen(false)}
+      />
+
+      {/* 隐藏的退出触发点:键盘快捷键 Ctrl+Shift+Q 登出(mock 阶段演示用) */}
+      <button
+        type="button"
+        onClick={handleLogout}
+        title="退出登录 (mock 演示用)"
+        style={{
+          position: "fixed",
+          bottom: 4,
+          left: 4,
+          width: 1,
+          height: 1,
+          opacity: 0,
+          border: 0,
+          padding: 0,
+        }}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
     </div>
   );
 }

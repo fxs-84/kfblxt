@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { usePatientFollowups, useCreateFollowup, useCompleteFollowup, useNoShowFollowup } from "./useFollowup";
 import { formatDate } from "../../lib/format";
+import { useSession } from "../../components/auth/useSession";
+import { MyFilterToggle, applyMyFilter } from "../../components/auth/MyFilterToggle";
 
 interface FollowupPanelProps { patientId: string; encounterId?: string }
 
@@ -18,6 +20,7 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
   const createFollowup = useCreateFollowup();
   const completeFollowup = useCompleteFollowup();
   const noShowFollowup = useNoShowFollowup();
+  const session = useSession();
   const [showForm, setShowForm] = useState(false);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 14);
@@ -25,8 +28,13 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
   });
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [onlyMine, setOnlyMine] = useState(false);
 
-  const pending = followups.filter((f) => f.status === "待复诊");
+  const filteredFollowups = useMemo(
+    () => applyMyFilter(followups, onlyMine, session.userId),
+    [followups, onlyMine, session.userId],
+  );
+  const pending = filteredFollowups.filter((f) => f.status === "待复诊");
 
   const handleSave = async () => {
     setSaving(true);
@@ -69,45 +77,61 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
       {followups.length === 0 ? (
         <div className="empty" style={{ padding: "var(--space-6)" }}>暂无复诊安排。</div>
       ) : (
-        <table className="table">
-          <thead>
-            <tr><th>复诊日期</th><th>状态</th><th>备注</th><th style={{ width: 100 }}>操作</th></tr>
-          </thead>
-          <tbody>
-            {followups.map((f) => {
-              const { text, urgent } = f.status === "待复诊" ? dueText(f.dueDate) : { text: "", urgent: false };
-              return (
-                <tr key={f.id}>
-                  <td>
-                    <span style={{ fontWeight: 600 }}>{formatDate(f.dueDate)}</span>
-                    {f.status === "待复诊" && (
-                      <span className={`badge ${urgent ? "badge--abnormal" : "badge--caution"}`}
-                        style={{ marginLeft: 6, fontSize: "10px" }}>{text}</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge badge--${f.status === "已完成" ? "normal" : f.status === "失约" ? "abnormal" : "caution"}`}>
-                      {f.status}
-                    </span>
-                  </td>
-                  <td>{f.note}</td>
-                  <td>
-                    {f.status === "待复诊" && encounterId && (
-                      <button className="btn btn--ghost" style={{ fontSize: "10px", padding: "1px 6px", color: "var(--color-normal)" }}
-                        onClick={() => completeFollowup.mutate({ id: f.id, encounterId })} title="关联当前就诊">
-                        ✓完成
-                      </button>
-                    )}
-                    {f.status === "待复诊" && (
-                      <button className="btn btn--ghost" style={{ fontSize: "10px", padding: "1px 6px", color: "var(--color-abnormal)", marginLeft: 4 }}
-                        onClick={() => noShowFollowup.mutate(f.id)}>失约</button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <>
+          <div style={{ padding: "var(--space-3) var(--space-5) 0", display: "flex", justifyContent: "flex-end" }}>
+            <MyFilterToggle
+              active={onlyMine}
+              onChange={setOnlyMine}
+              therapistName={session.fullName}
+              totalCount={followups.length}
+              filteredCount={filteredFollowups.length}
+              compact
+            />
+          </div>
+          {filteredFollowups.length === 0 ? (
+            <div className="empty" style={{ padding: "var(--space-6)" }}>当前治疗师没有复诊安排</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr><th>复诊日期</th><th>状态</th><th>备注</th><th style={{ width: 100 }}>操作</th></tr>
+              </thead>
+              <tbody>
+                {filteredFollowups.map((f) => {
+                  const { text, urgent } = f.status === "待复诊" ? dueText(f.dueDate) : { text: "", urgent: false };
+                  return (
+                    <tr key={f.id}>
+                      <td>
+                        <span style={{ fontWeight: 600 }}>{formatDate(f.dueDate)}</span>
+                        {f.status === "待复诊" && (
+                          <span className={`badge ${urgent ? "badge--abnormal" : "badge--caution"}`}
+                            style={{ marginLeft: 6, fontSize: "10px" }}>{text}</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge badge--${f.status === "已完成" ? "normal" : f.status === "失约" ? "abnormal" : "caution"}`}>
+                          {f.status}
+                        </span>
+                      </td>
+                      <td>{f.note}</td>
+                      <td>
+                        {f.status === "待复诊" && encounterId && (
+                          <button className="btn btn--ghost" style={{ fontSize: "10px", padding: "1px 6px", color: "var(--color-normal)" }}
+                            onClick={() => completeFollowup.mutate({ id: f.id, encounterId })} title="关联当前就诊">
+                            ✓完成
+                          </button>
+                        )}
+                        {f.status === "待复诊" && (
+                          <button className="btn btn--ghost" style={{ fontSize: "10px", padding: "1px 6px", color: "var(--color-abnormal)", marginLeft: 4 }}
+                            onClick={() => noShowFollowup.mutate(f.id)}>失约</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   );

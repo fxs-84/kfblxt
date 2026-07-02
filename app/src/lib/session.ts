@@ -1,4 +1,5 @@
 import type { UserRole } from "./rbac";
+import { DEFAULT_PROFILE } from "./profiles";
 
 /**
  * Phase 1 mock 会话。真实认证在接入 Supabase Auth 后替换,
@@ -12,10 +13,10 @@ export interface Session {
 }
 
 export const MOCK_SESSION: Session = {
-  userId: "00000000-0000-4000-8000-0000000000aa",
+  userId: DEFAULT_PROFILE.userId,
   orgId: "00000000-0000-4000-8000-0000000000f0",
-  fullName: "演示治疗师",
-  role: "physician",
+  fullName: DEFAULT_PROFILE.fullName,
+  role: DEFAULT_PROFILE.role,
 };
 
 export function getSession(): Session {

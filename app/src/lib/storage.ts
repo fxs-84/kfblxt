@@ -7,6 +7,7 @@
  * 后续接 Supabase 时只需替换实现,调用方不变。
  */
 import { createMemoryRepository, type Entity, type Repository } from "./repository";
+import { getSession } from "./session";
 
 const STORAGE_PREFIX = "anrm_";
 
@@ -22,6 +23,8 @@ function loadFromStorage<T>(name: string): T[] { // eslint-disable-line @typescr
     return parsed.map((item) => ({
       ...item,
       createdAt: new Date(item.createdAt as string),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt as string) : undefined,
+      deletedAt: item.deletedAt ? new Date(item.deletedAt as string) : undefined,
       encounterDate: item.encounterDate ? new Date(item.encounterDate as string) : undefined,
       birthDate: item.birthDate ? new Date(item.birthDate as string) : undefined,
       dueDate: item.dueDate ? new Date(item.dueDate as string) : undefined,
@@ -79,6 +82,15 @@ export async function createPersistentRepository<T extends Entity, TInput>(
   const inner = createMemoryRepository<T, TInput>({
     seed: initial,
     validate: options?.validate,
+    // 治疗师归属注入器:每次 create/update 自动从会话读取当前 userId
+    resolveActor: () => {
+      try {
+        const s = getSession();
+        return s ? { userId: s.userId } : null;
+      } catch {
+        return null;
+      }
+    },
   });
 
   /** 从内层仓储拉最新全量并写本地 */

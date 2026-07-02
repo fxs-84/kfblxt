@@ -6,6 +6,7 @@ import { aggregateRegions } from "../encounters/encounter.select";
 import { BodyMap } from "../../components/bodymap/BodyMap";
 import { formatDate } from "../../lib/format";
 import { regionLabel } from "../../components/bodymap/regions";
+import { MyWorkStats } from "../../components/auth/MyWorkStats";
 
 function isThisMonth(d: Date): boolean {
   const now = new Date();
@@ -73,6 +74,10 @@ export function DashboardPage() {
           </div>
         ))}
       </section>
+
+      <div style={{ marginBottom: "var(--space-6)" }}>
+        <MyWorkStats />
+      </div>
 
       <div className="overview-grid">
         {/* 待复诊提醒 */}

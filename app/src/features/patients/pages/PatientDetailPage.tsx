@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { usePatient } from "../usePatients";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { usePatient, useDeletePatient } from "../usePatients";
 import { usePatientEncounters, useCloseEncounter, useUpdateEncounter } from "../../encounters/useEncounters";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { EncounterForm } from "../../encounters/components/EncounterForm";
 import { EncounterTable } from "../../encounters/components/EncounterTable";
 import { EncounterSummary } from "../../encounters/components/EncounterSummary";
@@ -22,11 +23,14 @@ import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useCreateTreatmentPlan } from "../../treatment/useTreatment";
 import type { NeuroLevel, Mechanism, SpinalSegment, NerveTrunk } from "../../diagnosis/localization.types";
 import { calcAge, SEX_LABELS, HAND_LABELS } from "../../../lib/format";
+import { TherapistAttribution } from "../../../components/auth/TherapistAttribution";
+import { OperationTimeline } from "../../../components/auth/OperationTimeline";
 
 type TabType = "overview" | "encounters" | "treatment";
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: patient, isLoading } = usePatient(id);
   const { data: encounters } = usePatientEncounters(id);
   const { data: allSessions = [] } = useAllExamSessions();
@@ -34,12 +38,19 @@ export function PatientDetailPage() {
   const updateEncounter = useUpdateEncounter();
   const createDiagnosis = useCreateDiagnosis();
   const createTreatmentPlan = useCreateTreatmentPlan();
+  const deletePatient = useDeletePatient();
 
   const [tab, setTab] = useState<TabType>("overview");
   const [showForm, setShowForm] = useState(false);
   const [examEncounterId, setExamEncounterId] = useState<string | null>(null);
   const [summaryEncounterId, setSummaryEncounterId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    await deletePatient.mutateAsync(id!);
+    navigate("/patients");
+  };
 
   const activeDiagnosisEncounterId = examEncounterId ?? (encounters && encounters.length > 0 ? encounters[0].id : undefined);
   const { data: activeDiagnosis } = useDiagnosis(activeDiagnosisEncounterId);
@@ -73,7 +84,17 @@ export function PatientDetailPage() {
           <p className="page-subtitle"><Link to="/patients">患者</Link> / {patient.medicalRecordNo}</p>
           <h1 className="page-title">{patient.name}</h1>
         </div>
-        <button className="btn btn--primary" onClick={() => { setTab("encounters"); setShowForm(true); }}>+ 新建就诊</button>
+        <div style={{ display: "flex", gap: "var(--space-2)" }}>
+          <button
+            className="btn btn--ghost"
+            onClick={() => setConfirmDelete(true)}
+            style={{ color: "var(--color-abnormal)" }}
+            title="软删除此患者(可在管理员视图恢复)"
+          >
+            删除
+          </button>
+          <button className="btn btn--primary" onClick={() => { setTab("encounters"); setShowForm(true); }}>+ 新建就诊</button>
+        </div>
       </header>
 
       <section className="patient-banner card">
@@ -83,6 +104,11 @@ export function PatientDetailPage() {
           <span className="chip-static">{calcAge(patient.birthDate)} 岁</span>
           <span className="chip-static">{patient.dominantHand ? HAND_LABELS[patient.dominantHand] : "利手未评估"}</span>
           {patient.phone && <span className="chip-static">☏ {patient.phone}</span>}
+          <TherapistAttribution
+            userId={patient.createdBy}
+            at={patient.createdAt}
+            label="建档"
+          />
         </div>
       </section>
 
@@ -208,6 +234,23 @@ export function PatientDetailPage() {
         );
       })()}
       <p className="disclaimer">本系统为临床辅助记录工具,查体量表阈值待医师签字确认,不作为独立诊断依据。</p>
+
+      <OperationTimeline
+        patientId={id!}
+        patientCreatedAt={patient.createdAt}
+        patientCreatedBy={patient.createdBy}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="删除患者档案"
+        message={`将软删除「${patient.name}」(${patient.medicalRecordNo})。该操作标记 deletedAt,患者列表/详情自动隐藏,但 RLS 保留记录以便审计与恢复。仅管理员可执行。`}
+        confirmLabel="确认删除"
+        cancelLabel="取消"
+        danger
+        onConfirm={handleConfirmDelete}
+        onClose={() => setConfirmDelete(false)}
+      />
     </>
   );
 }

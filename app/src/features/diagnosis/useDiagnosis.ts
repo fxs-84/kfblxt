@@ -10,6 +10,13 @@ export function useDiagnosis(encounterId: string | undefined) {
   });
 }
 
+export function useAllDiagnoses() {
+  return useQuery({
+    queryKey: ["diagnosis", "all"],
+    queryFn: () => diagnosisRepository.findAll(),
+  });
+}
+
 export function useCreateDiagnosis() {
   const qc = useQueryClient();
   return useMutation({

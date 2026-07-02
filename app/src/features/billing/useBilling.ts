@@ -11,6 +11,14 @@ export function useBilling(patientId: string | undefined) {
   return { records, balance: calcBalance(records), ...rest };
 }
 
+export function useAllBilling() {
+  const { data: records = [], ...rest } = useQuery({
+    queryKey: ["billing", "all"],
+    queryFn: () => billingRepository.findAll(),
+  });
+  return { records, ...rest };
+}
+
 export function useCreateBilling() {
   const qc = useQueryClient();
   return useMutation({

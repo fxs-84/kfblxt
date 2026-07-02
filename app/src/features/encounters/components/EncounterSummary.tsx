@@ -8,6 +8,7 @@ import { regionLabel } from "../../../components/bodymap/regions";
 import { formatDate, SEX_LABELS } from "../../../lib/format";
 import type { Sex } from "../../patients/patient.schema";
 import { useAttachments } from "../../attachments/useAttachments";
+import { TherapistAttribution } from "../../../components/auth/TherapistAttribution";
 
 interface EncounterSummaryProps {
   encounter: EncounterRecord;
@@ -31,6 +32,18 @@ export function EncounterSummary({ encounter, patientName, patientSex }: Encount
             <p className="page-subtitle" style={{ margin: 0 }}>
               {patientName} · {SEX_LABELS[patientSex]} · {formatDate(encounter.encounterDate)} · {encounter.visitType}
             </p>
+            <TherapistAttribution
+              userId={encounter.createdBy}
+              at={encounter.createdAt}
+              label="操作"
+            />
+            {encounter.updatedBy && encounter.updatedBy !== encounter.createdBy && (
+              <TherapistAttribution
+                userId={encounter.updatedBy}
+                at={encounter.updatedAt}
+                label="最后更新"
+              />
+            )}
           </div>
           <span className="badge badge--normal" style={{ fontSize: "var(--text-sm)", padding: "4px 12px" }}>
             ✓ 已结束

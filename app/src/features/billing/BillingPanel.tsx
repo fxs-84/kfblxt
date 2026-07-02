@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useBilling, useCreateBilling, useDeleteBilling } from "./useBilling";
 import { BILLING_TYPES, type BillingType } from "./billing.types";
 import { formatDate } from "../../lib/format";
+import { useSession } from "../../components/auth/useSession";
+import { MyFilterToggle, applyMyFilter } from "../../components/auth/MyFilterToggle";
 
 interface BillingPanelProps { patientId: string; encounterId?: string }
 
@@ -11,6 +13,7 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
   const { records, balance, isLoading } = useBilling(patientId);
   const createBilling = useCreateBilling();
   const deleteBilling = useDeleteBilling();
+  const session = useSession();
   const [showForm, setShowForm] = useState(false);
   const [type, setType] = useState<BillingType>("充值");
   const [amount, setAmount] = useState("");
@@ -18,6 +21,12 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [onlyMine, setOnlyMine] = useState(false);
+
+  const filteredRecords = useMemo(
+    () => applyMyFilter(records, onlyMine, session.userId),
+    [records, onlyMine, session.userId],
+  );
 
   const handleSave = async () => {
     const amt = Number(amount);
@@ -100,39 +109,55 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
       {records.length === 0 ? (
         <div className="empty">暂无消费记录</div>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>类型</th>
-              <th>金额</th>
-              <th>卡次</th>
-              <th>备注</th>
-              <th style={{ width: 40 }} />
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id}>
-                <td>{formatDate(r.createdAt)}</td>
-                <td>
-                  <span className={`badge badge--${r.type === "充值" ? "normal" : r.type === "退费" ? "abnormal" : "caution"}`}>
-                    {r.type}
-                  </span>
-                </td>
-                <td style={{ fontWeight: 600, color: r.type === "充值" ? "var(--color-normal)" : "var(--color-abnormal)" }}>
-                  {r.type === "充值" ? "+" : "-"}¥{fmn(r.amount)}
-                </td>
-                <td>{r.sessions ?? "—"}</td>
-                <td>{r.note}</td>
-                <td>
-                  <button className="btn btn--ghost" style={{ padding: "0 4px", fontSize: "11px" }}
-                    onClick={() => deleteBilling.mutate(r.id)} title="删除">✕</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <div style={{ padding: "var(--space-3) var(--space-5) 0", display: "flex", justifyContent: "flex-end" }}>
+            <MyFilterToggle
+              active={onlyMine}
+              onChange={setOnlyMine}
+              therapistName={session.fullName}
+              totalCount={records.length}
+              filteredCount={filteredRecords.length}
+              compact
+            />
+          </div>
+          {filteredRecords.length === 0 ? (
+            <div className="empty">当前治疗师没有计费记录</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>类型</th>
+                  <th>金额</th>
+                  <th>卡次</th>
+                  <th>备注</th>
+                  <th style={{ width: 40 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRecords.map((r) => (
+                  <tr key={r.id}>
+                    <td>{formatDate(r.createdAt)}</td>
+                    <td>
+                      <span className={`badge badge--${r.type === "充值" ? "normal" : r.type === "退费" ? "abnormal" : "caution"}`}>
+                        {r.type}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600, color: r.type === "充值" ? "var(--color-normal)" : "var(--color-abnormal)" }}>
+                      {r.type === "充值" ? "+" : "-"}¥{fmn(r.amount)}
+                    </td>
+                    <td>{r.sessions ?? "—"}</td>
+                    <td>{r.note}</td>
+                    <td>
+                      <button className="btn btn--ghost" style={{ padding: "0 4px", fontSize: "11px" }}
+                        onClick={() => deleteBilling.mutate(r.id)} title="删除">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   );

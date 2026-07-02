@@ -18,6 +18,13 @@ export function useTreatmentPlans(encounterId: string | undefined) {
   });
 }
 
+export function useAllTreatmentPlans() {
+  return useQuery({
+    queryKey: ["treatment-plans", "all"],
+    queryFn: () => treatmentPlanRepository.findAll(),
+  });
+}
+
 export function useCreateTreatmentPlan() {
   const qc = useQueryClient();
   return useMutation({

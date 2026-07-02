@@ -17,6 +17,13 @@ export function usePendingFollowups() {
   });
 }
 
+export function useAllFollowups() {
+  return useQuery({
+    queryKey: ["followups", "all"],
+    queryFn: () => followupRepository.findAll(),
+  });
+}
+
 export function useCreateFollowup() {
   const qc = useQueryClient();
   return useMutation({

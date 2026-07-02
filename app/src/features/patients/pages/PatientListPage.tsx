@@ -2,23 +2,28 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePatients } from "../usePatients";
 import { calcAge, formatDate, SEX_LABELS } from "../../../lib/format";
+import { useSession } from "../../../components/auth/useSession";
+import { MyFilterToggle, applyMyFilter } from "../../../components/auth/MyFilterToggle";
 
 export function PatientListPage() {
   const navigate = useNavigate();
   const { data: patients, isLoading } = usePatients();
+  const session = useSession();
   const [query, setQuery] = useState("");
+  const [onlyMine, setOnlyMine] = useState(false);
 
   const filtered = useMemo(() => {
     if (!patients) return [];
+    let list = applyMyFilter(patients, onlyMine, session.userId);
     const q = query.trim().toLowerCase();
-    if (!q) return patients;
-    return patients.filter(
+    if (!q) return list;
+    return list.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         (p.phone ?? "").includes(q) ||
         (p.medicalRecordNo ?? "").toLowerCase().includes(q),
     );
-  }, [patients, query]);
+  }, [patients, query, onlyMine, session.userId]);
 
   return (
     <>
@@ -44,6 +49,13 @@ export function PatientListPage() {
           placeholder="按姓名、手机号或病历号搜索…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+        />
+        <MyFilterToggle
+          active={onlyMine}
+          onChange={setOnlyMine}
+          therapistName={session.fullName}
+          totalCount={patients?.length ?? 0}
+          filteredCount={filtered.length}
         />
         {query && (
           <button className="search-bar__clear" onClick={() => setQuery("")} aria-label="清除搜索">
