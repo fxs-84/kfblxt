@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { analyzeAsync } from "./llm-engine";
+import { analyzeAsync, getLLMConfig, saveLLMConfig, clearLLMConfig, isLLMConfigured, type LLMConfig } from "./llm-engine";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";
 import { EXAM_CATALOG } from "../exam/exam-catalog";
@@ -90,6 +90,13 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
   const [aiResult, setAiResult] = useState<ReturnType<typeof analyze> & { narrative: ReturnType<typeof generateNarrative> } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState<"rules" | "llm">("rules");
+  const [llmConfigured, setLlmConfigured] = useState(isLLMConfigured());
+  const [showLlmSettings, setShowLlmSettings] = useState(false);
+  const [llmForm, setLlmForm] = useState<{ apiUrl: string; apiKey: string; model: string }>(() => {
+    const c = getLLMConfig();
+    return { apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5" };
+  });
+  const [llmError, setLlmError] = useState<string | null>(null);
 
   /* ---- 数据准备 ---- */
   const findings = examSessions.flatMap((s) =>
@@ -193,6 +200,14 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
               {aiLoading ? "⏳ 推理中…" : aiMode === "llm" ? "🤖 LLM 已连接" : sceneHint}
             </span>
+            <button
+              className="btn btn--ghost"
+              style={{ fontSize: "10px", padding: "1px 6px", marginLeft: "auto" }}
+              onClick={() => setShowLlmSettings((v) => !v)}
+              title="配置 LLM API key(仅本地)"
+            >
+              {llmConfigured ? "🔑" : "⚠️ 未配置 LLM"}
+            </button>
           </div>
         </div>
         <button className="btn btn--ghost" style={{ padding: "2px 8px" }} onClick={() => setOpen(false)}>✕</button>
@@ -207,6 +222,77 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
       </nav>
 
       <div className="ai-panel__body">
+        {/* ========== LLM 设置面板 ========== */}
+        {showLlmSettings && (
+          <div className="ai-section" style={{ background: "var(--color-surface-sunken)", padding: "var(--space-3)", borderRadius: "var(--radius-md)", marginBottom: "var(--space-3)" }}>
+            <h4 className="ai-section__title">🔑 LLM API 配置(仅本地浏览器)</h4>
+            <p className="ai-empty" style={{ fontSize: "var(--text-xs)" }}>
+              你的 API key 仅保存在当前浏览器 localStorage,不会上传或进入 JS bundle。
+              未配置时 AI 助手使用本地规则引擎,功能完全可用。
+            </p>
+            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
+              <label style={{ fontSize: "var(--text-xs)" }}>API URL</label>
+              <input
+                type="text"
+                value={llmForm.apiUrl}
+                onChange={(e) => setLlmForm((f) => ({ ...f, apiUrl: e.target.value }))}
+                placeholder="https://api.anthropic.com/v1/messages"
+                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
+              <label style={{ fontSize: "var(--text-xs)" }}>API Key</label>
+              <input
+                type="password"
+                value={llmForm.apiKey}
+                onChange={(e) => setLlmForm((f) => ({ ...f, apiKey: e.target.value }))}
+                placeholder="sk-ant-..."
+                autoComplete="off"
+                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
+              <label style={{ fontSize: "var(--text-xs)" }}>模型名</label>
+              <input
+                type="text"
+                value={llmForm.model}
+                onChange={(e) => setLlmForm((f) => ({ ...f, model: e.target.value }))}
+                placeholder="claude-haiku-4-5"
+                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
+              />
+            </div>
+            {llmError && <div className="field__error" style={{ marginBottom: "var(--space-2)" }}>{llmError}</div>}
+            <div style={{ display: "flex", gap: "var(--space-2)" }}>
+              <button
+                className="btn btn--primary"
+                style={{ fontSize: "var(--text-xs)" }}
+                onClick={() => {
+                  setLlmError(null);
+                  if (!llmForm.apiUrl.trim() || !llmForm.apiKey.trim()) {
+                    setLlmError("API URL 和 Key 必填");
+                    return;
+                  }
+                  const cfg: LLMConfig = { apiUrl: llmForm.apiUrl.trim(), apiKey: llmForm.apiKey.trim(), model: llmForm.model.trim() || "claude-haiku-4-5" };
+                  saveLLMConfig(cfg);
+                  setLlmConfigured(true);
+                  setShowLlmSettings(false);
+                }}
+              >保存</button>
+              {llmConfigured && (
+                <button
+                  className="btn btn--ghost"
+                  style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
+                  onClick={() => {
+                    clearLLMConfig();
+                    setLlmConfigured(false);
+                    setLlmForm((f) => ({ ...f, apiKey: "" }));
+                  }}
+                >清除</button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ========== 🧠 分析 Tab ========== */}
         {tab === "analysis" && (
           <div>

@@ -3,8 +3,15 @@
  * 将 ANRM 手册核心知识作为 system prompt,临床上下文作为 user prompt,
  * 送 LLM 做推理,输出结构化 JSON→解析为 LocalizationSuggestion[]/InterventionSuggestion[]/ClinicalNarrative。
  *
- * 用法:设置环境变量 VITE_LLM_API_URL + VITE_LLM_API_KEY 即启启用 LLM;
- * 不设置则自动回退到规则引擎。
+ * 安全策略(关键):
+ *   **不允许构建时注入 API key**(VITE_* 会暴露在 GitHub Pages bundle 里)。
+ *   用户必须在本机 localStorage 中配置 key 才能启用 LLM 推理。
+ *   未配置时自动回退到本地规则引擎,功能照常可用。
+ *
+ * 用法:
+ *   1. 用户在设置中填入自己的 LLM API key(仅存浏览器 localStorage,不上传)
+ *   2. callLLM 读 localStorage 的 key 发起请求
+ *   3. 部署到 GitHub Pages 时,JS bundle 里**永远不会包含任何 key**
  */
 
 import type { ClinicalContext } from "./ai-assistant.types";
@@ -52,6 +59,53 @@ $INTERVENTIONS
   "completeness": "高置信"
 }`;
 
+const LLM_CONFIG_KEY = "anrm_llm_config";
+
+export interface LLMConfig {
+  /** API endpoint(Anthropic Messages 或 OpenAI-compatible) */
+  apiUrl: string;
+  /** 用户自己的 API key,仅存浏览器 localStorage */
+  apiKey: string;
+  /** 模型名,默认 claude-haiku-4-5 */
+  model: string;
+}
+
+/** 读取用户在 localStorage 里配置的 LLM(部署安全:不打包进 bundle) */
+export function getLLMConfig(): LLMConfig | null {
+  try {
+    const raw = localStorage.getItem(LLM_CONFIG_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LLMConfig>;
+    if (!parsed.apiUrl || !parsed.apiKey) return null;
+    return {
+      apiUrl: parsed.apiUrl,
+      apiKey: parsed.apiKey,
+      model: parsed.model || "claude-haiku-4-5",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveLLMConfig(cfg: LLMConfig): void {
+  try {
+    localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify(cfg));
+  } catch (e) {
+    console.error("[llm-engine] 保存 LLM 配置失败:", e);
+  }
+}
+
+export function clearLLMConfig(): void {
+  try {
+    localStorage.removeItem(LLM_CONFIG_KEY);
+  } catch { /* ok */ }
+}
+
+/** 是否已配置(给 UI 显示状态用) */
+export function isLLMConfigured(): boolean {
+  return getLLMConfig() !== null;
+}
+
 /* ---- 构建完整 system prompt ---- */
 function buildSystemPrompt(): string {
   const interventionBlocks = INTERVENTIONS_CATALOG.map(
@@ -90,17 +144,16 @@ function buildUserPrompt(ctx: ClinicalContext): string {
   return lines.join("\n");
 }
 
-/* ---- 调用 LLM ---- */
+/* ---- 调用 LLM:从 localStorage 读 key,不用构建期 env(防泄露) ---- */
 async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("./reasoning-engine").analyze> & { narrative: ReturnType<typeof import("./reasoning-engine").generateNarrative> }> {
-  const url = import.meta.env.VITE_LLM_API_URL as string | undefined;
-  const apiKey = import.meta.env.VITE_LLM_API_KEY as string | undefined;
-  if (!url || !apiKey) throw new Error("LLM_NOT_CONFIGURED");
+  const cfg = getLLMConfig();
+  if (!cfg) throw new Error("LLM_NOT_CONFIGURED");
 
-  const res = await fetch(url, {
+  const res = await fetch(cfg.apiUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
     body: JSON.stringify({
-      model: import.meta.env.VITE_LLM_MODEL || "claude-haiku-4-5",
+      model: cfg.model,
       max_tokens: 2000,
       temperature: 0.2,
       system: buildSystemPrompt(),
