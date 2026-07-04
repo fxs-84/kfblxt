@@ -144,49 +144,53 @@ function buildUserPrompt(ctx: ClinicalContext): string {
   return lines.join("\n");
 }
 
-/** 根据 API URL 自动选 headers(Anthropic 用 x-api-key, OpenAI 用 Bearer) */
-function buildHeaders(apiKey: string, apiUrl: string): Record<string, string> {
-  if (apiUrl.includes("anthropic.com")) {
-    return {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    };
-  }
-  return { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` };
-}
-
 /* ---- 调用 LLM:从 localStorage 读 key,不用构建期 env(防泄露) ---- */
 async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("./reasoning-engine").analyze> & { narrative: ReturnType<typeof import("./reasoning-engine").generateNarrative> }> {
   const cfg = getLLMConfig();
   if (!cfg) throw new Error("LLM_NOT_CONFIGURED");
 
-  const res = await fetch(cfg.apiUrl, {
-    method: "POST",
-    headers: buildHeaders(cfg.apiKey, cfg.apiUrl),
-    body: JSON.stringify({
-      model: cfg.model,
-      max_tokens: 2000,
-      temperature: 0.2,
-      system: buildSystemPrompt(),
-      messages: [{ role: "user", content: buildUserPrompt(ctx) }],
-    }),
-  });
+  const { buildApiHeaders, detectApiType, parseAnthropicResponse, parseOpenAIResponse } =
+    await import("./api-adapter");
+
+  const apiType = detectApiType(cfg.apiUrl);
+  const headers = buildApiHeaders(cfg.apiKey, cfg.apiUrl);
+  const systemPrompt = buildSystemPrompt();
+  const userContent = buildUserPrompt(ctx);
+
+  const body: Record<string, unknown> = apiType === "anthropic"
+    ? {
+        model: cfg.model,
+        max_tokens: 2000,
+        temperature: 0.2,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userContent }],
+      }
+    : {
+        model: cfg.model,
+        max_tokens: 2000,
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      };
+
+  const res = await fetch(cfg.apiUrl, { method: "POST", headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`LLM API ${res.status}`);
 
-  const data = await res.json();
-  const text: string = data.content?.[0]?.text ?? data.choices?.[0]?.message?.content ?? "";
+  const data = await res.json() as Record<string, unknown>;
+  const parsed = apiType === "anthropic" ? parseAnthropicResponse(data) : parseOpenAIResponse(data);
 
   // 解析 JSON
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonMatch = parsed.text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("LLM 返回格式无效");
 
-  const parsed = JSON.parse(jsonMatch[0]);
+  const structured = JSON.parse(jsonMatch[0]);
   return {
-    localizationSuggestions: parsed.localizationSuggestions ?? [],
-    interventionSuggestions: parsed.interventionSuggestions ?? [],
-    completeness: parsed.completeness ?? "已足够",
-    narrative: parsed.narrative ?? { subjective: "", objective: "", assessment: "", plan: "" },
+    localizationSuggestions: structured.localizationSuggestions ?? [],
+    interventionSuggestions: structured.interventionSuggestions ?? [],
+    completeness: structured.completeness ?? "已足够",
+    narrative: structured.narrative ?? { subjective: "", objective: "", assessment: "", plan: "" },
   };
 }
 
