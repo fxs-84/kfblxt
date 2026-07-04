@@ -18,10 +18,13 @@ export const router = createBrowserRouter(
         { path: "patients", element: <PatientListPage /> },
         { path: "patients/new", element: <PatientFormPage /> },
         { path: "patients/:id", element: <PatientDetailPage /> },
+        // 新版分享入口:?share=<token> 通过 useSearchParams 拿 token
+        { path: "share", element: <PatientViewPage /> },
         { path: "*", element: <Navigate to="/" replace /> },
       ],
     },
     // 患者端分享视图(无需登录,无侧栏)
+    // 老链接 /share/<token> 保留,新链接 /?share=<token>
     { path: "/share/:token", element: <PatientViewPage /> },
   ],
   { basename },

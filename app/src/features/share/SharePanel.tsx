@@ -37,7 +37,14 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
     setShowForm(false); setMessage(""); setHomework(""); setNextVisit("");
   };
 
-  const shareUrl = (token: string) => `${window.location.origin}/share/${token}`;
+  /* 用 ?share=<token> 形态而非 /share/<token>:
+     前者走主站根路径,GitHub Pages 返回 HTTP 200;
+     后者虽然 SPA 也能跑,但 GitHub Pages 对未匹配路径返回 404,
+     微信内置 webview 和部分浏览器看到 404 状态码就拒绝渲染,
+     即使 body 是完整 SPA HTML。
+     PatientViewPage 同时从 useParams 和 useSearchParams 拿 token,
+     老链接 /share/<token> 也不会失效。 */
+  const shareUrl = (token: string) => `${window.location.origin}/?share=${token}`;
 
   return (
     <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>

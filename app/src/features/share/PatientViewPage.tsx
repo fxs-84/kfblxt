@@ -2,7 +2,7 @@
  * 患者端视图 — 通过分享链接打开,展示本次就诊摘要、家庭作业、复查/对比照片和复诊时间。
  * 只读,无需登录,纯展示。
  */
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useShareByToken } from "./useShare";
 import { useDiagnosis } from "../diagnosis/useDiagnosis";
 import { useExamSessions } from "../exam/useExam";
@@ -15,7 +15,13 @@ import { regionLabel } from "../../components/bodymap/regions";
 import { formatDate } from "../../lib/format";
 
 export function PatientViewPage() {
-  const { token } = useParams<{ token: string }>();
+  /* 兼容两种 URL 形态:
+     · 老链接 /share/<token> 顶层路由(path param)
+     · 新链接 /?share=<token> 走主站 200(search param,绕过 GitHub Pages 404)
+     两路任一形态拿到 token 即正常渲染,使新老二维码都不失效。*/
+  const { token: pathToken } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const token = pathToken ?? searchParams.get("share") ?? "";
   const { data: share, isLoading: shareLoading } = useShareByToken(token);
   const encounterId = share?.encounterId;
   const { data: encounters } = usePatientEncounters(share?.patientId);
