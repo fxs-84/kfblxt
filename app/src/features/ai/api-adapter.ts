@@ -5,19 +5,27 @@
 
 export type ApiType = "anthropic" | "openai";
 
-/** 根据 API URL 判断类型 */
+/** 根据 API URL 判断类型(支持 Anthropic 官方 + DeepSeek Anthropic 兼容端点) */
 export function detectApiType(apiUrl: string): ApiType {
-  return apiUrl.includes("anthropic.com") ? "anthropic" : "openai";
+  const lower = apiUrl.toLowerCase();
+  if (lower.includes("anthropic.com")) return "anthropic";
+  if (lower.includes("/anthropic")) return "anthropic"; // DeepSeek Anthropic 兼容端点
+  return "openai";
 }
 
 /** 构建请求头 */
 export function buildApiHeaders(apiKey: string, apiUrl: string): Record<string, string> {
-  if (detectApiType(apiUrl) === "anthropic") {
-    return {
+  const lower = apiUrl.toLowerCase();
+  if (lower.includes("anthropic.com") || lower.includes("/anthropic")) {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
     };
+    // 只有官方 Anthropic 端点发 anthropic-version
+    if (lower.includes("anthropic.com")) {
+      headers["anthropic-version"] = "2023-06-01";
+    }
+    return headers;
   }
   return {
     "Content-Type": "application/json",
