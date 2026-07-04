@@ -7,8 +7,6 @@ import "./styles/layout.css";
 import "./styles/print.css";
 import { router } from "./app/router";
 
-const basename = location.hostname.includes('github.io') ? '/kfblxt/' : '/';
-
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
 });
@@ -16,7 +14,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} basename={basename} />
+      <RouterProvider router={router} />
     </QueryClientProvider>
   </StrictMode>,
 );

@@ -649,7 +649,38 @@ body {
 }
 
 .exam-item__flag { font-size: var(--text-xs); cursor: help; }
-.exam-item__ref { font-size: var(--text-xs); color: var(--color-text-muted); font-style: italic; }
+.exam-item__ref { font-size: var(--text-xs); color: var(--color-text-muted); font-style: italic; white-space: nowrap; }
+
+/* 多阶段子项(CTSIB 等):item 整体变高,内部纵向列出每阶段输入 */
+.exam-item--staged {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+.exam-item--staged .exam-item__label { flex: none; }
+
+.exam-item__stages {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--space-3);
+}
+.exam-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+.exam-stage__label {
+  color: var(--color-text-muted);
+  min-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exam-stage .exam-number { width: 72px; min-width: 72px; }
+.exam-stage__unit { color: var(--color-text-muted); font-size: 10px; min-width: 14px; }
 
 .exam-posneg { display: flex; gap: var(--space-2); align-items: center; flex-shrink: 0; }
 .exam-side { display: flex; align-items: center; gap: 2px; font-size: var(--text-xs); cursor: pointer; }
@@ -1047,6 +1078,26 @@ body {
   padding: var(--space-3);
   margin-bottom: var(--space-3);
   background: #fafbfc;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.share-card__info {
+  flex: 1;
+  min-width: 0;
+}
+.share-card__qr {
+  flex-shrink: 0;
+  padding: 6px;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.share-card__qr-hint {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 4px;
 }
 .share-card__link {
   display: flex; gap: var(--space-2); align-items: center; margin-top: var(--space-2);
