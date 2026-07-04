@@ -72,8 +72,22 @@ export interface LLMConfig {
   corsProxy?: string;
 }
 
-/** 实际发请求的 URL(经 CORS 代理或直连) */
+/** 实际发请求的 URL。本地开发时自动走 Vite 代理绕过 CORS,生产走 corsProxy 或直连。 */
 export function resolveApiUrl(baseUrl: string, corsProxy?: string): string {
+  // 本地开发: localhost → 走 Vite proxy,自动绕过 CORS
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    const lower = baseUrl.toLowerCase();
+    if (lower.includes("api.deepseek.com")) {
+      return baseUrl.replace("https://api.deepseek.com", "/api/deepseek");
+    }
+    if (lower.includes("api.anthropic.com")) {
+      return baseUrl.replace("https://api.anthropic.com", "/api/anthropic");
+    }
+    if (lower.includes("api.openai.com")) {
+      return baseUrl.replace("https://api.openai.com", "/api/openai");
+    }
+  }
+  // 生产: corsProxy 或直连
   if (!corsProxy) return baseUrl;
   return corsProxy.replace(/\/+$/, "") + "/" + baseUrl.replace(/^https?:\/\//, "");
 }
