@@ -24,6 +24,8 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [llmForm, setLlmForm] = useState({ apiUrl: "", apiKey: "", model: "" });
+  const [llmSaveMsg, setLlmSaveMsg] = useState<string | null>(null);
+  const [keyAlreadySet, setKeyAlreadySet] = useState(false);
   const [configured, setConfigured] = useState(isLLMConfigured());
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -103,7 +105,13 @@ export function AgentChat({ onClose }: AgentChatProps) {
 
   const openSettings = () => {
     const c = getLLMConfig();
-    setLlmForm({ apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5" });
+    setLlmForm({
+      apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages",
+      apiKey: "",
+      model: c?.model ?? "claude-haiku-4-5",
+    });
+    setKeyAlreadySet(Boolean(c?.apiKey));
+    setLlmSaveMsg(null);
     setShowSettings(true);
   };
 
@@ -149,7 +157,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
       {showSettings && (
         <div style={{ position: "absolute", top: 49, left: 0, right: 0, bottom: 0, background: "var(--color-surface)", zIndex: 5, padding: 16, overflowY: "auto" }}>
           <h4 style={{ margin: "0 0 12px" }}>🔑 LLM API 配置</h4>
-          <p style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 12 }}>
             API key 仅保存在浏览器 localStorage,不会上传或进入 JS bundle。
           </p>
           <div style={{ marginBottom: 8 }}>
@@ -157,21 +165,56 @@ export function AgentChat({ onClose }: AgentChatProps) {
             <input value={llmForm.apiUrl} onChange={e => setLlmForm(f => ({ ...f, apiUrl: e.target.value }))} style={inputStyle} />
           </div>
           <div style={{ marginBottom: 8 }}>
-            <label style={labelStyle}>API Key</label>
-            <input type="password" value={llmForm.apiKey} onChange={e => setLlmForm(f => ({ ...f, apiKey: e.target.value }))} placeholder="sk-ant-..." autoComplete="off" style={inputStyle} />
+            <label style={labelStyle}>
+              API Key
+              {keyAlreadySet && <span style={{ color: "var(--color-normal)", fontSize: 11, marginLeft: 8 }}>🔒 已保存(安全不显示)</span>}
+            </label>
+            <input
+              type="password"
+              value={llmForm.apiKey}
+              onChange={e => { setLlmForm(f => ({ ...f, apiKey: e.target.value })); setLlmSaveMsg(null); }}
+              placeholder={keyAlreadySet ? "如需更换请输入新 key" : "sk-ant-..."}
+              autoComplete="off"
+              style={{ ...inputStyle, background: keyAlreadySet && !llmForm.apiKey ? "var(--color-normal-weak, #ecfdf5)" : undefined }}
+            />
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>模型</label>
             <input value={llmForm.model} onChange={e => setLlmForm(f => ({ ...f, model: e.target.value }))} placeholder="claude-haiku-4-5" style={inputStyle} />
           </div>
+          {llmSaveMsg && (
+            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 4, fontSize: 12,
+              background: llmSaveMsg.includes("成功") ? "var(--color-normal-weak, #ecfdf5)" : "var(--color-abnormal-bg, #fef2f2)",
+              color: llmSaveMsg.includes("成功") ? "var(--color-normal)" : "var(--color-abnormal)" }}>
+              {llmSaveMsg}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => {
-              if (!llmForm.apiUrl.trim() || !llmForm.apiKey.trim()) return;
-              saveLLMConfig({ apiUrl: llmForm.apiUrl.trim(), apiKey: llmForm.apiKey.trim(), model: llmForm.model.trim() || "claude-haiku-4-5" });
+              const urlOk = llmForm.apiUrl.trim();
+              const keyOk = llmForm.apiKey.trim();
+              if (!urlOk || !keyOk) {
+                if (!keyOk && keyAlreadySet) {
+                  // key 已在 localStorage,未修改,允许保存(用旧 key)
+                  const existing = getLLMConfig();
+                  const key = existing?.apiKey ?? "";
+                  if (!key) {
+                    setLlmSaveMsg("❌ 请输入 API Key");
+                    return;
+                  }
+                  saveLLMConfig({ apiUrl: urlOk, apiKey: key, model: llmForm.model.trim() || "claude-haiku-4-5" });
+                } else {
+                  setLlmSaveMsg("❌ API URL 和 Key 必填");
+                  return;
+                }
+              } else {
+                saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5" });
+              }
               setConfigured(true);
-              setShowSettings(false);
+              setLlmSaveMsg("✅ 保存成功");
+              setTimeout(() => setShowSettings(false), 600);
             }} style={btnPrimary}>保存</button>
-            {configured && <button type="button" onClick={() => { clearLLMConfig(); setConfigured(false); }} style={{ ...btnGhost, color: "var(--color-abnormal)" }}>清除</button>}
+            {configured && <button type="button" onClick={() => { clearLLMConfig(); setConfigured(false); setKeyAlreadySet(false); setLlmSaveMsg("🗑️ 已清除"); }} style={{ ...btnGhost, color: "var(--color-abnormal)" }}>清除</button>}
             <button type="button" onClick={() => setShowSettings(false)} style={btnGhost}>取消</button>
           </div>
         </div>

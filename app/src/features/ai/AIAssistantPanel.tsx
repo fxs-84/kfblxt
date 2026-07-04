@@ -98,6 +98,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
     return { apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5" };
   });
   const [llmError, setLlmError] = useState<string | null>(null);
+  const [keyAlreadySet, setKeyAlreadySet] = useState(false);
 
   /* ---- 数据准备 ---- */
   const findings = examSessions.flatMap((s) =>
@@ -211,7 +212,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             <button
               className="btn btn--ghost"
               style={{ fontSize: "10px", padding: "1px 6px", marginLeft: "auto" }}
-              onClick={() => setShowLlmSettings((v) => !v)}
+              onClick={() => { const opening = !showLlmSettings; setShowLlmSettings(opening); if (opening) setKeyAlreadySet(Boolean(getLLMConfig()?.apiKey)); }}
               title="配置 LLM API key(仅本地)"
             >
               {llmConfigured ? "🔑" : "⚠️ 未配置 LLM"}
@@ -249,14 +250,17 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
               />
             </div>
             <div className="field" style={{ marginBottom: "var(--space-2)" }}>
-              <label style={{ fontSize: "var(--text-xs)" }}>API Key</label>
+              <label style={{ fontSize: "var(--text-xs)" }}>
+                API Key
+                {keyAlreadySet && <span style={{ color: "var(--color-normal)", fontSize: 10, marginLeft: "var(--space-1)" }}>🔒 已保存</span>}
+              </label>
               <input
                 type="password"
                 value={llmForm.apiKey}
-                onChange={(e) => setLlmForm((f) => ({ ...f, apiKey: e.target.value }))}
-                placeholder="sk-ant-..."
+                onChange={(e) => { setLlmForm((f) => ({ ...f, apiKey: e.target.value })); setLlmError(null); }}
+                placeholder={keyAlreadySet ? "如需更换请输入新 key" : "sk-ant-..."}
                 autoComplete="off"
-                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
+                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4, background: keyAlreadySet && !llmForm.apiKey ? "var(--color-normal-weak, #ecfdf5)" : undefined }}
               />
             </div>
             <div className="field" style={{ marginBottom: "var(--space-2)" }}>
@@ -276,12 +280,22 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                 style={{ fontSize: "var(--text-xs)" }}
                 onClick={() => {
                   setLlmError(null);
-                  if (!llmForm.apiUrl.trim() || !llmForm.apiKey.trim()) {
-                    setLlmError("API URL 和 Key 必填");
-                    return;
+                  const urlOk = llmForm.apiUrl.trim();
+                  const keyOk = llmForm.apiKey.trim();
+                  if (!urlOk) { setLlmError("API URL 必填"); return; }
+                  if (!keyOk) {
+                    if (keyAlreadySet) {
+                      // 保留已有 key
+                      const existing = getLLMConfig();
+                      if (!existing?.apiKey) { setLlmError("请输入 API Key"); return; }
+                      saveLLMConfig({ apiUrl: urlOk, apiKey: existing.apiKey, model: llmForm.model.trim() || "claude-haiku-4-5" });
+                    } else {
+                      setLlmError("API Key 必填");
+                      return;
+                    }
+                  } else {
+                    saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5" });
                   }
-                  const cfg: LLMConfig = { apiUrl: llmForm.apiUrl.trim(), apiKey: llmForm.apiKey.trim(), model: llmForm.model.trim() || "claude-haiku-4-5" };
-                  saveLLMConfig(cfg);
                   setLlmConfigured(true);
                   setShowLlmSettings(false);
                 }}
@@ -293,6 +307,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                   onClick={() => {
                     clearLLMConfig();
                     setLlmConfigured(false);
+                    setKeyAlreadySet(false);
                     setLlmForm((f) => ({ ...f, apiKey: "" }));
                   }}
                 >清除</button>
