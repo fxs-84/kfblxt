@@ -102,8 +102,20 @@ export async function runAgent(
   const headers = buildApiHeaders(cfg.apiKey, cfg.apiUrl);
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const body = buildRequestBody(apiType, rawMessages, anthropicTools, cfg.model);
-    const res = await fetch(cfg.apiUrl, { method: "POST", headers, body: JSON.stringify(body) });
+    let res: Response;
+    try {
+      res = await fetch(cfg.apiUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(buildRequestBody(apiType, rawMessages, anthropicTools, cfg.model)),
+      });
+    } catch (fetchErr: unknown) {
+      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        throw new Error(`网络不通或 CORS 阻止: ${cfg.apiUrl}\n\n浏览器可能阻止了跨域请求。API 提供者需要允许来自网页的直接调用,或你需要配置 CORS 代理。\n\n原始错误: ${msg}`);
+      }
+      throw new Error(`网络错误: ${msg}`);
+    }
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");

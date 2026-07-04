@@ -236,9 +236,23 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
           <div className="ai-section" style={{ background: "var(--color-surface-sunken)", padding: "var(--space-3)", borderRadius: "var(--radius-md)", marginBottom: "var(--space-3)" }}>
             <h4 className="ai-section__title">🔑 LLM API 配置(仅本地浏览器)</h4>
             <p className="ai-empty" style={{ fontSize: "var(--text-xs)" }}>
-              你的 API key 仅保存在当前浏览器 localStorage,不会上传或进入 JS bundle。
-              未配置时 AI 助手使用本地规则引擎,功能完全可用。
+              API key 仅保存在浏览器 localStorage,不会上传或进入 JS bundle。
+              未配置时自动使用本地规则引擎。
             </p>
+            {/* 预设按钮 */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
+              {([
+                { label: "Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001" },
+                { label: "DeepSeek", url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+                { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+              ] as const).map(p => (
+                <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model })} style={{
+                  padding: "3px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
+                  background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
+                  cursor: "pointer",
+                }}>{p.label}</button>
+              ))}
+            </div>
             <div className="field" style={{ marginBottom: "var(--space-2)" }}>
               <label style={{ fontSize: "var(--text-xs)" }}>API URL</label>
               <input

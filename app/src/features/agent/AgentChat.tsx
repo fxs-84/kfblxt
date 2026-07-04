@@ -157,9 +157,24 @@ export function AgentChat({ onClose }: AgentChatProps) {
       {showSettings && (
         <div style={{ position: "absolute", top: 49, left: 0, right: 0, bottom: 0, background: "var(--color-surface)", zIndex: 5, padding: 16, overflowY: "auto" }}>
           <h4 style={{ margin: "0 0 12px" }}>🔑 LLM API 配置</h4>
-          <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>
             API key 仅保存在浏览器 localStorage,不会上传或进入 JS bundle。
           </p>
+          {/* 预设按钮 */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+            {[
+              { label: "Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001" },
+              { label: "DeepSeek", url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+              { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+              { label: "DeepSeek(R1)", url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-reasoner" },
+            ].map(p => (
+              <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model })} style={{
+                padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
+                background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
+                cursor: "pointer",
+              }}>{p.label}</button>
+            ))}
+          </div>
           <div style={{ marginBottom: 8 }}>
             <label style={labelStyle}>API URL</label>
             <input value={llmForm.apiUrl} onChange={e => setLlmForm(f => ({ ...f, apiUrl: e.target.value }))} style={inputStyle} />
