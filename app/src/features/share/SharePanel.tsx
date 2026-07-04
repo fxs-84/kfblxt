@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useSharesByEncounter, useRevokeShare } from "./useShare";
-import { createSupabaseShare } from "./share-supabase";
+import { QRCodeSVG } from "qrcode.react";
+import { useSharesByEncounter, useRevokeShare, useCreateShare } from "./useShare";
 import { generateHomeworkTemplate } from "../agent/agent-utils";
 import { useTreatmentPlans } from "../treatment/useTreatment";
 import { formatDate } from "../../lib/format";
@@ -10,11 +10,13 @@ interface SharePanelProps { encounterId: string; patientId: string; intervention
 export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   const { data: shares = [] } = useSharesByEncounter(encounterId);
   const revokeShare = useRevokeShare();
+  const createShare = useCreateShare();
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
   const [homework, setHomework] = useState("");
   const [nextVisit, setNextVisit] = useState("");
-  const [saving, setSaving] = useState(false);
+  /* mutation.isPending 取代本地 saving */
+  const saving = createShare.isPending;
 
   /* P3-10: 智能作业模板 */
   const { data: encounterPlans = [] } = useTreatmentPlans(encounterId);
@@ -25,17 +27,14 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   };
 
   const handleGenerate = async () => {
-    setSaving(true);
-    // 优先走 Supabase(跨设备可用),不可用则回退 localStorage
-    await createSupabaseShare({
+    await createShare.mutateAsync({
       encounterId,
       patientId,
       homework: homework.trim() || undefined,
       nextVisit: nextVisit ? new Date(nextVisit) : undefined,
-      message: message.trim() ? `${message.trim()}\n\n---\nANRM 神经科学康复中心` : undefined,
+      message: message.trim() || undefined,
     });
     setShowForm(false); setMessage(""); setHomework(""); setNextVisit("");
-    setSaving(false);
   };
 
   const shareUrl = (token: string) => `${window.location.origin}/share/${token}`;
@@ -115,14 +114,22 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
                     <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }}
                       onClick={() => navigator.clipboard?.writeText(url)}>复制</button>
                   </div>
+                  <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+                    {!s.revoked && (
+                      <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
+                        onClick={() => revokeShare.mutate(s.id)}>撤销分享</button>
+                    )}
+                    {!showForm && (
+                      <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }}
+                        onClick={() => setShowForm(true)}>+ 新建分享</button>
+                    )}
+                  </div>
                 </div>
                 {!s.revoked && (
-                  <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)", marginTop: "var(--space-2)" }}
-                    onClick={() => revokeShare.mutate(s.id)}>撤销分享</button>
-                )}
-                {!showForm && (
-                  <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", marginTop: "var(--space-2)" }}
-                    onClick={() => setShowForm(true)}>+ 新建分享</button>
+                  <div className="share-card__qr" title="扫码查看">
+                    <QRCodeSVG value={url} size={112} level="M" />
+                    <div className="share-card__qr-hint">扫码查看</div>
+                  </div>
                 )}
               </div>
             );

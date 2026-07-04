@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { shareRepository, findSharesByEncounter, findShareByToken, generateToken, defaultExpiry } from "./share.repository";
-import { getSession } from "../../lib/session";
+import { shareRepository, findSharesByEncounter, findShareByToken } from "./share.repository";
+import { createSupabaseShare } from "./share-supabase";
 
 export function useSharesByEncounter(encounterId: string | undefined) {
   return useQuery({
@@ -28,17 +28,7 @@ export function useCreateShare() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { encounterId: string; patientId: string; homework?: string; nextVisit?: Date; message?: string }) =>
-      shareRepository.create({
-        encounterId: input.encounterId,
-        patientId: input.patientId,
-        orgId: getSession().orgId,
-        token: generateToken(),
-        revoked: false,
-        expiresAt: defaultExpiry(),
-        homework: input.homework,
-        nextVisit: input.nextVisit,
-        message: input.message,
-      }),
+      createSupabaseShare(input),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["shares", vars.encounterId] });
     },

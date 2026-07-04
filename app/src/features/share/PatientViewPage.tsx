@@ -48,21 +48,11 @@ export function PatientViewPage() {
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "var(--space-8) var(--space-6)", fontFamily: "var(--font-sans)", color: "var(--color-text)" }}>
       {/* 头部 */}
       <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #2a93bd, #36b37e)", color: "white", display: "grid", placeItems: "center", fontSize: "var(--text-2xl)", fontWeight: 800, margin: "0 auto var(--space-3)" }}>
-          ANRM
-        </div>
         <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 800, margin: "0 0 var(--space-1)" }}>康复诊治摘要</h1>
         <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-sm)", margin: 0 }}>
           {formatDate(encounter.encounterDate)} · {encounter.visitType}
         </p>
       </div>
-
-      {/* 治疗师留言 */}
-      {share.message && (
-        <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-6)", background: "linear-gradient(135deg, #f0f7fa, #ffffff)", borderLeft: "4px solid var(--color-accent)" }}>
-          <p style={{ margin: 0, fontSize: "var(--text-sm)", whiteSpace: "pre-wrap" }}>{share.message}</p>
-        </div>
-      )}
 
       {/* 主诉 */}
       <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)" }}>
@@ -117,6 +107,13 @@ export function PatientViewPage() {
         </div>
       )}
 
+      {/* 治疗师留言 */}
+      {share.message && (
+        <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-6)", background: "linear-gradient(135deg, #f0f7fa, #ffffff)", borderLeft: "4px solid var(--color-accent)" }}>
+          <p style={{ margin: 0, fontSize: "var(--text-sm)", whiteSpace: "pre-wrap" }}>{share.message}</p>
+        </div>
+      )}
+
       {/* 家庭作业(核心患者价值) */}
       {share.homework && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)", border: "2px solid var(--color-accent-light)" }}>
@@ -154,11 +151,8 @@ export function PatientViewPage() {
 
       {/* 尾部 */}
       <div style={{ textAlign: "center", marginTop: "var(--space-8)", paddingTop: "var(--space-6)", borderTop: "1px solid var(--color-border)" }}>
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}>
-          ANRM 神经科学康复中心
-        </p>
-        <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", margin: "var(--space-1) 0 0" }}>
-          本摘要由治疗师通过 ANRM 病历系统生成,仅供患者本人查看。
+        <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", margin: 0 }}>
+          本摘要由治疗师通过病历系统生成,仅供患者本人查看。
         </p>
       </div>
     </div>
