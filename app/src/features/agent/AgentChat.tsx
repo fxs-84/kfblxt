@@ -10,6 +10,25 @@ import {
 } from "./agent-conversations.repository";
 import { useSession } from "../../components/auth/useSession";
 import { isLLMConfigured, getLLMConfig, saveLLMConfig, clearLLMConfig } from "../ai/llm-engine";
+import {
+  getMCPServers,
+  addMCPServer,
+  updateMCPServer,
+  deleteMCPServer,
+  testMCPConnection,
+  type MCPServerConfig,
+} from "./tools/mcp-manager";
+import {
+  getSkills,
+  addSkill as addSkillFn,
+  updateSkill as updateSkillFn,
+  deleteSkill as deleteSkillFn,
+  installSkillFromUrl,
+  isSkillDuplicated,
+  SKILL_GALLERY,
+  type SkillConfig,
+} from "./tools/skill-system";
+import { getExtConfig, saveExtConfig, type ExtConfig } from "./tools/ext-config";
 
 interface AgentChatProps { onClose: () => void }
 
@@ -20,13 +39,46 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  // 语音
+  const [listening, setListening] = useState(false);
+  const [voiceSupported] = useState(() =>
+    typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window),
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+  // 文件上传
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileTexts, setFileTexts] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [trace, setTrace] = useState<Array<{ type: string; text?: string; name?: string; input?: unknown; output?: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMCP, setShowMCP] = useState(false);
+  const [showSkills, setShowSkills] = useState(false);
   const [llmForm, setLlmForm] = useState({ apiUrl: "", apiKey: "", model: "", corsProxy: "" });
   const [llmSaveMsg, setLlmSaveMsg] = useState<string | null>(null);
   const [keyAlreadySet, setKeyAlreadySet] = useState(false);
   const [configured, setConfigured] = useState(isLLMConfigured());
+  // 搜索配置
+  const [extCfg, setExtCfg] = useState<ExtConfig>(getExtConfig);
+  // MCP
+  const [mcpServers, setMcpServers] = useState<MCPServerConfig[]>(getMCPServers);
+  const [mcpAddForm, setMcpAddForm] = useState({ name: "", type: "http" as "http" | "stdio", url: "", command: "", args: "" });
+  const [mcpTesting, setMcpTesting] = useState<string | null>(null);
+  const [mcpTestResult, setMcpTestResult] = useState<{ id: string; ok: boolean; toolCount?: number; error?: string } | null>(null);
+  // Skills
+  const [skills, setSkills] = useState<SkillConfig[]>(getSkills);
+  const [showSkillForm, setShowSkillForm] = useState(false);
+  const [skillEdit, setSkillEdit] = useState<SkillConfig | null>(null);
+  const [skillForm, setSkillForm] = useState({ name: "", description: "", triggers: "", prompt: "", alwaysOn: false, priority: 10 });
+  // 外部安装
+  const [skillInstallUrl, setSkillInstallUrl] = useState("");
+  const [skillInstallMsg, setSkillInstallMsg] = useState<string | null>(null);
+  const [skillInstalling, setSkillInstalling] = useState(false);
+  // 文件上传安全警告
+  const [showFileWarning, setShowFileWarning] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<FileList | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 初始化
@@ -60,22 +112,102 @@ export function AgentChat({ onClose }: AgentChatProps) {
     setShowHistory(false);
   };
 
+  // 语音输入
+  const toggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const rec = new SpeechRecognition();
+    rec.lang = "zh-CN";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e: any) => {
+      const transcript = e.results?.[0]?.[0]?.transcript || "";
+      setInput(prev => prev + (prev ? " " : "") + transcript);
+    };
+    rec.onerror = (e: any) => {
+      console.warn("[voice] Speech error:", e.error);
+      setListening(false);
+    };
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setListening(true);
+  };
+
+  // 文件读取 — 非文本文件先弹警告(数据会发给第三方 LLM)
+  const handleFiles = async (selected: FileList | null) => {
+    if (!selected || selected.length === 0) return;
+    const fileArr = Array.from(selected);
+    const hasNonText = fileArr.some(f => {
+      const n = f.name.toLowerCase();
+      return !(n.endsWith(".txt") || n.endsWith(".md") || n.endsWith(".csv") || n.endsWith(".json"));
+    });
+    if (hasNonText) {
+      setPendingFiles(selected);
+      setShowFileWarning(true);
+      return;
+    }
+    await processFiles(selected);
+  };
+
+  const processFiles = async (selected: FileList) => {
+    setUploading(true);
+    const fileArr = Array.from(selected);
+    const texts: string[] = [];
+    for (const file of fileArr) {
+      try {
+        const text = await readFileContent(file);
+        texts.push(text);
+      } catch {
+        texts.push(`[无法读取: ${file.name}]`);
+      }
+    }
+    setFiles(prev => [...prev, ...fileArr]);
+    setFileTexts(prev => [...prev, ...texts]);
+    setUploading(false);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+    setFileTexts(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || busy) return;
+    const hasFiles = files.length > 0;
+    if ((!text && !hasFiles) || busy) return;
+
+    // 构建消息内容: 文本 + 文件内容
+    let content = text;
+    if (hasFiles && fileTexts.length > 0) {
+      const fileBlocks = files.map((f, i) =>
+        `\n\n--- 附件: ${f.name} ---\n${fileTexts[i] || `[空文件]`}\n--- 附件结束 ---`
+      ).join("");
+      content = text
+        ? `${text}${fileBlocks}`
+        : `请分析以下上传的文件:\n${fileBlocks}`;
+    }
 
     let convId = currentId;
     if (!convId) {
-      const conv = await createConversation(autoTitle(text));
+      const conv = await createConversation(autoTitle(content.slice(0, 30)));
       convId = conv.id;
       setCurrentId(convId);
       setConversations([conv, ...conversations]);
     }
 
-    const userMsg: AgentMessage = { role: "user", content: text };
+    const userMsg: AgentMessage = { role: "user", content };
+
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
+    setFiles([]);
+    setFileTexts([]);
     setBusy(true);
     setTrace([]);
 
@@ -83,7 +215,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
 
     try {
       const result: AgentRunResult = await runAgent(
-        text,
+        content,
         { orgId: session.orgId, userId: session.userId },
         messages,
         (event) => setTrace((t) => [...t, event]),
@@ -103,8 +235,8 @@ export function AgentChat({ onClose }: AgentChatProps) {
     }
   };
 
-  const openSettings = () => {
-    const c = getLLMConfig();
+  const openSettings = async () => {
+    const c = await getLLMConfig();
     setLlmForm({
       apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages",
       apiKey: "",
@@ -121,6 +253,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
       position: "fixed", right: 0, bottom: 0, top: 0, zIndex: 200,
       width: "min(540px, 100vw)", background: "var(--color-surface)",
       boxShadow: "-4px 0 16px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column",
+      overflow: "hidden",
     }}>
       {/* 顶栏 */}
       <header style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 8 }}>
@@ -130,7 +263,9 @@ export function AgentChat({ onClose }: AgentChatProps) {
           {configured ? "● 已连接 LLM" : "● 未配置"}
         </span>
         <button type="button" onClick={openSettings} title="LLM 配置" style={btnGhost}>🔑</button>
-        <button type="button" onClick={() => setShowHistory((v) => !v)} title="历史对话" style={btnGhost}>📚</button>
+        <button type="button" onClick={() => { setShowMCP(true); setShowHistory(false); setShowSkills(false); }} title="MCP 插件" style={btnGhost}>🔌</button>
+        <button type="button" onClick={() => { setShowSkills(true); setShowMCP(false); setShowHistory(false); }} title="技能管理" style={btnGhost}>🧩</button>
+        <button type="button" onClick={() => { setShowHistory((v) => !v); setShowMCP(false); setShowSkills(false); }} title="历史对话" style={btnGhost}>📚</button>
         <button type="button" onClick={startNew} title="新对话" style={btnGhost}>➕</button>
         <button type="button" onClick={onClose} title="关闭" style={btnGhost}>✕</button>
       </header>
@@ -151,6 +286,31 @@ export function AgentChat({ onClose }: AgentChatProps) {
               <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{c.updatedAt.toISOString().slice(0, 16).replace("T", " ")} · {c.messages.length} 条消息</div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* 文件上传安全确认 */}
+      {showFileWarning && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--color-surface)", borderRadius: 12, padding: 24, maxWidth: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <h4 style={{ margin: "0 0 8px" }}>⚠️ 数据安全提示</h4>
+            <p style={{ fontSize: 13, lineHeight: 1.7, margin: 0 }}>
+              上传的文件(PDF/图片/音频/文档)将以 <strong>base64 编码</strong>发送给你配置的 LLM 服务商
+              (如 DeepSeek / Anthropic / OpenAI 等)。
+            </p>
+            <ul style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "8px 0", paddingLeft: 18 }}>
+              <li>文件内容会离开你的浏览器</li>
+              <li>请勿上传含患者隐私信息(PHI)的文件</li>
+              <li>纯文本文件(.txt/.md/.csv/.json)同样会发送</li>
+            </ul>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => {
+                setShowFileWarning(false);
+                if (pendingFiles) { void processFiles(pendingFiles); setPendingFiles(null); }
+              }} style={{ ...btnPrimary, flex: 1 }}>我已知晓,继续上传</button>
+              <button type="button" onClick={() => { setShowFileWarning(false); setPendingFiles(null); }} style={{ ...btnGhost, flex: 1 }}>取消</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -210,6 +370,48 @@ export function AgentChat({ onClose }: AgentChatProps) {
               style={inputStyle}
             />
           </div>
+
+          {/* 搜索配置 */}
+          <div style={{ marginBottom: 12, padding: "10px 0", borderTop: "1px solid var(--color-border)", borderBottom: "1px solid var(--color-border)" }}>
+            <label style={{ ...labelStyle, fontSize: 12 }}>🔍 搜索后端</label>
+            <select
+              value={extCfg.searchBackend}
+              onChange={e => { const v = e.target.value as ExtConfig["searchBackend"]; setExtCfg(c => ({ ...c, searchBackend: v })); }}
+              style={{ width: "100%", padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)", marginTop: 4 }}
+            >
+              <option value="bing">Bing (需 API Key)</option>
+              <option value="custom">自定义搜索 URL</option>
+              <option value="none">禁用</option>
+            </select>
+            {extCfg.searchBackend === "bing" && (
+              <div style={{ marginTop: 4 }}>
+                <input
+                  type="password"
+                  value={extCfg.bingApiKey}
+                  onChange={e => setExtCfg(c => ({ ...c, bingApiKey: e.target.value }))}
+                  placeholder="Bing API Key (免费1000次/月)"
+                  autoComplete="off"
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
+                  注册: portal.azure.com → 创建 Bing Search 资源 → Keys and Endpoint
+                </div>
+              </div>
+            )}
+            {extCfg.searchBackend === "custom" && (
+              <div style={{ marginTop: 4 }}>
+                <input
+                  value={extCfg.customSearchUrl}
+                  onChange={e => setExtCfg(c => ({ ...c, customSearchUrl: e.target.value }))}
+                  placeholder="搜索 URL,{q}=查询词 (如 SearXNG)"
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
+                  要求返回 JSON,格式: {"{ results: [{ title, snippet, url }] }"}
+                </div>
+              </div>
+            )}
+          </div>
           {llmSaveMsg && (
             <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 4, fontSize: 12,
               background: llmSaveMsg.includes("成功") ? "var(--color-normal-weak, #ecfdf5)" : "var(--color-abnormal-bg, #fef2f2)",
@@ -218,14 +420,16 @@ export function AgentChat({ onClose }: AgentChatProps) {
             </div>
           )}
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={() => {
+            <button type="button" onClick={async () => {
               const urlOk = llmForm.apiUrl.trim();
               const keyOk = llmForm.apiKey.trim();
               const proxyOk = llmForm.corsProxy.trim() || undefined;
-              const finalKey = keyOk || (keyAlreadySet ? (getLLMConfig()?.apiKey ?? "") : "");
+              const existingCfg = keyAlreadySet ? await getLLMConfig() : null;
+              const finalKey = keyOk || (existingCfg?.apiKey ?? "");
               if (!urlOk) { setLlmSaveMsg("❌ API URL 必填"); return; }
               if (!finalKey) { setLlmSaveMsg("❌ 请输入 API Key"); return; }
-              saveLLMConfig({ apiUrl: urlOk, apiKey: finalKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: proxyOk });
+              await saveLLMConfig({ apiUrl: urlOk, apiKey: finalKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: proxyOk });
+              saveExtConfig(extCfg);
               setConfigured(true);
               setLlmSaveMsg("✅ 保存成功");
               setTimeout(() => setShowSettings(false), 600);
@@ -233,6 +437,277 @@ export function AgentChat({ onClose }: AgentChatProps) {
             {configured && <button type="button" onClick={() => { clearLLMConfig(); setConfigured(false); setKeyAlreadySet(false); setLlmSaveMsg("🗑️ 已清除"); }} style={{ ...btnGhost, color: "var(--color-abnormal)" }}>清除</button>}
             <button type="button" onClick={() => setShowSettings(false)} style={btnGhost}>取消</button>
           </div>
+        </div>
+      )}
+
+      {/* MCP 管理面板 */}
+      {showMCP && (
+        <div style={{ position: "absolute", top: 49, left: 0, right: 0, bottom: 0, background: "var(--color-surface)", zIndex: 5, padding: 16, overflowY: "auto" }}>
+          <h4 style={{ margin: "0 0 12px" }}>🔌 MCP 服务器管理</h4>
+          <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 12 }}>
+            MCP (Model Context Protocol) 让 Agent 连接外部工具。添加 HTTP 服务器或本地命令,Agent 自动发现并调用其工具。
+          </p>
+
+          {/* 添加服务器表单 */}
+          <div style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 12, background: "var(--color-surface-sunken, #f5f7fa)" }}>
+            <strong style={{ fontSize: 13 }}>添加服务器</strong>
+            <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+              <select value={mcpAddForm.type} onChange={e => setMcpAddForm(f => ({ ...f, type: e.target.value as "http" | "stdio" }))} style={{ padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }}>
+                <option value="http">HTTP</option>
+                <option value="stdio">stdio (本地)</option>
+              </select>
+              <input value={mcpAddForm.name} onChange={e => setMcpAddForm(f => ({ ...f, name: e.target.value }))} placeholder="名称" style={{ flex: 1, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
+            </div>
+            {mcpAddForm.type === "http" ? (
+              <input value={mcpAddForm.url} onChange={e => setMcpAddForm(f => ({ ...f, url: e.target.value }))} placeholder="MCP 端点 URL,如 https://mcp.example.com/mcp" style={{ width: "100%", marginTop: 6, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
+            ) : (
+              <>
+                <input value={mcpAddForm.command} onChange={e => setMcpAddForm(f => ({ ...f, command: e.target.value }))} placeholder="命令,如 npx -y @modelcontextprotocol/server-filesystem" style={{ width: "100%", marginTop: 6, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
+                <input value={mcpAddForm.args} onChange={e => setMcpAddForm(f => ({ ...f, args: e.target.value }))} placeholder="参数(空格分隔)" style={{ width: "100%", marginTop: 6, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
+              </>
+            )}
+            <button type="button" onClick={() => {
+              if (!mcpAddForm.name) return;
+              const srv = addMCPServer({
+                name: mcpAddForm.name,
+                type: mcpAddForm.type,
+                url: mcpAddForm.type === "http" ? mcpAddForm.url : undefined,
+                command: mcpAddForm.type === "stdio" ? mcpAddForm.command : undefined,
+                args: mcpAddForm.type === "stdio" ? mcpAddForm.args : undefined,
+                enabled: true,
+              });
+              setMcpServers([...getMCPServers()]);
+              setMcpAddForm({ name: "", type: "http", url: "", command: "", args: "" });
+            }} style={{ ...btnPrimary, marginTop: 8, fontSize: 11 }}>添加</button>
+          </div>
+
+          {/* 服务器列表 */}
+          {mcpServers.length === 0 && <p style={{ fontSize: 12, color: "var(--color-text-muted)" }}>暂无 MCP 服务器。添加 HTTP 或本地 stdio 服务器来扩展 Agent 能力。</p>}
+          {mcpServers.map(srv => {
+            const testResult = mcpTestResult?.id === srv.id ? mcpTestResult : null;
+            return (
+              <div key={srv.id} style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <strong style={{ fontSize: 13 }}>{srv.name}</strong>
+                    <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: 8 }}>{srv.type === "http" ? "HTTP" : "stdio"}</span>
+                    <span style={{ fontSize: 10, marginLeft: 6, color: srv.enabled ? "var(--color-normal)" : "var(--color-text-muted)" }}>
+                      {srv.enabled ? "●" : "○"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button type="button" onClick={async () => {
+                      setMcpTesting(srv.id);
+                      const r = await testMCPConnection(srv);
+                      setMcpTestResult({ id: srv.id, ...r });
+                      setMcpTesting(null);
+                    }} style={{ ...btnGhost, fontSize: 10 }}>
+                      {mcpTesting === srv.id ? "测试中…" : "测试"}
+                    </button>
+                    <button type="button" onClick={() => {
+                      updateMCPServer(srv.id, { enabled: !srv.enabled });
+                      setMcpServers([...getMCPServers()]);
+                    }} style={{ ...btnGhost, fontSize: 10 }}>{srv.enabled ? "禁用" : "启用"}</button>
+                    <button type="button" onClick={() => {
+                      deleteMCPServer(srv.id);
+                      setMcpServers([...getMCPServers()]);
+                    }} style={{ ...btnGhost, fontSize: 10, color: "var(--color-abnormal)" }}>删除</button>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 4 }}>
+                  {srv.url || srv.command}
+                </div>
+                {testResult && (
+                  <div style={{ fontSize: 11, marginTop: 4, color: testResult.ok ? "var(--color-normal)" : "var(--color-abnormal)" }}>
+                    {testResult.ok ? `✅ ${testResult.serverName} — ${testResult.toolCount} 个工具` : `❌ ${testResult.error}`}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <button type="button" onClick={() => setShowMCP(false)} style={{ ...btnGhost, marginTop: 8 }}>关闭</button>
+        </div>
+      )}
+
+      {/* 技能管理面板 */}
+      {showSkills && (
+        <div style={{ position: "absolute", top: 49, left: 0, right: 0, bottom: 0, background: "var(--color-surface)", zIndex: 5, padding: 16, overflowY: "auto" }}>
+          <h4 style={{ margin: "0 0 12px" }}>🧩 技能管理 (Skills)</h4>
+          <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 12 }}>
+            Skill 是给 Agent 的专业指令集。用户消息匹配触发词时自动注入 system prompt。类似 Claude Code 的 skills 系统。
+          </p>
+
+          {/* 从 URL 安装 */}
+          <div style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 12, background: "var(--color-surface-sunken, #f5f7fa)" }}>
+            <strong style={{ fontSize: 13 }}>📥 从 URL 安装</strong>
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <input
+                value={skillInstallUrl}
+                onChange={e => { setSkillInstallUrl(e.target.value); setSkillInstallMsg(null); }}
+                placeholder="Skill 文件的 URL(GitHub Raw/Gist/任意 .md)"
+                style={{ flex: 1, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }}
+              />
+              <button
+                type="button"
+                disabled={skillInstalling || !skillInstallUrl.trim()}
+                onClick={async () => {
+                  const url = skillInstallUrl.trim();
+                  if (!url) return;
+                  setSkillInstalling(true);
+                  setSkillInstallMsg(null);
+                  try {
+                    await installSkillFromUrl(url);
+                    setSkills(getSkills());
+                    setSkillInstallUrl("");
+                    setSkillInstallMsg("✅ 安装成功!");
+                  } catch (e) {
+                    setSkillInstallMsg(`❌ ${e instanceof Error ? e.message : String(e)}`);
+                  } finally {
+                    setSkillInstalling(false);
+                  }
+                }}
+                style={{ ...btnPrimary, fontSize: 11, whiteSpace: "nowrap" }}
+              >
+                {skillInstalling ? "安装中…" : "安装"}
+              </button>
+            </div>
+            {skillInstallMsg && (
+              <div style={{ marginTop: 6, fontSize: 11, color: skillInstallMsg.startsWith("✅") ? "var(--color-normal)" : "var(--color-abnormal)" }}>
+                {skillInstallMsg}
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 4 }}>
+              Skill 文件格式: YAML frontmatter (name/description/triggers/priority) + Markdown prompt 正文
+            </div>
+          </div>
+
+          <button type="button" onClick={() => {
+            setSkillEdit(null);
+            setSkillForm({ name: "", description: "", triggers: "", prompt: "", alwaysOn: false, priority: 10 });
+            setShowSkillForm(true);
+          }} style={{ ...btnPrimary, marginBottom: 12, fontSize: 12 }}>➕ 新建技能</button>
+
+          {/* 技能库 */}
+          <h5 style={{ margin: "0 0 8px", fontSize: 12, color: "var(--color-text-muted)" }}>📦 推荐技能库 (点击安装)</h5>
+          {SKILL_GALLERY.map(item => {
+            const installed = skills.some(s => s.name === item.name);
+            return (
+              <div key={item.name} style={{ padding: 8, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 20 }}>{item.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>{item.name}</div>
+                  <div style={{ fontSize: 10, color: "var(--color-text-muted)" }}>{item.description}</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={installed}
+                  onClick={() => {
+                    if (installed) return;
+                    addSkillFn({
+                      name: item.name,
+                      description: item.description,
+                      triggers: item.triggers,
+                      prompt: item.prompt,
+                      alwaysOn: false,
+                      priority: 10,
+                      enabled: true,
+                    });
+                    setSkills(getSkills());
+                  }}
+                  style={{
+                    ...btnGhost, fontSize: 10, whiteSpace: "nowrap",
+                    opacity: installed ? 0.4 : 1,
+                    cursor: installed ? "default" : "pointer",
+                  }}
+                >
+                  {installed ? "已安装" : "安装"}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* 编辑表单 */}
+          {showSkillForm && (
+            <div style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 12, background: "var(--color-surface-sunken, #f5f7fa)" }}>
+              <strong style={{ fontSize: 13 }}>{skillEdit ? "编辑技能" : "新建技能"}</strong>
+              <input value={skillForm.name} onChange={e => setSkillForm(f => ({ ...f, name: e.target.value }))} placeholder="技能名称" style={{ ...inputStyle, marginTop: 8 }} />
+              <input value={skillForm.description} onChange={e => setSkillForm(f => ({ ...f, description: e.target.value }))} placeholder="简短描述" style={{ ...inputStyle, marginTop: 6 }} />
+              <input value={skillForm.triggers} onChange={e => setSkillForm(f => ({ ...f, triggers: e.target.value }))} placeholder="触发词,逗号分隔 (如: 文献综述,meta分析,循证)" style={{ ...inputStyle, marginTop: 6 }} />
+              <textarea value={skillForm.prompt} onChange={e => setSkillForm(f => ({ ...f, prompt: e.target.value }))} placeholder="Skill 指令内容 (Markdown) — 会被注入到 system prompt 中" rows={8} style={{ ...inputStyle, marginTop: 6, fontFamily: "monospace", fontSize: 11 }} />
+              <div style={{ display: "flex", gap: 12, marginTop: 6, alignItems: "center" }}>
+                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                  <input type="checkbox" checked={skillForm.alwaysOn} onChange={e => setSkillForm(f => ({ ...f, alwaysOn: e.target.checked }))} />
+                  始终激活
+                </label>
+                <label style={{ fontSize: 12 }}>优先级: <input type="number" value={skillForm.priority} onChange={e => setSkillForm(f => ({ ...f, priority: Number(e.target.value) }))} style={{ width: 50, padding: "2px 4px", fontSize: 12 }} min={1} max={100} /></label>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                <button type="button" onClick={() => {
+                  if (!skillForm.name || !skillForm.prompt) return;
+                  if (skillEdit) {
+                    updateSkillFn(skillEdit.id, {
+                      name: skillForm.name,
+                      description: skillForm.description,
+                      triggers: skillForm.triggers.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+                      prompt: skillForm.prompt,
+                      alwaysOn: skillForm.alwaysOn,
+                      priority: skillForm.priority,
+                    });
+                  } else {
+                    addSkillFn({
+                      name: skillForm.name,
+                      description: skillForm.description,
+                      triggers: skillForm.triggers.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+                      prompt: skillForm.prompt,
+                      alwaysOn: skillForm.alwaysOn,
+                      priority: skillForm.priority,
+                      enabled: true,
+                    });
+                  }
+                  setSkills(getSkills());
+                  setSkillEdit(null);
+                  setSkillForm({ name: "", description: "", triggers: "", prompt: "", alwaysOn: false, priority: 10 });
+                  setShowSkillForm(false);
+                }} style={{ ...btnPrimary, fontSize: 11 }}>保存</button>
+                <button type="button" onClick={() => { setSkillEdit(null); setSkillForm({ name: "", description: "", triggers: "", prompt: "", alwaysOn: false, priority: 10 }); setShowSkillForm(false); }} style={{ ...btnGhost, fontSize: 11 }}>取消</button>
+              </div>
+            </div>
+          )}
+
+          {/* 技能列表 */}
+          {skills.length === 0 && <p style={{ fontSize: 12, color: "var(--color-text-muted)" }}>暂无自定义技能。内置技能会自动加载。</p>}
+          {skills.map(s => (
+            <div key={s.id} style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <strong style={{ fontSize: 13 }}>{s.name}</strong>
+                  {s.id.startsWith("builtin") && <span style={{ fontSize: 9, color: "var(--color-text-muted)", marginLeft: 6 }}>内置</span>}
+                  <span style={{ fontSize: 10, marginLeft: 6, color: s.enabled ? "var(--color-normal)" : "var(--color-text-muted)" }}>
+                    {s.enabled ? "●" : "○"}
+                  </span>
+                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{s.description}</div>
+                  <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
+                    触发词: {s.triggers.join(", ")} {s.alwaysOn ? "| 🔄 始终激活" : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+                  <button type="button" onClick={() => {
+                    setSkillEdit(s);
+                    setSkillForm({ name: s.name, description: s.description, triggers: s.triggers.join(","), prompt: s.prompt, alwaysOn: s.alwaysOn, priority: s.priority });
+                    setShowSkillForm(true);
+                  }} style={{ ...btnGhost, fontSize: 10 }}>编辑</button>
+                  <button type="button" onClick={() => {
+                    updateSkillFn(s.id, { enabled: !s.enabled });
+                    setSkills(getSkills());
+                  }} style={{ ...btnGhost, fontSize: 10 }}>{s.enabled ? "禁用" : "启用"}</button>
+                  {!s.id.startsWith("builtin") && (
+                    <button type="button" onClick={() => { deleteSkillFn(s.id); setSkills(getSkills()); }} style={{ ...btnGhost, fontSize: 10, color: "var(--color-abnormal)" }}>删除</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          <button type="button" onClick={() => setShowSkills(false)} style={{ ...btnGhost, marginTop: 8 }}>关闭</button>
         </div>
       )}
 
@@ -284,26 +759,109 @@ export function AgentChat({ onClose }: AgentChatProps) {
 
       {/* 输入栏 */}
       <div style={{ padding: 12, borderTop: "1px solid var(--color-border)" }}>
+        {/* 已选文件预览 */}
+        {files.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+            {files.map((f, i) => (
+              <span key={i} style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "2px 8px", fontSize: 11, borderRadius: 4,
+                background: "var(--color-accent-weak, #e6f0fa)",
+                border: "1px solid var(--color-border)",
+              }}>
+                📎 {f.name.length > 20 ? f.name.slice(0, 20) + "…" : f.name}
+                <button type="button" onClick={() => removeFile(i)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "var(--color-abnormal)" }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-          placeholder="问点什么…(Shift+Enter 换行)"
+          placeholder={listening ? "🎤 正在聆听…" : "问点什么…(Shift+Enter 换行)"}
           disabled={busy}
           rows={2}
           style={{ width: "100%", padding: 8, fontSize: 14, border: "1px solid var(--color-border)", borderRadius: 6, resize: "vertical", fontFamily: "inherit" }}
         />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            {busy ? "🤔 Agent 推理中…" : "Enter 发送 · Shift+Enter 换行"}
-          </span>
-          <button type="button" onClick={() => void handleSend()} disabled={busy || !input.trim()} style={{
-            ...btnPrimary, opacity: (busy || !input.trim()) ? 0.5 : 1,
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            {/* 语音按钮 */}
+            {voiceSupported && (
+              <button type="button" onClick={toggleVoice} disabled={busy} title={listening ? "停止录音" : "语音输入"} style={{
+                ...btnGhost, fontSize: 18, padding: "4px 8px",
+                background: listening ? "var(--color-abnormal)" : "transparent",
+                color: listening ? "white" : undefined,
+                opacity: busy ? 0.5 : 1,
+              }}>
+                {listening ? "⏹" : "🎤"}
+              </button>
+            )}
+            {/* 文件上传 */}
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy} title="上传文件" style={{
+              ...btnGhost, fontSize: 18, padding: "4px 8px", opacity: busy ? 0.5 : 1,
+            }}>
+              {uploading ? "⏳" : "📎"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt,.md,.csv,.json,.pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.mp3,.wav,.m4a,.ogg,.webm,.flac,.aac,.wma,.mp4,.mov,.avi,.mkv,.wmv,.flv,.mts,.ts"
+              onChange={e => void handleFiles(e.target.files)}
+              style={{ display: "none" }}
+            />
+            <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+              {busy ? "🤔 Agent 推理中…" : listening ? "🎤 说话中,再点⏹结束" : "Enter 发送 · Shift+Enter 换行"}
+            </span>
+          </div>
+          <button type="button" onClick={() => void handleSend()} disabled={busy || (!input.trim() && files.length === 0)} style={{
+            ...btnPrimary, opacity: (busy || (!input.trim() && files.length === 0)) ? 0.5 : 1,
           }}>发送</button>
         </div>
       </div>
     </div>
   );
+}
+
+/** 读取上传文件的文本内容 */
+async function readFileContent(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+  // 纯文本类型直接读
+  if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".csv") || name.endsWith(".json")) {
+    return await file.text();
+  }
+  // PDF / 图片 / Word / 音频 / 视频 → base64 data URL
+  if (name.endsWith(".pdf") || name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") ||
+      name.endsWith(".gif") || name.endsWith(".webp") || name.endsWith(".doc") || name.endsWith(".docx") ||
+      name.endsWith(".xls") || name.endsWith(".xlsx") ||
+      name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a") || name.endsWith(".ogg") ||
+      name.endsWith(".webm") || name.endsWith(".flac") || name.endsWith(".aac") || name.endsWith(".wma") ||
+      name.endsWith(".mp4") || name.endsWith(".mov") || name.endsWith(".avi") || name.endsWith(".mkv") ||
+      name.endsWith(".wmv") || name.endsWith(".flv") || name.endsWith(".mts") || name.endsWith(".ts")) {
+    const b64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = () => reject(new Error("读取失败"));
+      reader.readAsDataURL(file);
+    });
+    const mime = file.type || "application/octet-stream";
+    const isAudio = name.match(/\.(mp3|wav|m4a|ogg|flac|aac|wma)$/i);
+    const isVideo = name.match(/\.(mp4|mov|avi|mkv|wmv|flv|mts|ts|webm)$/i);
+    const label = isVideo ? "base64视频" : isAudio ? "base64音频" : "base64图片/文档";
+    const hint = isAudio
+      ? `\n提示: 音频文件。支持的模型可转录。`
+      : isVideo
+      ? `\n提示: 视频文件(前120KB)。支持的模型可提取关键帧。大文件建议先用外部工具转写。`
+      : "";
+    return `[${label}: data:${mime};base64,${b64.slice(0, 120000)}] (原始: ${b64.length} 字符, ${(file.size/1024/1024).toFixed(1)}MB, 文件名: ${file.name})${hint}`;
+  }
+  // 未知类型尝试当文本读
+  try {
+    return await file.text();
+  } catch {
+    return `[无法读取的文件: ${file.name} (${(file.size / 1024).toFixed(1)}KB)]`;
+  }
 }
 
 const btnGhost: React.CSSProperties = {

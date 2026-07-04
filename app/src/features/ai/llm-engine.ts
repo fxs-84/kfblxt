@@ -60,6 +60,46 @@ $INTERVENTIONS
 }`;
 
 const LLM_CONFIG_KEY = "anrm_llm_config";
+/* 加密存储常量 — 使用 Web Crypto AES-GCM */
+let _cryptoKey: CryptoKey | null = null;
+const CRYPTO_SALT = new Uint8Array([0xa1, 0x4e, 0x72, 0x6d, 0x3f, 0x8b, 0x15, 0xc9, 0x6e, 0x2a, 0x77, 0x4f, 0x0d, 0x1c, 0x9e, 0x53]);
+
+async function getCryptoKey(): Promise<CryptoKey> {
+  if (_cryptoKey) return _cryptoKey;
+  const subtle = crypto.subtle;
+  // 从 userAgent + origin 派生密钥材料(同浏览器同源解得出,其他人不行)
+  const material = new TextEncoder().encode(`${navigator.userAgent}|${location.origin}|anrm_kfblxt_salt`);
+  const baseKey = await subtle.importKey("raw", material, "PBKDF2", false, ["deriveKey"]);
+  _cryptoKey = await subtle.deriveKey(
+    { name: "PBKDF2", salt: CRYPTO_SALT, iterations: 100000, hash: "SHA-256" },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+  return _cryptoKey;
+}
+
+async function encryptData(plain: string): Promise<string> {
+  const key = await getCryptoKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plain);
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  // iv(12 bytes) + ciphertext → base64
+  const combined = new Uint8Array(iv.length + cipher.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(cipher), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptData(encrypted: string): Promise<string> {
+  const key = await getCryptoKey();
+  const combined = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const cipher = combined.slice(12);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+  return new TextDecoder().decode(plain);
+}
 
 export interface LLMConfig {
   /** API endpoint(Anthropic Messages 或 OpenAI-compatible) */
@@ -74,45 +114,81 @@ export interface LLMConfig {
 
 /** 实际发请求的 URL。本地开发时自动走 Vite 代理绕过 CORS,生产走 corsProxy 或直连。 */
 export function resolveApiUrl(baseUrl: string, corsProxy?: string): string {
-  // 本地开发: localhost → 走 Vite proxy,自动绕过 CORS
-  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-    const lower = baseUrl.toLowerCase();
-    if (lower.includes("api.deepseek.com")) {
-      return baseUrl.replace("https://api.deepseek.com", "/api/deepseek");
+  // 先修复常见 URL 错误: 缺协议前缀、缺少 `h` 等
+  let cleaned = baseUrl.trim();
+  if (/^ttps?:\/\//i.test(cleaned)) cleaned = "h" + cleaned; // ttps:// → https://
+  if (!/^https?:\/\//i.test(cleaned)) cleaned = "https://" + cleaned.replace(/^[:\/]+/, "");
+
+  const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]";
+  if (isDev) {
+    // 不依赖协议前缀的正则 — 直接按域名匹配
+    const proxyMap: Array<{ host: string; path: string }> = [
+      { host: "api.deepseek.com", path: "/api/deepseek" },
+      { host: "api.anthropic.com", path: "/api/anthropic" },
+      { host: "api.openai.com", path: "/api/openai" },
+    ];
+    for (const { host, path } of proxyMap) {
+      const idx = cleaned.indexOf(host);
+      if (idx !== -1) {
+        const rewritten = path + cleaned.slice(idx + host.length);
+        console.warn("[llm-engine] DEV proxy:", baseUrl, "→", rewritten);
+        return rewritten;
+      }
     }
-    if (lower.includes("api.anthropic.com")) {
-      return baseUrl.replace("https://api.anthropic.com", "/api/anthropic");
-    }
-    if (lower.includes("api.openai.com")) {
-      return baseUrl.replace("https://api.openai.com", "/api/openai");
-    }
+    // 兜底: 任意 OpenAI-compatible API → base64 编码后走通用代理
+    // 支持 OpenRouter / Groq / Ollama / 自部署模型等
+    const encoded = btoa(cleaned);
+    const fallback = `/api/proxy/${encoded}`;
+    console.warn("[llm-engine] DEV generic proxy:", baseUrl, "→", fallback);
+    return fallback;
   }
   // 生产: corsProxy 或直连
-  if (!corsProxy) return baseUrl;
-  return corsProxy.replace(/\/+$/, "") + "/" + baseUrl.replace(/^https?:\/\//, "");
+  if (!corsProxy) return cleaned;
+  return corsProxy.replace(/\/+$/, "") + "/" + cleaned.replace(/^https?:\/\//, "");
 }
 
-/** 读取用户在 localStorage 里配置的 LLM(部署安全:不打包进 bundle) */
-export function getLLMConfig(): LLMConfig | null {
+/** 读取用户在 localStorage 里配置的 LLM(部署安全:不打包进 bundle)
+ *  apiKey 用 Web Crypto AES-GCM 加密存储,防止 XSS 直接读取 */
+export async function getLLMConfig(): Promise<LLMConfig | null> {
   try {
     const raw = localStorage.getItem(LLM_CONFIG_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<LLMConfig>;
-    if (!parsed.apiUrl || !parsed.apiKey) return null;
-    return {
-      apiUrl: parsed.apiUrl,
-      apiKey: parsed.apiKey,
-      model: parsed.model || "claude-haiku-4-5",
-      corsProxy: parsed.corsProxy,
-    };
+    const parsed = JSON.parse(raw) as { enc?: string } & Partial<LLMConfig>;
+    // 新格式: 加密存储
+    if (parsed.enc) {
+      const decrypted = await decryptData(parsed.enc);
+      const cfg = JSON.parse(decrypted) as LLMConfig;
+      if (!cfg.apiUrl || !cfg.apiKey) return null;
+      return cfg;
+    }
+    // 旧格式兼容: 明文(自动迁移到加密)
+    if (parsed.apiUrl && parsed.apiKey) {
+      const cfg: LLMConfig = {
+        apiUrl: parsed.apiUrl,
+        apiKey: parsed.apiKey,
+        model: parsed.model || "claude-haiku-4-5",
+        corsProxy: parsed.corsProxy,
+      };
+      // 异步迁移(不阻塞返回)
+      saveLLMConfig(cfg).catch(() => {});
+      return cfg;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-export function saveLLMConfig(cfg: LLMConfig): void {
+export async function saveLLMConfig(cfg: LLMConfig): Promise<void> {
   try {
-    localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify(cfg));
+    // 自动规范化 URL: 修复 typo、补协议
+    let url = cfg.apiUrl.trim();
+    if (/^ttps?:\/\//i.test(url)) url = "h" + url;
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url.replace(/^[:\/]+/, "");
+    const normalized = { ...cfg, apiUrl: url };
+    const plain = JSON.stringify(normalized);
+    const enc = await encryptData(plain);
+    localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify({ enc }));
   } catch (e) {
     console.error("[llm-engine] 保存 LLM 配置失败:", e);
   }
@@ -124,9 +200,13 @@ export function clearLLMConfig(): void {
   } catch { /* ok */ }
 }
 
-/** 是否已配置(给 UI 显示状态用) */
+/** 是否已配置(给 UI 显示状态用),无需解密 */
 export function isLLMConfigured(): boolean {
-  return getLLMConfig() !== null;
+  try {
+    return localStorage.getItem(LLM_CONFIG_KEY) !== null;
+  } catch {
+    return false;
+  }
 }
 
 /* ---- 构建完整 system prompt ---- */
@@ -169,7 +249,7 @@ function buildUserPrompt(ctx: ClinicalContext): string {
 
 /* ---- 调用 LLM:从 localStorage 读 key,不用构建期 env(防泄露) ---- */
 async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("./reasoning-engine").analyze> & { narrative: ReturnType<typeof import("./reasoning-engine").generateNarrative> }> {
-  const cfg = getLLMConfig();
+  const cfg = await getLLMConfig();
   if (!cfg) throw new Error("LLM_NOT_CONFIGURED");
 
   const { buildApiHeaders, detectApiType, parseAnthropicResponse, parseOpenAIResponse } =

@@ -11,8 +11,18 @@ import {
   getTreatmentPlansTool,
 } from "./clinical-tools";
 import { searchAcrossRecordsTool } from "./search-tools";
+import {
+  webSearchTool,
+  webFetchTool,
+  calculateTool,
+  getCurrentTimeTool,
+  searchPubmedTool,
+  installSkillTool,
+  transcribeAudioTool,
+} from "./external-tools";
 
 export const agentTools: AgentTool[] = [
+  // 内部病历工具
   searchPatientsTool,
   getPatientTool,
   getPatientTimelineTool,
@@ -22,6 +32,15 @@ export const agentTools: AgentTool[] = [
   getDiagnosisTool,
   getTreatmentPlansTool,
   searchAcrossRecordsTool,
+  // 外部联通工具
+  webSearchTool,
+  webFetchTool,
+  calculateTool,
+  getCurrentTimeTool,
+  searchPubmedTool,
+  // 能力扩展工具
+  installSkillTool,
+  transcribeAudioTool,
 ];
 
 /** name → tool 字典,执行时按名查找 */
