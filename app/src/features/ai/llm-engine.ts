@@ -144,6 +144,18 @@ function buildUserPrompt(ctx: ClinicalContext): string {
   return lines.join("\n");
 }
 
+/** 根据 API URL 自动选 headers(Anthropic 用 x-api-key, OpenAI 用 Bearer) */
+function buildHeaders(apiKey: string, apiUrl: string): Record<string, string> {
+  if (apiUrl.includes("anthropic.com")) {
+    return {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    };
+  }
+  return { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` };
+}
+
 /* ---- 调用 LLM:从 localStorage 读 key,不用构建期 env(防泄露) ---- */
 async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("./reasoning-engine").analyze> & { narrative: ReturnType<typeof import("./reasoning-engine").generateNarrative> }> {
   const cfg = getLLMConfig();
@@ -151,7 +163,7 @@ async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("
 
   const res = await fetch(cfg.apiUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+    headers: buildHeaders(cfg.apiKey, cfg.apiUrl),
     body: JSON.stringify({
       model: cfg.model,
       max_tokens: 2000,
