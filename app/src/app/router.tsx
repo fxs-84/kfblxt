@@ -1,5 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
-import { useSearchParams } from "react-router-dom";
+import { createBrowserRouter, Navigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "./AppLayout";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { PatientListPage } from "../features/patients/pages/PatientListPage";
@@ -9,28 +8,31 @@ import { PatientViewPage } from "../features/share/PatientViewPage";
 
 const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 
-/** 根路由分发:?share=<token> → 患者共享视图,否则 → 工作台 */
-function RootPage() {
+/**
+ * 根路由分流:
+ * - ?share=<token> → 直接渲染 PatientViewPage,不经过 AppLayout(无侧栏/header)
+ * - 无 share 参数 → AppLayout 正常渲染,Outlet 走子路由
+ */
+function LayoutGate() {
   const [searchParams] = useSearchParams();
   if (searchParams.get("share")) return <PatientViewPage />;
-  return <DashboardPage />;
+  return <AppLayout />;
 }
 
 export const router = createBrowserRouter(
   [
     {
       path: "/",
-      element: <AppLayout />,
+      element: <LayoutGate />,
       children: [
-        { index: true, element: <RootPage /> },
+        { index: true, element: <DashboardPage /> },
         { path: "patients", element: <PatientListPage /> },
         { path: "patients/new", element: <PatientFormPage /> },
         { path: "patients/:id", element: <PatientDetailPage /> },
         { path: "*", element: <Navigate to="/" replace /> },
       ],
     },
-    // 患者端分享视图(无需登录,无侧栏)
-    // /?share=<token> 走 RootPage 分发; /share/<token> 是老链接保留
+    // 老链接 /share/<token> 保留
     { path: "/share/:token", element: <PatientViewPage /> },
   ],
   { basename },
