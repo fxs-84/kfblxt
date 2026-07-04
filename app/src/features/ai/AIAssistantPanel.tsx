@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { analyzeAsync, getLLMConfig, saveLLMConfig, clearLLMConfig, isLLMConfigured, type LLMConfig } from "./llm-engine";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";
+import type { AnalyzeResult } from "./llm-engine";
 import { EXAM_CATALOG } from "../exam/exam-catalog";
 import type { ExamSession } from "../exam/exam.types";
 import type { EncounterRecord } from "../encounters/encounter.repository";
@@ -87,7 +88,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
     return () => { try { rec.stop(); } catch { /* ok */ } };
   }, []);
 
-  const [aiResult, setAiResult] = useState<ReturnType<typeof analyze> & { narrative: ReturnType<typeof generateNarrative> } | null>(null);
+  const [aiResult, setAiResult] = useState<AnalyzeResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState<"rules" | "llm">("rules");
   const [llmConfigured, setLlmConfigured] = useState(isLLMConfigured());
@@ -141,11 +142,12 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
       } else {
         setAiResult(result);
       }
-      setAiMode(result.completeness === "高置信" || result.interventionSuggestions.some((s) => s.priority >= 8) ? "llm" : "rules");
+      // 真实来源(llm-engine 已统一返回 _source)
+      setAiMode(result._source);
       setAiLoading(false);
     }).catch(() => {
       if (cancelled) return;
-      const rules = { ...analyze(ctx), narrative: generateNarrative(ctx) };
+      const rules = { ...analyze(ctx), narrative: generateNarrative(ctx), _source: "rules" as const };
       // 同样应用历史排序
       const regionSummary = encounter!.chiefComplaint.regions.join(" ");
       const allLevels = rules.localizationSuggestions.map((s) => s.level);
@@ -198,7 +200,13 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
           <div>
             <h3 className="panel__title" style={{ margin: 0, fontSize: "var(--text-base)" }}>{sceneLabel}</h3>
             <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
-              {aiLoading ? "⏳ 推理中…" : aiMode === "llm" ? "🤖 LLM 已连接" : sceneHint}
+              {aiLoading
+                ? "⏳ 推理中…"
+                : aiMode === "llm"
+                  ? "🤖 LLM 已连接"
+                  : llmConfigured
+                    ? "⚠️ LLM 配置存在但调用失败,已用规则引擎"
+                    : "📋 规则引擎(未配置 LLM)"}
             </span>
             <button
               className="btn btn--ghost"

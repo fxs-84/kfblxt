@@ -179,13 +179,24 @@ async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("
 }
 
 /* ---- 包装:LLM 可用则用,不可用回退规则引擎 ---- */
-export async function analyzeAsync(ctx: ClinicalContext) {
-  try {
-    return await callLLM(ctx);
-  } catch {
-    // 回退到规则引擎(lazy import,避免循环引用)
-    const { analyze, generateNarrative } = await import("./reasoning-engine");
-    const rules = analyze(ctx);
-    return { ...rules, narrative: generateNarrative(ctx) };
+/** 返回值含 _source 字段,标记真实使用的引擎(llm 或 rules) */
+export type AnalyzeResult = Awaited<ReturnType<typeof import("./reasoning-engine").analyze>> & {
+  narrative: ReturnType<typeof import("./reasoning-engine").generateNarrative>;
+  _source: "llm" | "rules";
+};
+
+export async function analyzeAsync(ctx: ClinicalContext): Promise<AnalyzeResult> {
+  // 仅在用户配置了 LLM key 时才尝试调用,避免无用 fetch
+  if (isLLMConfigured()) {
+    try {
+      const llm = await callLLM(ctx);
+      return { ...llm, _source: "llm" };
+    } catch (e) {
+      console.warn("[llm-engine] LLM 调用失败,回退规则引擎:", e instanceof Error ? e.message : e);
+    }
   }
+  // 回退到规则引擎(lazy import,避免循环引用)
+  const { analyze, generateNarrative } = await import("./reasoning-engine");
+  const rules = analyze(ctx);
+  return { ...rules, narrative: generateNarrative(ctx), _source: "rules" };
 }
