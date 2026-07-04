@@ -44,7 +44,8 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
      即使 body 是完整 SPA HTML。
      PatientViewPage 同时从 useParams 和 useSearchParams 拿 token,
      老链接 /share/<token> 也不会失效。 */
-  const shareUrl = (token: string) => `${window.location.origin}/?share=${token}`;
+  const shareUrl = (token: string) =>
+    `${window.location.origin}${import.meta.env.BASE_URL}?share=${token}`;
 
   return (
     <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>
