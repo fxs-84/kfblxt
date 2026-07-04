@@ -8,6 +8,8 @@
 import { getSupabase } from "../../lib/supabase";
 import { shareRepository, generateToken, defaultExpiry } from "./share.repository";
 import type { ShareRecord } from "./share.repository";
+import { buildShareSnapshot } from "./build-snapshot";
+import type { ShareSnapshot } from "./share.types";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
@@ -38,7 +40,16 @@ export async function createSupabaseShare(input: {
   // Supabase 路径
   const supabase = getSupabase()!;
   const token = generateToken();
-  const { error } = await supabase.from("shares").insert({
+
+  // 快照当前临床数据,使患者跨设备可查看
+  let snapshot: ShareSnapshot | null = null;
+  try {
+    snapshot = await buildShareSnapshot(input.encounterId, input.patientId);
+  } catch {
+    // 快照失败不退避,仍可创建分享但患者端可能缺数据
+  }
+
+  const row: Record<string, unknown> = {
     encounter_id: input.encounterId,
     patient_id: input.patientId,
     org_id: "00000000-0000-4000-8000-0000000000f0",
@@ -48,7 +59,18 @@ export async function createSupabaseShare(input: {
     homework: input.homework ?? null,
     next_visit: input.nextVisit?.toISOString() ?? null,
     message: input.message ?? null,
-  });
+  };
+  if (snapshot) row.snapshot = snapshot;
+
+  let { error } = await supabase.from("shares").insert(row);
+
+  // snapshot 列尚未创建(迁移未跑)? 回退无快照插入
+  if (error && snapshot) {
+    delete row.snapshot;
+    snapshot = null;
+    const retry = await supabase.from("shares").insert(row);
+    error = retry.error;
+  }
 
   if (error) throw new Error(`Supabase 创建分享失败: ${error.message}`);
 
@@ -63,6 +85,7 @@ export async function createSupabaseShare(input: {
     homework: input.homework,
     nextVisit: input.nextVisit,
     message: input.message,
+    snapshot,
     createdAt: new Date(),
   } as ShareRecord;
 }
@@ -96,6 +119,7 @@ export async function findShareByTokenSupabase(token: string): Promise<ShareReco
     homework: data.homework ?? undefined,
     nextVisit: data.next_visit ? new Date(data.next_visit) : undefined,
     message: data.message ?? undefined,
+    snapshot: (data.snapshot as ShareSnapshot) ?? null,
     createdAt: new Date(data.created_at),
   } as ShareRecord;
 }

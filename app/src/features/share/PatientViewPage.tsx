@@ -1,6 +1,10 @@
 /**
  * 患者端视图 — 通过分享链接打开,展示本次就诊摘要、家庭作业、复查/对比照片和复诊时间。
  * 只读,无需登录,纯展示。
+ *
+ * 数据来源优先级:
+ * 1. share.snapshot (创建分享时打入 Supabase,跨设备可用)
+ * 2. localStorage 仓储 (旧分享无 snapshot 时回退,仅医生设备可用)
  */
 import { useParams, useSearchParams } from "react-router-dom";
 import { useShareByToken } from "./useShare";
@@ -13,23 +17,27 @@ import { ExamResultSummary } from "../exam/components/ExamResultSummary";
 import { INTERVENTIONS_CATALOG } from "../treatment/interventions-catalog";
 import { regionLabel } from "../../components/bodymap/regions";
 import { formatDate } from "../../lib/format";
+import type { ShareSnapshot } from "./share.types";
 
 export function PatientViewPage() {
-  /* 兼容两种 URL 形态:
-     · 老链接 /share/<token> 顶层路由(path param)
-     · 新链接 /?share=<token> 走主站 200(search param,绕过 GitHub Pages 404)
-     两路任一形态拿到 token 即正常渲染,使新老二维码都不失效。*/
   const { token: pathToken } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const token = pathToken ?? searchParams.get("share") ?? "";
   const { data: share, isLoading: shareLoading } = useShareByToken(token);
+  const snapshot = share?.snapshot as ShareSnapshot | null | undefined;
+
   const encounterId = share?.encounterId;
-  const { data: encounters } = usePatientEncounters(share?.patientId);
-  const encounter = encounters?.find((e) => e.id === encounterId);
-  const { data: sessions = [] } = useExamSessions(encounterId);
-  const { data: diagnosis } = useDiagnosis(encounterId);
-  const { data: plans = [] } = useTreatmentPlans(encounterId);
-  const { data: attachments = [] } = useAttachments(encounterId);
+
+  // snapshot 不存在时回退 localStorage 查询(兼容旧分享,仅医生设备有效)
+  const useFallback = !snapshot;
+  const { data: encounters } = usePatientEncounters(useFallback ? share?.patientId : undefined);
+  const encounter = useFallback
+    ? encounters?.find((e) => e.id === encounterId)
+    : null;
+  const { data: sessions = [] } = useExamSessions(useFallback ? encounterId : undefined);
+  const { data: diagnosis } = useDiagnosis(useFallback ? encounterId : undefined);
+  const { data: plans = [] } = useTreatmentPlans(useFallback ? encounterId : undefined);
+  const { data: attachments = [] } = useAttachments(useFallback ? encounterId : undefined);
 
   if (shareLoading) {
     return (
@@ -39,7 +47,7 @@ export function PatientViewPage() {
     );
   }
 
-  if (!share || !encounter) {
+  if (!share) {
     return (
       <div style={{ maxWidth: 640, margin: "60px auto", padding: "var(--space-6)", textAlign: "center", fontFamily: "var(--font-sans)" }}>
         <h2 style={{ color: "var(--color-abnormal)" }}>链接无效或已过期</h2>
@@ -48,7 +56,31 @@ export function PatientViewPage() {
     );
   }
 
-  const beforeAfter = attachments.filter((a) => a.category === "疗效对比");
+  // snapshot 路径:直接从快照渲染
+  // fallback 路径:验证 encounter 存在
+  if (!snapshot && !encounter) {
+    return (
+      <div style={{ maxWidth: 640, margin: "60px auto", padding: "var(--space-6)", textAlign: "center", fontFamily: "var(--font-sans)" }}>
+        <h2 style={{ color: "var(--color-abnormal)" }}>链接无效或已过期</h2>
+        <p style={{ color: "var(--color-text-muted)" }}>请联系您的主治治疗师获取新的分享链接。</p>
+      </div>
+    );
+  }
+
+  const beforeAfter = snapshot
+    ? snapshot.attachments.filter((a) => a.category === "疗效对比")
+    : attachments.filter((a) => a.category === "疗效对比");
+
+  // snapshot 路径的数据
+  const encDate = snapshot?.encounter?.encounterDate
+    ? new Date(snapshot.encounter.encounterDate)
+    : encounter?.encounterDate;
+  const visitType = snapshot?.encounter?.visitType ?? encounter?.visitType;
+  const regions = snapshot?.encounter?.chiefComplaint.regions ?? encounter?.chiefComplaint.regions ?? [];
+  const nature = snapshot?.encounter?.chiefComplaint.nature ?? encounter?.chiefComplaint.nature ?? [];
+  const displayDiagnosis = snapshot?.diagnosis ?? diagnosis;
+  const displaySessions = snapshot ? snapshot.sessions : sessions;
+  const displayPlans = snapshot ? snapshot.plans : plans;
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "var(--space-8) var(--space-6)", fontFamily: "var(--font-sans)", color: "var(--color-text)" }}>
@@ -56,53 +88,55 @@ export function PatientViewPage() {
       <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
         <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 800, margin: "0 0 var(--space-1)" }}>康复诊治摘要</h1>
         <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-sm)", margin: 0 }}>
-          {formatDate(encounter.encounterDate)} · {encounter.visitType}
+          {encDate ? formatDate(encDate) : ""}{visitType ? ` · ${visitType}` : ""}
         </p>
       </div>
 
       {/* 主诉 */}
-      <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)" }}>
-        <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)", color: "var(--color-accent)" }}>本次就诊</h2>
-        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
-          {encounter.chiefComplaint.regions.map((r) => (
-            <span key={r} className="chip-static">{regionLabel(r)}</span>
-          ))}
+      {(regions.length > 0 || nature.length > 0) && (
+        <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)" }}>
+          <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)", color: "var(--color-accent)" }}>本次就诊</h2>
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
+            {regions.map((r) => (
+              <span key={r} className="chip-static">{regionLabel(r)}</span>
+            ))}
+          </div>
+          <p style={{ fontSize: "var(--text-sm)", margin: "var(--space-2) 0" }}>
+            症状: {nature.join("、")}
+          </p>
         </div>
-        <p style={{ fontSize: "var(--text-sm)", margin: "var(--space-2) 0" }}>
-          症状: {encounter.chiefComplaint.nature.join("、")}
-        </p>
-      </div>
+      )}
 
       {/* 查体摘要 */}
-      {sessions.length > 0 && (
+      {displaySessions.length > 0 && (
         <div className="card" style={{ padding: "var(--space-4) var(--space-5)", marginBottom: "var(--space-4)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-2)", color: "var(--color-accent)" }}>查体结果</h2>
-          {sessions.map((s) => (
-            <ExamResultSummary key={s.id} session={s} />
+          {displaySessions.map((s) => (
+            <ExamResultSummary key={s.id} session={s as Parameters<typeof ExamResultSummary>[0]["session"]} />
           ))}
         </div>
       )}
 
       {/* 诊断 */}
-      {diagnosis && (
+      {displayDiagnosis && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-2)", color: "var(--color-accent)" }}>评估结论</h2>
           <p style={{ fontSize: "var(--text-sm)" }}>
-            {diagnosis.levels.join("、")} · {diagnosis.mechanisms.join("、")}
+            {displayDiagnosis.levels.join("、")}{" · "}{displayDiagnosis.mechanisms.join("、")}
           </p>
-          {diagnosis.reasoning && (
+          {displayDiagnosis.reasoning && (
             <p style={{ fontSize: "var(--text-sm)", fontStyle: "italic", color: "var(--color-text-muted)", marginTop: "var(--space-2)" }}>
-              {diagnosis.reasoning}
+              {displayDiagnosis.reasoning}
             </p>
           )}
         </div>
       )}
 
       {/* 治疗计划 */}
-      {plans.length > 0 && (
+      {displayPlans.length > 0 && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)", color: "var(--color-accent)" }}>治疗计划</h2>
-          {plans.map((plan) => (
+          {displayPlans.map((plan) => (
             <div key={plan.id} style={{ marginBottom: "var(--space-3)" }}>
               <p style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>{plan.phase} · {plan.frequency} · {plan.duration}</p>
               <p style={{ fontSize: "var(--text-sm)" }}>

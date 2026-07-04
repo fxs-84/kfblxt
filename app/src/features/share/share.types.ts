@@ -22,4 +22,51 @@ export interface ShareLink {
   nextVisit?: Date;
   /** 分享消息(治疗师留言) */
   message?: string;
+  /** 临床数据快照 — 创建分享时打入,患者设备无需 localStorage */
+  snapshot?: ShareSnapshot | null;
+}
+
+/** 分享快照 — 打包 PatientViewPage 所需的全部临床数据 */
+export interface ShareSnapshot {
+  encounter: {
+    encounterDate: string;
+    visitType: string;
+    chiefComplaint: {
+      regions: string[];
+      distributionNote?: string;
+      nature: string[];
+      vas: number;
+      durationText: string;
+    };
+  } | null;
+  sessions: Array<{
+    id: string;
+    results: Record<string, unknown>;
+    createdAt: string;
+  }>;
+  diagnosis: {
+    levels: string[];
+    mechanisms: string[];
+    reasoning: string;
+    side?: string;
+    segments?: string[];
+    nerves?: string[];
+    cutaneousNerveIds?: string[];
+  } | null;
+  plans: Array<{
+    id: string;
+    phase: string;
+    frequency: string;
+    duration: string;
+    interventionIds: string[];
+    goals?: string[];
+  }>;
+  attachments: Array<{
+    id: string;
+    category: string;
+    fileName: string;
+    dataUrl: string;
+    timeline?: string;
+    comparisonGroup?: string;
+  }>;
 }
