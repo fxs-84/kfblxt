@@ -8,31 +8,29 @@
 /** 查体大类 */
 export type ExamCategory =
   | "原始反射"
-  | "脑神经"
+  | "神经反射和病理反射"
   | "前庭-眼动"
   | "反射"
   | "感觉"
-  | "运动控制"
+  | "小脑与平衡"
   | "步态"
-  | "平衡协调"
   | "自律神经"
   | "肌力"
   | "量表";
 
 export const EXAM_CATEGORIES: readonly ExamCategory[] = [
-  "原始反射", "脑神经", "前庭-眼动", "反射", "感觉",
-  "运动控制", "步态", "平衡协调", "自律神经", "肌力", "量表",
+  "原始反射", "神经反射和病理反射", "前庭-眼动", "反射", "感觉",
+  "小脑与平衡", "步态", "自律神经", "肌力", "量表",
 ];
 
 export const CATEGORY_LABELS: Record<ExamCategory, string> = {
   "原始反射":  "原始反射",
-  "脑神经":    "脑神经",
+  "神经反射和病理反射": "神经反射和病理反射",
   "前庭-眼动": "前庭-眼动",
   "反射":      "反射/肌张力",
   "感觉":      "感觉/本体感觉",
-  "运动控制":  "运动控制",
+  "小脑与平衡": "小脑与平衡",
   "步态":      "步态",
-  "平衡协调":  "平衡/协调",
   "自律神经":  "自律神经",
   "肌力":      "肌力",
   "量表":      "量表评估",
@@ -59,6 +57,8 @@ export interface ExamItemDef {
   unit?: string;
   /** select 时的选项 */
   options?: readonly string[];
+  /** 子项列表(多阶段/多部位评估,渲染为列表,如 CTSIB 的 4 阶段) */
+  subItems?: readonly string[];
   /** 正常参考 */
   normalRef?: string;
   /** 异常含义说明 */
@@ -84,4 +84,6 @@ export interface ExamResult {
   right?: unknown;
   value?: unknown; // 单侧项目
   note?: string;
+  /** 多阶段子项输入(例如 CTSIB 4 阶段),key = subItems 索引 */
+  stages?: Record<number, number>;
 }

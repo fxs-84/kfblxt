@@ -63,12 +63,67 @@ interface InterventionMapping {
 }
 
 const INTERVENTION_MAP: InterventionMapping[] = [
-  { mechanism: /神经敏化|敏化|中枢敏化/i, topInterventionIds: ["neural-desensitization", "gate-control", "ober-point-release"] },
-  { mechanism: /机械压迫|压迫/i, topInterventionIds: ["nerve-glide", "pec-minor-release", "joint-mobilization", "quick-stretch"] },
-  { mechanism: /失用|去条件化/i, topInterventionIds: ["vor-training", "mirror-therapy", "strength-eccentric", "stability-core", "balance-dynamic"] },
-  { mechanism: /代谢|炎症/i, topInterventionIds: ["dietary-intervention", "blood-sugar-control", "breathing-training", "aerobic-training"] },
-  { mechanism: /发育未整合/i, topInterventionIds: ["moro-integration", "atnr-integration", "tlr-integration", "stnr-integration", "galant-integration"] },
-  { mechanism: /神经退行/i, topInterventionIds: ["mirror-therapy", "coordination-training", "metronome-training", "apa-training"] },
+  /* 神经敏化抑制:WDR 神经元过度兴奋下调 */
+  { mechanism: /神经敏化|敏化|中枢敏化|灼痛|神经性疼痛/i, topInterventionIds: [
+    "neural-desensitization", "gate-control",
+    "ultrasound-therapy", "shock-wave-therapy", "lllt-laser-therapy",
+    "homologous-stim",
+  ] },
+
+  /* 机械压迫:神经/组织受压 → 神经滑动恢复 */
+  { mechanism: /机械压迫|压迫|卡压|tinel|神经滑动/i, topInterventionIds: [
+    "nerve-glide", "joint-mobilization", "quick-stretch",
+  ] },
+
+  /* 失用/去条件化:中枢激活 + 物理康复训练(最广覆盖) */
+  { mechanism: /失用|去条件化|不稳|萎缩|无力|疲劳|运动学习/i, topInterventionIds: [
+    // 中枢激活
+    "vor-training", "mirror-therapy", "motor-imagery-training", "proprioception-training",
+    // 肌肉激活 / 神经肌肉
+    "e-stim", "cross-spinal", "homologous-stim", "baroreflex-tx",
+    // 肌力训练
+    "strength-concentric", "strength-eccentric", "strength-isometric", "strength-isokinetic",
+    // 关节活动度
+    "rom-passive", "rom-active-assist", "rom-active",
+    // 稳定性 / 平衡 / 协调
+    "stability-core", "stability-joint",
+    "balance-static", "balance-dynamic", "coordination-training", "cpg-training", "figure-8-training",
+    // 耐力 / 柔韧 / PNF / 增强式 / HIIT / 局部控制
+    "endurance-training", "flexibility-stretch", "pnf-pattern", "plyometric",
+    "functional-hiit", "motor-control-isolate",
+    // 肌群专项
+    "cervical-deep-flexor-training", "cervical-deep-extensor-training",
+    "gluteal-training", "scapular-stability",
+  ] },
+
+  /* 代谢/炎症:血糖管理 + 心肺 + 自主神经 + 睡眠 */
+  { mechanism: /代谢|炎症|心肺|耐力|睡眠|血糖|肥胖|血压/i, topInterventionIds: [
+    "dietary-intervention", "blood-sugar-control",
+    "breathing-training", "aerobic-training",
+    "sleep-hygiene", "baroreflex-tx",
+  ] },
+
+  /* 发育未整合:11 条原始反射整合训练(全 11 条覆盖) */
+  { mechanism: /发育未整合|发育|反射残留|原始反射/i, topInterventionIds: [
+    "moro-integration", "atnr-integration", "tlr-integration",
+    "stnr-integration", "galant-integration", "tectal-integration",
+    "palmar-grasp-integration", "plantar-grasp-integration",
+    "sucking-rooting-integration", "landau-integration",
+    "parachute-reflex-training",
+  ] },
+
+  /* 神经退行:中枢运动协调(镜像/想象/节拍/APA) */
+  { mechanism: /神经退行|协调|共济|震颤|帕金森/i, topInterventionIds: [
+    "mirror-therapy", "motor-imagery-training",
+    "coordination-training", "metronome-training", "apa-training",
+  ] },
+
+  /* 前庭-眼动训练特异:VOR/扫视/追踪/聚散/红绿(位置特异性) */
+  { mechanism: /前庭|眼动|眩晕|眼球|扫视|追踪|聚散|视觉/i, topInterventionIds: [
+    "vor-training",
+    "saccade-training", "smooth-pursuit-training",
+    "convergence-training", "red-green-training",
+  ] },
 ];
 
 /* ================================================================

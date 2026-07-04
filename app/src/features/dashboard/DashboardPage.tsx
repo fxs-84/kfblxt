@@ -68,7 +68,11 @@ export function DashboardPage() {
 
       <section className="tile-row">
         {tiles.map((t) => (
-          <div key={t.label} className={`tile tile--${t.accent}`}>
+          <div
+            key={t.label}
+            className={`tile tile--${t.accent}`}
+            style={{ paddingLeft: 60 }}
+          >
             <span className="tile__value">{t.value}</span>
             <span className="tile__label">{t.label}</span>
           </div>

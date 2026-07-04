@@ -180,7 +180,8 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
 
   const setResult = (id: string, r: ExamResult) => {
     setResults((prev) => {
-      if (!r.left && !r.right && !r.value && !r.note) {
+      const hasStages = r.stages && Object.keys(r.stages).length > 0;
+      if (!r.left && !r.right && !r.value && !r.note && !hasStages) {
         const { [id]: _, ...rest } = prev;
         return rest;
       }
@@ -225,23 +226,50 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
                 <div className="exam-cat__body">
                   {items.map((item) => {
                     const val = results[item.id] ?? {};
+                    const hasSubItems = !!item.subItems && item.subItems.length > 0;
                     return (
-                      <div key={item.id} className="exam-item">
+                      <div key={item.id} className={`exam-item${hasSubItems ? " exam-item--staged" : ""}`}>
                         <div className="exam-item__label">
                           <span>{item.name}</span>
                           {item.pendingConfirmation && <span className="exam-item__flag" title="待医师确认">⚠</span>}
                           {(examFreq[item.id] ?? 0) >= 3 && <span className="badge badge--normal" style={{ fontSize: "9px", marginLeft: 2 }} title={`已使用 ${examFreq[item.id]} 次`}>常用</span>}
                           {item.normalRef && <span className="exam-item__ref">{item.normalRef}</span>}
                         </div>
-                        <ExamField
-                          defId={item.id}
-                          label={item.name}
-                          side={item.side}
-                          dataType={item.dataType}
-                          options={item.options}
-                          value={val}
-                          onChange={(r) => setResult(item.id, r)}
-                        />
+                        {hasSubItems ? (
+                          <div className="exam-item__stages">
+                            {item.subItems!.map((sub, idx) => (
+                              <label key={idx} className="exam-stage">
+                                <span className="exam-stage__label">{sub}</span>
+                                <input
+                                  className="exam-number"
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  placeholder="秒"
+                                  value={typeof val.stages?.[idx] === "number" ? String(val.stages![idx]) : ""}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    const stages = { ...(val.stages ?? {}) };
+                                    if (v === "") delete stages[idx];
+                                    else stages[idx] = Number(v);
+                                    setResult(item.id, { ...val, stages });
+                                  }}
+                                />
+                                <span className="exam-stage__unit">{item.unit ?? ""}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <ExamField
+                            defId={item.id}
+                            label={item.name}
+                            side={item.side}
+                            dataType={item.dataType}
+                            options={item.options}
+                            value={val}
+                            onChange={(r) => setResult(item.id, r)}
+                          />
+                        )}
                       </div>
                     );
                   })}
