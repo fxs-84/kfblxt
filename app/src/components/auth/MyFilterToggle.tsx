@@ -1,4 +1,4 @@
-import { getProfileById } from "../../lib/profiles";
+import { useProfile } from "../../lib/profiles";
 
 interface MyFilterToggleProps {
   /** 是否启用"我创建的"过滤 */
@@ -78,7 +78,8 @@ export function countCreatedToday<T extends { createdAt: Date | string }>(
   }).length;
 }
 
-/** 工具:把 userId 解析为 displayName(找不到时返回"未指定") */
-export function resolveName(userId: string | undefined | null): string {
-  return getProfileById(userId)?.fullName ?? "未指定";
+/** React hook:把 userId 解析为 displayName(找不到时返回"未指定") */
+export function useName(userId: string | undefined | null): string {
+  const p = useProfile(userId);
+  return p?.fullName ?? "未指定";
 }

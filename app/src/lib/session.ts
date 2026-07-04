@@ -1,9 +1,7 @@
 import type { UserRole } from "./rbac";
-import { DEFAULT_PROFILE } from "./profiles";
 
 /**
- * Phase 1 mock 会话。真实认证在接入 Supabase Auth 后替换,
- * 届时 orgId/role 从 JWT 与 profiles 表读取。当前用固定演示机构。
+ * 会话结构。接 Supabase Auth 后 userId/role/orgId 从 JWT 与 profiles 表读取。
  */
 export interface Session {
   userId: string;
@@ -12,13 +10,20 @@ export interface Session {
   role: UserRole;
 }
 
-export const MOCK_SESSION: Session = {
-  userId: DEFAULT_PROFILE.userId,
+/**
+ * 匿名会话 — 未登录状态,所有权限检查 deny。
+ * 接 Supabase 前用占位 userId,登录后由 saveSession 覆盖。
+ */
+export const ANONYMOUS_SESSION: Session = {
+  userId: "anonymous",
   orgId: "00000000-0000-4000-8000-0000000000f0",
-  fullName: DEFAULT_PROFILE.fullName,
-  role: DEFAULT_PROFILE.role,
+  fullName: "未登录",
+  role: "therapist",
 };
 
+/** 向后兼容:seed 数据仍在引用 MOCK_SESSION,等同演示机构常量 */
+export const MOCK_SESSION = ANONYMOUS_SESSION;
+
 export function getSession(): Session {
-  return MOCK_SESSION;
+  return ANONYMOUS_SESSION;
 }

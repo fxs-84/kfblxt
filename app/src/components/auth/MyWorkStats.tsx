@@ -8,7 +8,7 @@ import { useAllDiagnoses } from "../../features/diagnosis/useDiagnosis";
 import { useAllTreatmentPlans } from "../../features/treatment/useTreatment";
 import { useAllFollowups } from "../../features/followup/useFollowup";
 import { useAllBilling } from "../../features/billing/useBilling";
-import { getProfileById } from "../../lib/profiles";
+import { useProfile } from "../../lib/profiles";
 
 function isToday(d: Date | string): boolean {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -44,7 +44,7 @@ export function MyWorkStats() {
   const { records: billing = [] } = useAllBilling();
 
   const me = session.userId;
-  const profile = getProfileById(me);
+  const profile = useProfile(me);
 
   const stats: CountStat[] = useMemo(() => {
     const countMine = (items: { createdBy?: string; createdAt: Date | string }[]) => {

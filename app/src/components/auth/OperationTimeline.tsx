@@ -5,7 +5,7 @@ import { useAllDiagnoses } from "../../features/diagnosis/useDiagnosis";
 import { useAllTreatmentPlans } from "../../features/treatment/useTreatment";
 import { useAllBilling } from "../../features/billing/useBilling";
 import { useAllFollowups } from "../../features/followup/useFollowup";
-import { getProfileById } from "../../lib/profiles";
+import { useProfiles } from "../../lib/profiles";
 import { formatDate } from "../../lib/format";
 
 type OperationType =
@@ -154,6 +154,8 @@ export function OperationTimeline({
     encounters, examSessions, diagnoses, plans, billing, followups,
   ]);
 
+  const authorMap = useProfiles(events.map((ev) => ev.authorId));
+
   if (events.length === 0) {
     return (
       <div className="card panel">
@@ -177,7 +179,7 @@ export function OperationTimeline({
       </div>
       <ol className="timeline">
         {events.map((ev) => {
-          const author = getProfileById(ev.authorId);
+          const author = ev.authorId ? authorMap[ev.authorId] : null;
           return (
             <li key={ev.id} className="timeline__item">
               <span className="timeline__dot" data-type={ev.type} aria-hidden>{ev.icon}</span>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MOCK_SESSION, type Session } from "../../lib/session";
+import { ANONYMOUS_SESSION, type Session } from "../../lib/session";
 
 const SESSION_STORAGE_KEY = "anrm_session";
 
@@ -8,14 +8,15 @@ function readSession(): Session {
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Session;
-      if (parsed && typeof parsed.userId === "string" && typeof parsed.role === "string") {
+      // 兼容旧的内置 mock session(张医师/李治疗师/...)— 这些 userId 不在 users 表里,视为未登录
+      if (parsed && typeof parsed.userId === "string" && parsed.userId !== "anonymous" && typeof parsed.role === "string") {
         return parsed;
       }
     }
   } catch {
     // localStorage 不可用或 JSON 损坏 → 回退到 mock
   }
-  return MOCK_SESSION;
+  return ANONYMOUS_SESSION;
 }
 
 /**

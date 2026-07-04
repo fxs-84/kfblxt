@@ -1,4 +1,4 @@
-import { getProfileById, ROLE_LABEL } from "../../lib/profiles";
+import { useProfile, ROLE_LABEL } from "../../lib/profiles";
 
 interface TherapistAttributionProps {
   /** 治疗师 userId(由 createdBy/updatedBy 字段提供) */
@@ -22,7 +22,7 @@ export function TherapistAttribution({
   label = "创建",
   compact = false,
 }: TherapistAttributionProps) {
-  const profile = getProfileById(userId);
+  const profile = useProfile(userId);
   const time = at ? formatRelativeTime(at) : null;
 
   if (!profile) {
