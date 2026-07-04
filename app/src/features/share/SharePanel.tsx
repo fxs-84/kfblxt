@@ -4,6 +4,8 @@ import { useSharesByEncounter, useRevokeShare, useCreateShare } from "./useShare
 import { generateHomeworkTemplate } from "../agent/agent-utils";
 import { useTreatmentPlans } from "../treatment/useTreatment";
 import { formatDate } from "../../lib/format";
+import { buildShareSnapshot } from "./build-snapshot";
+import { encodeSnapshot } from "./share-codec";
 
 interface SharePanelProps { encounterId: string; patientId: string; interventionIds?: string[] }
 
@@ -27,25 +29,35 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   };
 
   const handleGenerate = async () => {
+    // 先快照临床数据(在创建分享之前,确保数据一致)
+    const hw = homework.trim() || undefined;
+    const msg = message.trim() || undefined;
+    const nv = nextVisit ? new Date(nextVisit) : undefined;
+    let hashData = "";
+    try {
+      const snapshot = await buildShareSnapshot(encounterId, patientId);
+      hashData = encodeSnapshot(snapshot, { message: msg, homework: hw, nextVisit: nv });
+    } catch { /* 快照失败不退避,链接不含 hash 但 token 仍可用 */ }
+
     await createShare.mutateAsync({
       encounterId,
       patientId,
-      homework: homework.trim() || undefined,
-      nextVisit: nextVisit ? new Date(nextVisit) : undefined,
-      message: message.trim() || undefined,
+      homework: hw,
+      nextVisit: nv,
+      message: msg,
+      hashData: hashData || undefined,
     });
     setShowForm(false); setMessage(""); setHomework(""); setNextVisit("");
   };
 
-  /* 用 ?share=<token> 形态而非 /share/<token>:
-     前者走主站根路径,GitHub Pages 返回 HTTP 200;
-     后者虽然 SPA 也能跑,但 GitHub Pages 对未匹配路径返回 404,
-     微信内置 webview 和部分浏览器看到 404 状态码就拒绝渲染,
-     即使 body 是完整 SPA HTML。
-     PatientViewPage 同时从 useParams 和 useSearchParams 拿 token,
-     老链接 /share/<token> 也不会失效。 */
-  const shareUrl = (token: string) =>
-    `${window.location.origin}${import.meta.env.BASE_URL}?share=${token}`;
+  /* 用 ?share=<token>#<snapshot> 形态:
+     - ?share=<token> 触发 PatientViewPage 路由
+     - #<base64> 编码全部临床数据,患者设备直接解码渲染,无需 Supabase
+     - GitHub Pages 对未知路径返回 404,querystring 形态走主站 200 */
+  const shareUrl = (token: string, hash?: string) => {
+    const base = `${window.location.origin}${import.meta.env.BASE_URL}?share=${token}`;
+    return hash ? `${base}#${hash}` : base;
+  };
 
   return (
     <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>
@@ -101,7 +113,7 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
       {shares.length > 0 && (
         <div style={{ padding: "var(--space-4) var(--space-5)" }}>
           {shares.map((s) => {
-            const url = shareUrl(s.token);
+            const url = shareUrl(s.token, s.hashData);
             return (
               <div key={s.id} className="share-card">
                 <div className="share-card__info">

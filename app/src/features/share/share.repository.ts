@@ -14,6 +14,7 @@ export interface ShareInput {
   homework?: string;
   nextVisit?: Date;
   message?: string;
+  hashData?: string;
 }
 
 export const shareRepository: Repository<ShareRecord, ShareInput> =

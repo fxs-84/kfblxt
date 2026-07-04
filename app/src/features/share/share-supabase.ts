@@ -21,6 +21,7 @@ export async function createSupabaseShare(input: {
   homework?: string;
   nextVisit?: Date;
   message?: string;
+  hashData?: string;
 }): Promise<ShareRecord> {
   if (!isSupabaseReady()) {
     // 回退到 localStorage
@@ -34,6 +35,7 @@ export async function createSupabaseShare(input: {
       homework: input.homework,
       nextVisit: input.nextVisit,
       message: input.message,
+      hashData: input.hashData,
     });
   }
 

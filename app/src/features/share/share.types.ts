@@ -24,6 +24,8 @@ export interface ShareLink {
   message?: string;
   /** 临床数据快照 — 创建分享时打入,患者设备无需 localStorage */
   snapshot?: ShareSnapshot | null;
+  /** URL hash 编码的临床数据 — 患者扫码直接解码渲染,无需 Supabase */
+  hashData?: string;
 }
 
 /** 分享快照 — 打包 PatientViewPage 所需的全部临床数据 */

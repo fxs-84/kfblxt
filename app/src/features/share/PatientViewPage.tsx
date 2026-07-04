@@ -17,14 +17,36 @@ import { ExamResultSummary } from "../exam/components/ExamResultSummary";
 import { INTERVENTIONS_CATALOG } from "../treatment/interventions-catalog";
 import { regionLabel } from "../../components/bodymap/regions";
 import { formatDate } from "../../lib/format";
+import { decodeSnapshot } from "./share-codec";
 import type { ShareSnapshot } from "./share.types";
+
+/** 从 URL hash 解码分享数据(# 后内容) */
+function readHashData(): { snapshot: ShareSnapshot; message?: string; homework?: string; nextVisit?: string } | null {
+  const hash = location.hash.slice(1);
+  if (!hash) return null;
+  const decoded = decodeSnapshot(hash);
+  if (!decoded) return null;
+  return decoded;
+}
 
 export function PatientViewPage() {
   const { token: pathToken } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const token = pathToken ?? searchParams.get("share") ?? "";
-  const { data: share, isLoading: shareLoading } = useShareByToken(token);
-  const snapshot = share?.snapshot as ShareSnapshot | null | undefined;
+
+  // 优先从 URL hash 读取所有数据(无需后端,跨设备可用)
+  const hashData = readHashData();
+  const hashSnapshot = hashData?.snapshot;
+
+  // token 查询:无 hash 时(旧链接)回退走 token → Supabase/localStorage
+  const skipTokenQuery = Boolean(hashData);
+  const { data: share, isLoading: shareLoading } = useShareByToken(skipTokenQuery ? undefined : token || undefined);
+  const snapshot = hashSnapshot ?? (share?.snapshot as ShareSnapshot | null | undefined);
+
+  // message/homework/nextVisit:优先 hash,其次 share
+  const displayMessage = hashData?.message ?? share?.message;
+  const displayHomework = hashData?.homework ?? share?.homework;
+  const displayNextVisit = hashData?.nextVisit ? new Date(hashData.nextVisit) : share?.nextVisit;
 
   const encounterId = share?.encounterId;
 
@@ -39,7 +61,8 @@ export function PatientViewPage() {
   const { data: plans = [] } = useTreatmentPlans(useFallback ? encounterId : undefined);
   const { data: attachments = [] } = useAttachments(useFallback ? encounterId : undefined);
 
-  if (shareLoading) {
+  // hash 快照直接渲染,不需要等待 token 查询
+  if (!hashSnapshot && shareLoading) {
     return (
       <div style={{ maxWidth: 640, margin: "60px auto", padding: "var(--space-6)", fontFamily: "var(--font-sans)" }}>
         <div className="empty">加载中…</div>
@@ -47,7 +70,8 @@ export function PatientViewPage() {
     );
   }
 
-  if (!share) {
+  // hash 快照直接渲染,不需要 share/token 验证
+  if (!hashSnapshot && !share) {
     return (
       <div style={{ maxWidth: 640, margin: "60px auto", padding: "var(--space-6)", textAlign: "center", fontFamily: "var(--font-sans)" }}>
         <h2 style={{ color: "var(--color-abnormal)" }}>链接无效或已过期</h2>
@@ -148,18 +172,18 @@ export function PatientViewPage() {
       )}
 
       {/* 治疗师留言 */}
-      {share.message && (
+      {displayMessage && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-6)", background: "linear-gradient(135deg, #f0f7fa, #ffffff)", borderLeft: "4px solid var(--color-accent)" }}>
-          <p style={{ margin: 0, fontSize: "var(--text-sm)", whiteSpace: "pre-wrap" }}>{share.message}</p>
+          <p style={{ margin: 0, fontSize: "var(--text-sm)", whiteSpace: "pre-wrap" }}>{displayMessage}</p>
         </div>
       )}
 
       {/* 家庭作业(核心患者价值) */}
-      {share.homework && (
+      {displayHomework && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)", border: "2px solid var(--color-accent-light)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)", color: "var(--color-accent)" }}>🏠 居家训练作业</h2>
           <div style={{ fontSize: "var(--text-sm)", whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
-            {share.homework}
+            {displayHomework}
           </div>
         </div>
       )}
@@ -171,7 +195,7 @@ export function PatientViewPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "var(--space-3)" }}>
             {beforeAfter.map((a) => (
               <div key={a.id} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-                <img src={a.dataUrl} alt={a.fileName} style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+                <img src={a.dataUrl || undefined} alt={a.fileName} style={{ width: "100%", height: 160, objectFit: "cover", display: "block", background: "var(--color-surface-sunken)" }} />
                 <div style={{ padding: "var(--space-2)", fontSize: "var(--text-xs)", textAlign: "center" }}>
                   {a.timeline && <span className={`badge badge--${a.timeline === "治疗前" ? "abnormal" : a.timeline === "治疗中" ? "caution" : "normal"}`}>{a.timeline}</span>}
                 </div>
@@ -182,10 +206,10 @@ export function PatientViewPage() {
       )}
 
       {/* 下次复诊 */}
-      {share.nextVisit && (
+      {displayNextVisit && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)", background: "linear-gradient(135deg, #fef8ed, #ffffff)", borderLeft: "4px solid var(--color-caution)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-2)", color: "var(--color-caution)" }}>📅 下次复诊</h2>
-          <p style={{ fontSize: "var(--text-xl)", fontWeight: 800, margin: 0 }}>{formatDate(share.nextVisit)}</p>
+          <p style={{ fontSize: "var(--text-xl)", fontWeight: 800, margin: 0 }}>{formatDate(displayNextVisit)}</p>
         </div>
       )}
 

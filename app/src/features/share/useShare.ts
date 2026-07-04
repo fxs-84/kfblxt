@@ -27,7 +27,7 @@ export function useShareByToken(token: string | undefined) {
 export function useCreateShare() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { encounterId: string; patientId: string; homework?: string; nextVisit?: Date; message?: string }) =>
+    mutationFn: (input: { encounterId: string; patientId: string; homework?: string; nextVisit?: Date; message?: string; hashData?: string }) =>
       createSupabaseShare(input),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["shares", vars.encounterId] });
