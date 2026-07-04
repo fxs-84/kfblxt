@@ -23,7 +23,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [trace, setTrace] = useState<Array<{ type: string; text?: string; name?: string; input?: unknown; output?: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [llmForm, setLlmForm] = useState({ apiUrl: "", apiKey: "", model: "" });
+  const [llmForm, setLlmForm] = useState({ apiUrl: "", apiKey: "", model: "", corsProxy: "" });
   const [llmSaveMsg, setLlmSaveMsg] = useState<string | null>(null);
   const [keyAlreadySet, setKeyAlreadySet] = useState(false);
   const [configured, setConfigured] = useState(isLLMConfigured());
@@ -109,6 +109,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
       apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages",
       apiKey: "",
       model: c?.model ?? "claude-haiku-4-5",
+      corsProxy: c?.corsProxy ?? "",
     });
     setKeyAlreadySet(Boolean(c?.apiKey));
     setLlmSaveMsg(null);
@@ -164,9 +165,9 @@ export function AgentChat({ onClose }: AgentChatProps) {
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             {[
               { label: "Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001" },
-              { label: "DeepSeek", url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+              { label: "DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat" },
+              { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
               { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
-              { label: "DeepSeek(R1)", url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-reasoner" },
             ].map(p => (
               <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model })} style={{
                 padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
@@ -197,6 +198,18 @@ export function AgentChat({ onClose }: AgentChatProps) {
             <label style={labelStyle}>模型</label>
             <input value={llmForm.model} onChange={e => setLlmForm(f => ({ ...f, model: e.target.value }))} placeholder="claude-haiku-4-5" style={inputStyle} />
           </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>
+              CORS 代理 (可选)
+              <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: 6 }}>GitHub Pages 跨域必填</span>
+            </label>
+            <input
+              value={llmForm.corsProxy}
+              onChange={e => setLlmForm(f => ({ ...f, corsProxy: e.target.value }))}
+              placeholder="留空直连;跨域则填代理地址,如 https://proxy.cors.sh/"
+              style={inputStyle}
+            />
+          </div>
           {llmSaveMsg && (
             <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 4, fontSize: 12,
               background: llmSaveMsg.includes("成功") ? "var(--color-normal-weak, #ecfdf5)" : "var(--color-abnormal-bg, #fef2f2)",
@@ -208,23 +221,11 @@ export function AgentChat({ onClose }: AgentChatProps) {
             <button type="button" onClick={() => {
               const urlOk = llmForm.apiUrl.trim();
               const keyOk = llmForm.apiKey.trim();
-              if (!urlOk || !keyOk) {
-                if (!keyOk && keyAlreadySet) {
-                  // key 已在 localStorage,未修改,允许保存(用旧 key)
-                  const existing = getLLMConfig();
-                  const key = existing?.apiKey ?? "";
-                  if (!key) {
-                    setLlmSaveMsg("❌ 请输入 API Key");
-                    return;
-                  }
-                  saveLLMConfig({ apiUrl: urlOk, apiKey: key, model: llmForm.model.trim() || "claude-haiku-4-5" });
-                } else {
-                  setLlmSaveMsg("❌ API URL 和 Key 必填");
-                  return;
-                }
-              } else {
-                saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5" });
-              }
+              const proxyOk = llmForm.corsProxy.trim() || undefined;
+              const finalKey = keyOk || (keyAlreadySet ? (getLLMConfig()?.apiKey ?? "") : "");
+              if (!urlOk) { setLlmSaveMsg("❌ API URL 必填"); return; }
+              if (!finalKey) { setLlmSaveMsg("❌ 请输入 API Key"); return; }
+              saveLLMConfig({ apiUrl: urlOk, apiKey: finalKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: proxyOk });
               setConfigured(true);
               setLlmSaveMsg("✅ 保存成功");
               setTimeout(() => setShowSettings(false), 600);

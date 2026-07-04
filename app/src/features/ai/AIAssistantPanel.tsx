@@ -93,9 +93,9 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
   const [aiMode, setAiMode] = useState<"rules" | "llm">("rules");
   const [llmConfigured, setLlmConfigured] = useState(isLLMConfigured());
   const [showLlmSettings, setShowLlmSettings] = useState(false);
-  const [llmForm, setLlmForm] = useState<{ apiUrl: string; apiKey: string; model: string }>(() => {
+  const [llmForm, setLlmForm] = useState<{ apiUrl: string; apiKey: string; model: string; corsProxy: string }>(() => {
     const c = getLLMConfig();
-    return { apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5" };
+    return { apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5", corsProxy: c?.corsProxy ?? "" };
   });
   const [llmError, setLlmError] = useState<string | null>(null);
   const [keyAlreadySet, setKeyAlreadySet] = useState(false);
@@ -243,7 +243,8 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
               {([
                 { label: "Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001" },
-                { label: "DeepSeek", url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+                { label: "DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat" },
+                { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
                 { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
               ] as const).map(p => (
                 <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model })} style={{
@@ -287,6 +288,19 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                 style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
               />
             </div>
+            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
+              <label style={{ fontSize: "var(--text-xs)" }}>
+                CORS 代理 (可选)
+                <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: 6 }}>GitHub Pages 跨域必填</span>
+              </label>
+              <input
+                type="text"
+                value={llmForm.corsProxy}
+                onChange={(e) => setLlmForm((f) => ({ ...f, corsProxy: e.target.value }))}
+                placeholder="留空直连;跨域则填代理地址"
+                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
+              />
+            </div>
             {llmError && <div className="field__error" style={{ marginBottom: "var(--space-2)" }}>{llmError}</div>}
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
               <button
@@ -302,13 +316,13 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                       // 保留已有 key
                       const existing = getLLMConfig();
                       if (!existing?.apiKey) { setLlmError("请输入 API Key"); return; }
-                      saveLLMConfig({ apiUrl: urlOk, apiKey: existing.apiKey, model: llmForm.model.trim() || "claude-haiku-4-5" });
+                      saveLLMConfig({ apiUrl: urlOk, apiKey: existing.apiKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
                     } else {
                       setLlmError("API Key 必填");
                       return;
                     }
                   } else {
-                    saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5" });
+                    saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
                   }
                   setLlmConfigured(true);
                   setShowLlmSettings(false);

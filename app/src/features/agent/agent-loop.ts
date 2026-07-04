@@ -7,7 +7,7 @@
  * 安全:仅在用户已配置 LLM key 时跑(llm-engine 已保证 key 不进 bundle)。
  * 限流:默认 8 轮工具调用,32K tokens 上限。
  */
-import { getLLMConfig, isLLMConfigured } from "../ai/llm-engine";
+import { getLLMConfig, isLLMConfigured, resolveApiUrl } from "../ai/llm-engine";
 import {
   buildApiHeaders,
   detectApiType,
@@ -89,6 +89,7 @@ export async function runAgent(
 
   const cfg = getLLMConfig()!;
   const apiType = detectApiType(cfg.apiUrl);
+  const requestUrl = resolveApiUrl(cfg.apiUrl, cfg.corsProxy);
   const rawMessages: AgentMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history,
@@ -104,7 +105,7 @@ export async function runAgent(
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     let res: Response;
     try {
-      res = await fetch(cfg.apiUrl, {
+      res = await fetch(requestUrl, {
         method: "POST",
         headers,
         body: JSON.stringify(buildRequestBody(apiType, rawMessages, anthropicTools, cfg.model)),
@@ -112,7 +113,7 @@ export async function runAgent(
     } catch (fetchErr: unknown) {
       const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
       if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
-        throw new Error(`网络不通或 CORS 阻止: ${cfg.apiUrl}\n\n浏览器可能阻止了跨域请求。API 提供者需要允许来自网页的直接调用,或你需要配置 CORS 代理。\n\n原始错误: ${msg}`);
+        throw new Error(`网络不通或 CORS 阻止: ${cfg.apiUrl}\n\n浏览器阻止了跨域请求。解决办法:\n1. 在配置中填入 CORS 代理\n2. 或使用本地开发环境\n\n原始错误: ${msg}`);
       }
       throw new Error(`网络错误: ${msg}`);
     }

@@ -68,6 +68,14 @@ export interface LLMConfig {
   apiKey: string;
   /** 模型名,默认 claude-haiku-4-5 */
   model: string;
+  /** CORS 代理 URL,可选。如 https://your-cors-proxy/  */
+  corsProxy?: string;
+}
+
+/** 实际发请求的 URL(经 CORS 代理或直连) */
+export function resolveApiUrl(baseUrl: string, corsProxy?: string): string {
+  if (!corsProxy) return baseUrl;
+  return corsProxy.replace(/\/+$/, "") + "/" + baseUrl.replace(/^https?:\/\//, "");
 }
 
 /** 读取用户在 localStorage 里配置的 LLM(部署安全:不打包进 bundle) */
@@ -81,6 +89,7 @@ export function getLLMConfig(): LLMConfig | null {
       apiUrl: parsed.apiUrl,
       apiKey: parsed.apiKey,
       model: parsed.model || "claude-haiku-4-5",
+      corsProxy: parsed.corsProxy,
     };
   } catch {
     return null;
@@ -175,7 +184,8 @@ async function callLLM(ctx: ClinicalContext): Promise<ReturnType<typeof import("
         ],
       };
 
-  const res = await fetch(cfg.apiUrl, { method: "POST", headers, body: JSON.stringify(body) });
+  const requestUrl = resolveApiUrl(cfg.apiUrl, cfg.corsProxy);
+  const res = await fetch(requestUrl, { method: "POST", headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`LLM API ${res.status}`);
 
   const data = await res.json() as Record<string, unknown>;
