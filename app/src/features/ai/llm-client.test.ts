@@ -60,13 +60,19 @@ describe("resolveFetchUrl — dev 模式", () => {
     expect(r.url).toBe("/api/openai/v1/chat/completions");
     expect(r.viaProxy).toBe(true);
   });
-  it("未知 provider → /api/proxy/<base64>", () => {
+  it("未知 provider → /api/proxy/<urlencoded>", () => {
     const r = resolveFetchUrl("https://api.custom.com/v1/chat", undefined);
     expect(r.url).toMatch(/^\/api\/proxy\//);
     expect(r.viaProxy).toBe(true);
     // 解码后是原 URL
     const enc = r.url.slice("/api/proxy/".length);
-    expect(atob(enc)).toBe("https://api.custom.com/v1/chat");
+    expect(decodeURIComponent(enc)).toBe("https://api.custom.com/v1/chat");
+  });
+  it("未知 provider 含特殊字符 → URL 编码安全", () => {
+    // base64 会有 +/= 等 URL 不安全字符,urlencoded 不会有
+    const r = resolveFetchUrl("https://api.x.com/v1?key=a+b&c=d", undefined);
+    expect(r.url).not.toMatch(/[+=]/); // 不含 base64 padding
+    expect(decodeURIComponent(r.url.slice("/api/proxy/".length))).toBe("https://api.x.com/v1?key=a+b&c=d");
   });
 });
 

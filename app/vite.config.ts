@@ -183,11 +183,12 @@ function devApiProxy(): Plugin {
           return;
         }
 
-        // ---- 通用代理: /api/proxy/<base64url> → 解码后转发任意 API ----
+        // ---- 通用代理: /api/proxy/<urlencoded> → 解码后转发任意 API ----
+        // 用 encodeURIComponent / decodeURIComponent 而不是 base64,完全 URL 安全
         const proxyMatch = url.match(/^\/api\/proxy\/(.+)$/);
         if (proxyMatch) {
           let target: string;
-          try { target = atob(proxyMatch[1]); } catch { res.statusCode = 400; res.end('bad proxy url'); return; }
+          try { target = decodeURIComponent(proxyMatch[1]); } catch { res.statusCode = 400; res.end('bad proxy url'); return; }
 
           // SSRF 防护: 验证目标 URL
           const urlErr = validateProxyUrl(target);

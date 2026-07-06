@@ -324,15 +324,33 @@ export function AgentChat({ onClose }: AgentChatProps) {
           <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>
             API key 仅保存在浏览器 localStorage,不会上传或进入 JS bundle。
           </p>
-          {/* 预设按钮 */}
+          {/* 部署环境提示 — 如果是 GitHub Pages 等静态部署,提醒需要 CORS 代理 */}
+          {typeof location !== "undefined" &&
+            !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && (
+            <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 4, fontSize: 11,
+              background: "var(--color-caution-weak, #fef8ed)",
+              color: "var(--color-caution)", lineHeight: 1.6 }}>
+              🌐 检测到非本地环境(部署站点) — 浏览器 CORS 会拦截直连 LLM API。
+              <br />
+              解决办法:1) 点下方"🌐 CORS 代理"预设按钮 / 2) 自己部署一个反代 / 3) 切到本地 <code>localhost</code> 开发。
+            </div>
+          )}
+          {/* 预设按钮 — 国内常用优先(国内网络可达) */}
+          <div style={{ marginBottom: 8, fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600 }}>⚡ 快速预设</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             {[
-              { label: "Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001" },
-              { label: "DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat" },
-              { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
-              { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+              { label: "🟢 DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat", region: "国内" },
+              { label: "🟢 DeepSeek-R1", url: "https://api.deepseek.com/chat/completions", model: "deepseek-reasoner", region: "国内" },
+              { label: "🟢 智谱 GLM-4", url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: "glm-4-plus", region: "国内" },
+              { label: "🟢 通义千问", url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", model: "qwen-plus", region: "国内" },
+              { label: "🟢 月之暗面", url: "https://api.moonshot.cn/v1/chat/completions", model: "moonshot-v1-32k", region: "国内" },
+              { label: "🟢 硅基流动", url: "https://api.siliconflow.cn/v1/chat/completions", model: "Qwen/Qwen2.5-72B-Instruct", region: "国内" },
+              { label: "🟠 Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001", region: "海外" },
+              { label: "🟠 OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini", region: "海外" },
+              { label: "🟠 Groq", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", region: "海外" },
+              { label: "🟠 OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", model: "anthropic/claude-3.5-sonnet", region: "海外" },
             ].map(p => (
-              <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: "" })} style={{
+              <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: llmForm.corsProxy })} title={`${p.region} · ${p.model}`} style={{
                 padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
                 background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
                 cursor: "pointer",
@@ -352,24 +370,41 @@ export function AgentChat({ onClose }: AgentChatProps) {
               type="password"
               value={llmForm.apiKey}
               onChange={e => { setLlmForm(f => ({ ...f, apiKey: e.target.value })); setLlmSaveMsg(null); }}
-              placeholder={keyAlreadySet ? "如需更换请输入新 key" : "sk-ant-..."}
+              placeholder={keyAlreadySet ? "如需更换请输入新 key" : "sk-..."}
               autoComplete="off"
               style={{ ...inputStyle, background: keyAlreadySet && !llmForm.apiKey ? "var(--color-normal-weak, #ecfdf5)" : undefined }}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>模型</label>
-            <input value={llmForm.model} onChange={e => setLlmForm(f => ({ ...f, model: e.target.value }))} placeholder="claude-haiku-4-5" style={inputStyle} />
+            <input value={llmForm.model} onChange={e => setLlmForm(f => ({ ...f, model: e.target.value }))} placeholder="claude-haiku-4-5 / deepseek-chat / ..." style={inputStyle} />
+          </div>
+          {/* CORS 代理 — 国内访问海外 API 时必填,GitHub Pages 部署时也必填 */}
+          <div style={{ marginBottom: 8, fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600 }}>
+            🌐 CORS 代理
+            <span style={{ fontSize: 10, marginLeft: 6, color: "var(--color-text-muted)" }}>
+              国内访问海外 API / GitHub Pages 部署时必填
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+            {[
+              { label: "🚫 留空(直连)", url: "" },
+              { label: "🌐 corsproxy.io", url: "https://corsproxy.io/?" },
+              { label: "🌐 allorigins", url: "https://api.allorigins.win/raw?url=" },
+              { label: "🌐 cors.sh", url: "https://proxy.cors.sh/" },
+            ].map(p => (
+              <button key={p.label} type="button" onClick={() => setLlmForm(f => ({ ...f, corsProxy: p.url }))} title={p.url || "直连"} style={{
+                padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
+                background: llmForm.corsProxy === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
+                cursor: "pointer",
+              }}>{p.label}</button>
+            ))}
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>
-              CORS 代理 (可选)
-              <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: 6 }}>GitHub Pages 跨域必填</span>
-            </label>
             <input
               value={llmForm.corsProxy}
               onChange={e => setLlmForm(f => ({ ...f, corsProxy: e.target.value }))}
-              placeholder="留空直连;跨域则填代理地址,如 https://proxy.cors.sh/"
+              placeholder="或自定义: https://corsproxy.io/?  /  https://api.allorigins.win/raw?url="
               style={inputStyle}
             />
           </div>

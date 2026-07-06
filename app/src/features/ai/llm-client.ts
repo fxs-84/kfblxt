@@ -95,9 +95,10 @@ export function resolveFetchUrl(cleanedUrl: string, corsProxy?: string): { url: 
         return { url: prefix + cleanedUrl.slice(idx + host.length), viaProxy: true };
       }
     }
-    // 兜底:任意 OpenAI 兼容 API → 通用 base64 代理
+    // 兜底:任意 OpenAI/Anthropic 兼容 API → 通用 URL 编码代理
+    // 用 encodeURIComponent 而不是 base64,避免 btoa 产生的 + / = 等 URL 不安全字符
     return {
-      url: `/api/proxy/${btoa(cleanedUrl)}`,
+      url: `/api/proxy/${encodeURIComponent(cleanedUrl)}`,
       viaProxy: true,
     };
   }
