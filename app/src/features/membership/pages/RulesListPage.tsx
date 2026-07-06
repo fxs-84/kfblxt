@@ -37,12 +37,22 @@ export function RulesListPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, gap: 8, alignItems: "center" }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>积分规则 ({rules.length})</h2>
-        <button type="button" onClick={() => navigate("/membership/rules/new")} style={{
-          padding: "6px 14px", background: "var(--color-accent)",
-          color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: 600,
-        }}>+ 新建规则</button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button type="button" onClick={() => navigate("/membership/tiers")} style={{
+            padding: "6px 12px", background: "transparent",
+            border: "1px solid var(--color-border)", borderRadius: 4, cursor: "pointer", fontSize: 12,
+          }}>等级配置</button>
+          <button type="button" onClick={() => navigate("/membership/test")} style={{
+            padding: "6px 12px", background: "transparent",
+            border: "1px solid var(--color-border)", borderRadius: 4, cursor: "pointer", fontSize: 12,
+          }}>测试沙盒</button>
+          <button type="button" onClick={() => navigate("/membership/rules/new")} style={{
+            padding: "6px 14px", background: "var(--color-accent)",
+            color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: 600,
+          }}>+ 新建规则</button>
+        </div>
       </div>
 
       {rules.length === 0 && <p style={{ color: "var(--color-text-muted)" }}>暂无规则</p>}

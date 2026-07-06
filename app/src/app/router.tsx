@@ -8,6 +8,8 @@ import { PatientViewPage } from "../features/share/PatientViewPage";
 import { MembershipEngineBootstrap } from "../features/membership/MembershipEngineBootstrap";
 import { RulesListPage } from "../features/membership/pages/RulesListPage";
 import { RuleEditPage } from "../features/membership/pages/RuleEditPage";
+import { TierConfigPage } from "../features/membership/pages/TierConfigPage";
+import { RuleTestPage } from "../features/membership/pages/RuleTestPage";
 
 const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 
@@ -41,6 +43,8 @@ export const router = createBrowserRouter(
         { path: "membership/rules", element: <RulesListPage /> },
         { path: "membership/rules/new", element: <RuleEditPage /> },
         { path: "membership/rules/:id", element: <RuleEditPage /> },
+        { path: "membership/tiers", element: <TierConfigPage /> },
+        { path: "membership/test", element: <RuleTestPage /> },
         { path: "*", element: <Navigate to="/" replace /> },
       ],
     },
