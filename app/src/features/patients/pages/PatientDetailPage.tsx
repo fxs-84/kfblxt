@@ -45,6 +45,7 @@ export function PatientDetailPage() {
   const [tab, setTab] = useState<TabType>("overview");
   const [showForm, setShowForm] = useState(false);
   const [examEncounterId, setExamEncounterId] = useState<string | null>(null);
+  const [diagnosisEid, setDiagnosisEid] = useState<string | null>(null);
   const [summaryEncounterId, setSummaryEncounterId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [checklistEid, setChecklistEid] = useState<string | null>(null);
@@ -163,16 +164,26 @@ export function PatientDetailPage() {
               onExam={(eid) => setExamEncounterId(examEncounterId === eid ? null : eid)}
               activeExamId={examEncounterId ?? undefined}
               onCloseEncounter={handleCloseEncounter}
+              onOpenDiagnosis={(eid) => setDiagnosisEid(diagnosisEid === eid ? null : eid)}
             />
           </div>
 
-          {/* 查体 + 定位诊断(进行中就诊) */}
+          {/* 定位诊断(任意就诊) */}
+          {diagnosisEid && (
+            <div style={{ marginTop: "1.5rem" }}>
+              <DiagnosisPanel encounterId={diagnosisEid} />
+              <div style={{ textAlign: "right", marginTop: "var(--space-3)" }}>
+                <button className="btn btn--ghost" onClick={() => setDiagnosisEid(null)}>收起</button>
+              </div>
+            </div>
+          )}
+
+          {/* 查体 + 附件(进行中就诊) */}
           {examEncounterId && (
             <div style={{ marginTop: "1.5rem" }}>
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}
-              <DiagnosisPanel encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
 

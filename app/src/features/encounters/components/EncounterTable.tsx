@@ -1,16 +1,20 @@
 import type { EncounterRecord } from "../encounter.repository";
 import { regionLabel } from "../../../components/bodymap/regions";
 import { formatDate, vasSeverity } from "../../../lib/format";
+import { useDiagnosisByEncounterMap } from "../../diagnosis/useDiagnosis";
 
 interface EncounterTableProps {
   encounters: readonly EncounterRecord[];
   onExam?: (encounterId: string) => void;
   activeExamId?: string;
   onCloseEncounter?: (encounterId: string) => void;
+  onOpenDiagnosis?: (encounterId: string) => void;
 }
 
-export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncounter }: EncounterTableProps) {
-  const hasActions = Boolean(onExam || onCloseEncounter);
+export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncounter, onOpenDiagnosis }: EncounterTableProps) {
+  const hasActions = Boolean(onExam || onCloseEncounter || onOpenDiagnosis);
+  const diagnosisMap = useDiagnosisByEncounterMap();
+
   return (
     <table className="table">
       <thead>
@@ -22,52 +26,76 @@ export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncoun
           <th>性质</th>
           <th>VAS</th>
           <th>病程</th>
-          {hasActions && <th style={{ width: 100 }}>操作</th>}
+          <th>诊断</th>
+          {hasActions && <th style={{ width: 120 }}>操作</th>}
         </tr>
       </thead>
       <tbody>
         {encounters.length === 0 ? (
-          <tr><td colSpan={hasActions ? 8 : 7} className="empty">暂无就诊记录。</td></tr>
+          <tr><td colSpan={hasActions ? 9 : 8} className="empty">暂无就诊记录。</td></tr>
         ) : (
-          encounters.map((e) => (
-            <tr key={e.id}>
-              <td>{formatDate(e.encounterDate)}</td>
-              <td>{e.visitType}</td>
-              <td>
-                <span className={`badge badge--${e.status === "已结束" ? "normal" : "caution"}`} style={{ fontSize: "var(--text-xs)" }}>
-                  {e.status}
-                </span>
-              </td>
-              <td>{e.chiefComplaint.regions.map((r) => regionLabel(r)).join("、")}</td>
-              <td>{e.chiefComplaint.nature.slice(0, 3).join("、")}{e.chiefComplaint.nature.length > 3 ? "…" : ""}</td>
-              <td><span className={`badge badge--${vasSeverity(e.chiefComplaint.vas)}`}>{e.chiefComplaint.vas}</span></td>
-              <td>{e.chiefComplaint.durationText}</td>
-              {hasActions && (
+          encounters.map((e) => {
+            const dx = diagnosisMap.get(e.id);
+            return (
+              <tr key={e.id}>
+                <td>{formatDate(e.encounterDate)}</td>
+                <td>{e.visitType}</td>
                 <td>
-                  <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap" }}>
-                    {onExam && (
-                      <button className={`btn btn--ghost ${activeExamId === e.id ? "btn--primary" : ""}`}
-                        style={{ padding: "2px 6px", fontSize: "var(--text-xs)" }}
-                        onClick={() => onExam(e.id)}>
-                        {activeExamId === e.id ? "收起" : "查体"}
-                      </button>
-                    )}
-                    {onCloseEncounter && e.status !== "已结束" && (
-                      <button className="btn btn--ghost"
-                        style={{ padding: "2px 6px", fontSize: "var(--text-xs)", color: "var(--color-normal)", borderColor: "var(--color-normal)" }}
-                        onClick={() => onCloseEncounter(e.id)}
-                        title="完成查体+诊断+治疗后,关闭本次就诊">
-                        结束
-                      </button>
-                    )}
-                    {e.status === "已结束" && (
-                      <span className="badge badge--normal" style={{ fontSize: "var(--text-xs)" }}>已存档</span>
-                    )}
-                  </div>
+                  <span className={`badge badge--${e.status === "已结束" ? "normal" : "caution"}`} style={{ fontSize: "var(--text-xs)" }}>
+                    {e.status}
+                  </span>
                 </td>
-              )}
-            </tr>
-          ))
+                <td>{e.chiefComplaint.regions.map((r) => regionLabel(r)).join("、")}</td>
+                <td>{e.chiefComplaint.nature.slice(0, 3).join("、")}{e.chiefComplaint.nature.length > 3 ? "…" : ""}</td>
+                <td><span className={`badge badge--${vasSeverity(e.chiefComplaint.vas)}`}>{e.chiefComplaint.vas}</span></td>
+                <td>{e.chiefComplaint.durationText}</td>
+                <td>
+                  {dx ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "var(--text-xs)" }}>
+                      <span className="badge badge--normal">✓ 已诊断</span>
+                      <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
+                        {dx.levels.slice(0, 2).join(" · ")}{dx.levels.length > 2 ? "…" : ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="badge badge--caution">未诊断</span>
+                  )}
+                </td>
+                {hasActions && (
+                  <td>
+                    <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap" }}>
+                      {onOpenDiagnosis && (
+                        <button className="btn btn--ghost"
+                          style={{ padding: "2px 6px", fontSize: "var(--text-xs)" }}
+                          onClick={() => onOpenDiagnosis(e.id)}
+                          title={dx ? "查看/编辑诊断" : "添加诊断"}>
+                          {dx ? "诊断" : "+ 诊断"}
+                        </button>
+                      )}
+                      {onExam && (
+                        <button className={`btn btn--ghost ${activeExamId === e.id ? "btn--primary" : ""}`}
+                          style={{ padding: "2px 6px", fontSize: "var(--text-xs)" }}
+                          onClick={() => onExam(e.id)}>
+                          {activeExamId === e.id ? "收起" : "查体"}
+                        </button>
+                      )}
+                      {onCloseEncounter && e.status !== "已结束" && (
+                        <button className="btn btn--ghost"
+                          style={{ padding: "2px 6px", fontSize: "var(--text-xs)", color: "var(--color-normal)", borderColor: "var(--color-normal)" }}
+                          onClick={() => onCloseEncounter(e.id)}
+                          title="完成查体+诊断+治疗后,关闭本次就诊">
+                          结束
+                        </button>
+                      )}
+                      {e.status === "已结束" && !dx && (
+                        <span className="badge badge--caution" style={{ fontSize: "var(--text-xs)" }}>已存档</span>
+                      )}
+                    </div>
+                  </td>
+                )}
+              </tr>
+            );
+          })
         )}
       </tbody>
     </table>
