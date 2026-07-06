@@ -409,47 +409,59 @@ export function AgentChat({ onClose }: AgentChatProps) {
             />
           </div>
 
-          {/* 搜索配置 */}
-          <div style={{ marginBottom: 12, padding: "10px 0", borderTop: "1px solid var(--color-border)", borderBottom: "1px solid var(--color-border)" }}>
-            <label style={{ ...labelStyle, fontSize: 12 }}>🔍 搜索后端</label>
-            <select
-              value={extCfg.searchBackend}
-              onChange={e => { const v = e.target.value as ExtConfig["searchBackend"]; setExtCfg(c => ({ ...c, searchBackend: v })); }}
-              style={{ width: "100%", padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)", marginTop: 4 }}
-            >
-              <option value="bing">Bing (需 API Key)</option>
-              <option value="custom">自定义搜索 URL</option>
-              <option value="none">禁用</option>
-            </select>
-            {extCfg.searchBackend === "bing" && (
-              <div style={{ marginTop: 4 }}>
-                <input
-                  type="password"
-                  value={extCfg.bingApiKey}
-                  onChange={e => setExtCfg(c => ({ ...c, bingApiKey: e.target.value }))}
-                  placeholder="Bing API Key (免费1000次/月)"
-                  autoComplete="off"
-                  style={inputStyle}
-                />
-                <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
-                  注册: portal.azure.com → 创建 Bing Search 资源 → Keys and Endpoint
-                </div>
+          {/* 高级设置 — 默认收起,搜索后端配置藏在这里,普通用户不需要碰 */}
+          <details style={{ marginBottom: 12, padding: "8px 0", borderTop: "1px solid var(--color-border)" }}>
+            <summary style={{ fontSize: 12, color: "var(--color-text-muted)", cursor: "pointer", fontWeight: 600 }}>
+              🔧 高级设置(可选,默认不用配)
+            </summary>
+            <div style={{ marginTop: 8, padding: 8, background: "var(--color-surface-sunken, #f5f7fa)", borderRadius: 4 }}>
+              <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 8, lineHeight: 1.6 }}>
+                💡 搜索后端说明:LLM 本身已能回答大部分临床问题(知识截止 2025 年)。
+                <br />• <code>web_fetch</code> 抓任意 URL(无需配置)
+                <br />• <code>search_pubmed</code> 查 PubMed 文献(无需配置,免费)
+                <br />• <code>web_search</code> 通用搜索(需下拉选 Bing + 填 key,或自配 SearXNG)
+                <br />• 内部病历查询(无需配置,默认就有)
               </div>
-            )}
-            {extCfg.searchBackend === "custom" && (
-              <div style={{ marginTop: 4 }}>
-                <input
-                  value={extCfg.customSearchUrl}
-                  onChange={e => setExtCfg(c => ({ ...c, customSearchUrl: e.target.value }))}
-                  placeholder="搜索 URL,{q}=查询词 (如 SearXNG)"
-                  style={inputStyle}
-                />
-                <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
-                  要求返回 JSON,格式: {"{ results: [{ title, snippet, url }] }"}
+              <label style={{ ...labelStyle, fontSize: 12 }}>🔍 搜索后端</label>
+              <select
+                value={extCfg.searchBackend}
+                onChange={e => { const v = e.target.value as ExtConfig["searchBackend"]; setExtCfg(c => ({ ...c, searchBackend: v })); }}
+                style={{ width: "100%", padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)", marginTop: 4 }}
+              >
+                <option value="none">禁用(推荐 — LLM 自带知识已够用)</option>
+                <option value="bing">Bing (需 API Key)</option>
+                <option value="custom">自定义 SearXNG</option>
+              </select>
+              {extCfg.searchBackend === "bing" && (
+                <div style={{ marginTop: 4 }}>
+                  <input
+                    type="password"
+                    value={extCfg.bingApiKey}
+                    onChange={e => setExtCfg(c => ({ ...c, bingApiKey: e.target.value }))}
+                    placeholder="Bing API Key (免费1000次/月)"
+                    autoComplete="off"
+                    style={inputStyle}
+                  />
+                  <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
+                    注册: portal.azure.com → 创建 Bing Search 资源 → Keys and Endpoint
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+              {extCfg.searchBackend === "custom" && (
+                <div style={{ marginTop: 4 }}>
+                  <input
+                    value={extCfg.customSearchUrl}
+                    onChange={e => setExtCfg(c => ({ ...c, customSearchUrl: e.target.value }))}
+                    placeholder="搜索 URL,{q}=查询词 (如 SearXNG)"
+                    style={inputStyle}
+                  />
+                  <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
+                    要求返回 JSON,格式: {"{ results: [{ title, snippet, url }] }"}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
           {llmSaveMsg && (
             <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 4, fontSize: 12,
               background: llmSaveMsg.includes("成功") ? "var(--color-normal-weak, #ecfdf5)" : "var(--color-abnormal-bg, #fef2f2)",

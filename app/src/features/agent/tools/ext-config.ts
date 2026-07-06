@@ -14,7 +14,7 @@ export interface ExtConfig {
 }
 
 const DEFAULTS: ExtConfig = {
-  searchBackend: "bing",
+  searchBackend: "none",
   bingApiKey: "",
   customSearchUrl: "https://searxng.example.com/search?q={q}",
 };

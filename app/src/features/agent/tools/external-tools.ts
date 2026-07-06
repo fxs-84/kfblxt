@@ -28,8 +28,8 @@ export const webSearchTool: AgentTool<typeof webSearchSchema> = {
     if (!isSearchConfigured()) {
       return JSON.stringify({
         ok: false,
-        error: "未配置搜索引擎。请在 AI 助手 → 🔑 LLM配置 → 搜索后端 中配置 Bing API Key 或自配置搜索 URL。",
-        hint: "Bing API 免费层每月 1000 次请求，注册地址: https://portal.azure.com → 创建 Bing Search 资源",
+        error: "通用搜索引擎未启用(默认禁用)。",
+        hint: "大多数临床问题可由 LLM 知识 + PubMed 文献 + 用户提供的 URL 解答。如需启用:AI 助手 → 🔑 → 高级设置 → 选 Bing 并填 Key,或自配 SearXNG。",
       });
     }
 
@@ -61,7 +61,7 @@ export const webSearchTool: AgentTool<typeof webSearchSchema> = {
       } else if (cfg.searchBackend === "custom") {
         // 自配置搜索 URL
         const customUrl = cfg.customSearchUrl.replace(/\{q\}/g, encodeURIComponent(query));
-        const proxyPath = `/api/proxy/${btoa(customUrl)}`;
+        const proxyPath = `/api/proxy/${encodeURIComponent(customUrl)}`;
         const res = await fetch(proxyPath);
         if (!res.ok) {
           return JSON.stringify({
@@ -130,8 +130,8 @@ export const webFetchTool: AgentTool<typeof webFetchSchema> = {
   execute: async (input, _ctx) => {
     const { url, extract_text } = input;
     try {
-      // 走通用 Vite 代理 /api/proxy/<base64url>
-      const proxyPath = `/api/proxy/${btoa(url)}`;
+      // 走通用 Vite 代理 /api/proxy/<urlencoded>
+      const proxyPath = `/api/proxy/${encodeURIComponent(url)}`;
       const res = await fetch(proxyPath);
       if (!res.ok) {
         return JSON.stringify({
@@ -495,7 +495,7 @@ export const searchPubmedTool: AgentTool<typeof pubmedSchema> = {
     const { query, max_results } = input;
     try {
       // Step 1: ESearch — 获取 PMID 列表
-      const esearchUrl = `/api/proxy/${btoa(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=${max_results}&retmode=json&sort=relevance&term=${encodeURIComponent(query)}`)}`;
+      const esearchUrl = `/api/proxy/${encodeURIComponent(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=${max_results}&retmode=json&sort=relevance&term=${encodeURIComponent(query)}`)}`;
       const sRes = await fetch(esearchUrl);
       if (!sRes.ok) throw new Error(`PubMed ESearch HTTP ${sRes.status}`);
       const sData = (await sRes.json()) as { esearchresult?: { idlist?: string[] } };
@@ -505,7 +505,7 @@ export const searchPubmedTool: AgentTool<typeof pubmedSchema> = {
       }
 
       // Step 2: ESummary — 获取文献详情
-      const esumUrl = `/api/proxy/${btoa(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(",")}`)}`;
+      const esumUrl = `/api/proxy/${encodeURIComponent(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(",")}`)}`;
       const eRes = await fetch(esumUrl);
       if (!eRes.ok) throw new Error(`PubMed ESummary HTTP ${eRes.status}`);
       const eData = (await eRes.json()) as { result?: Record<string, unknown> };
