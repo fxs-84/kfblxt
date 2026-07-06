@@ -244,23 +244,116 @@ export function validateExternalUrl(rawUrl: string): string | null {
   return null;
 }
 
-/** 从 URL 安装 Skill(支持 GitHub Raw / Gist / 任意 .md 文件) */
+/** 从 URL 安装 Skill(支持 GitHub Raw / Gist / 任意 .md / SPA → raw 链接自动转换) */
 export async function installSkillFromUrl(rawUrl: string): Promise<SkillConfig> {
   // URL 安全验证
   const urlErr = validateExternalUrl(rawUrl);
   if (urlErr) throw new Error(`URL 验证失败: ${urlErr}`);
 
-  // 决定 fetch URL:
-  //   - 本地 dev: 走 Vite 代理(自动处理 CORS);urlencoded 编码
-  //   - 生产 + 配了 corsProxy: 包到代理后面
-  //   - 生产直连: 浏览器会拦截 CORS,提示用户填 corsProxy
+  const tried: string[] = [];
+  const candidates = buildSkillUrlCandidates(rawUrl);
+
+  let lastError = "";
+  for (const candidate of candidates) {
+    tried.push(candidate);
+    try {
+      const md = await fetchAsText(candidate);
+      const parsed = parseFrontmatter(md);
+      if (parsed) {
+        const { meta, body } = parsed;
+        return addSkill({
+          name: meta.name || meta.title || "未命名 Skill",
+          description: meta.description || "",
+          triggers: (meta.triggers || meta.keywords || "").split(/[,，]/).map(s => s.trim()).filter(Boolean),
+          alwaysOn: meta.always_on === "true" || meta.alwaysOn === "true",
+          prompt: body,
+          priority: parseInt(meta.priority || "10", 10) || 10,
+          enabled: true,
+          // 记录真正能下载的源 URL,便于后续更新
+          sourceUrl: candidate,
+        });
+      }
+      // 抓到了但不是 markdown(可能仍是 HTML 骨架)
+      lastError = `URL 返回的不是 markdown(可能是 SPA 骨架): ${candidate}`;
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  // 全部失败:给清晰指引,而不是干巴巴一句"格式无效"
+  throw new Error(
+    `无法从 ${rawUrl} 获取 Skill markdown。\n` +
+    `已尝试 ${tried.length} 个候选 URL:\n${tried.map(u => "  • " + u).join("\n")}\n` +
+    `最后一错: ${lastError}\n\n` +
+    `可能原因:\n` +
+    `1. 该 URL 是 SPA 页面(JS 渲染),需要打开浏览器开发者工具 → Network 找到 .md 真实请求 URL\n` +
+    `2. URL 指向的是 GitHub blob 页面,改成 raw.githubusercontent.com 形式\n` +
+    `3. URL 需要登录/token 访问\n\n` +
+    `解决方法:打开 ${rawUrl} → 浏览器右键"另存为"或"查看源代码" → 把 .md 文件内容粘到下面输入框`,
+  );
+}
+
+/**
+ * 给定一个 URL,生成可能命中 markdown 的候选 URL 列表。
+ * 处理常见模式:
+ *   - GitHub blob → raw.githubusercontent.com
+ *   - GitHub gist → gist.githubusercontent.com
+ *   - GitHub API → raw
+ *   - GitLab / Bitbucket 类似
+ *   - 直接追加 /raw /install/*.md 等
+ */
+export function buildSkillUrlCandidates(rawUrl: string): string[] {
+  const candidates: string[] = [rawUrl];
+  try {
+    const u = new URL(rawUrl);
+
+    // GitHub: github.com/{owner}/{repo}/blob/{branch}/{path}
+    //   → raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+    const ghBlob = u.hostname === "github.com" && u.pathname.match(/^\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+    if (ghBlob) {
+      const [, owner, repo, rest] = ghBlob;
+      candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/${rest}`);
+    }
+
+    // GitHub gist: gist.github.com/{user}/{id}
+    //   → gist.githubusercontent.com/{user}/{id}/raw
+    const gist = u.hostname === "gist.github.com" && u.pathname.match(/^\/([^/]+)\/([^/]+)/);
+    if (gist) {
+      const [, user, id] = gist;
+      candidates.push(`https://gist.githubusercontent.com/${user}/${id}/raw`);
+    }
+
+    // GitLab: gitlab.com/{owner}/{repo}/-/blob/{branch}/{path}
+    //   → gitlab.com/{owner}/{repo}/-/raw/{branch}/{path}
+    if (u.hostname === "gitlab.com" && u.pathname.includes("/-/blob/")) {
+      candidates.push(rawUrl.replace("/-/blob/", "/-/raw/"));
+    }
+
+    // 任何域名:追加常见 .md 路径
+    candidates.push(new URL("/skill.md", u).toString());
+    candidates.push(new URL("/SKILL.md", u).toString());
+    candidates.push(new URL("/README.md", u).toString());
+
+    // Gitea/Forgejo: /owner/repo/src/branch/{path} → /owner/repo/raw/branch/{path}
+    const gitea = u.pathname.match(/^\/([^/]+)\/([^/]+)\/src\/branch\/(.+)$/);
+    if (gitea && (u.hostname.includes("gitea") || u.hostname.includes("codeberg") || u.hostname.includes("forgejo"))) {
+      const [, owner, repo, rest] = gitea;
+      candidates.push(`https://${u.hostname}/${owner}/${repo}/raw/branch/${rest}`);
+    }
+  } catch {
+    // 原始 URL 解析失败,只返回原 URL
+  }
+  return Array.from(new Set(candidates));
+}
+
+/** 走与 installSkillFromUrl 一致的 dev/prod 路径,返回响应文本 */
+async function fetchAsText(rawUrl: string): Promise<string> {
   const { resolveFetchUrl } = await import("../../ai/llm-client");
   const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]";
   let fetchUrl: string;
   if (isDev) {
     fetchUrl = `/api/proxy/${encodeURIComponent(rawUrl)}`;
   } else {
-    // 读 corsProxy 配置
     let corsProxy: string | undefined;
     try {
       const raw = localStorage.getItem("anrm_llm_config");
@@ -269,29 +362,11 @@ export async function installSkillFromUrl(rawUrl: string): Promise<SkillConfig> 
         corsProxy = parsed.corsProxy || undefined;
       }
     } catch { /* ignore */ }
-    const resolved = resolveFetchUrl(rawUrl, corsProxy);
-    fetchUrl = resolved.url;
+    fetchUrl = resolveFetchUrl(rawUrl, corsProxy).url;
   }
-
   const res = await fetch(fetchUrl);
-  if (!res.ok) throw new Error(`HTTP ${res.status}: 无法获取 ${rawUrl}`);
-  const md = await res.text();
-
-  const parsed = parseFrontmatter(md);
-  if (!parsed) throw new Error("Skill 文件格式无效: 缺少 YAML frontmatter (---...---)");
-
-  const { meta, body } = parsed;
-
-  return addSkill({
-    name: meta.name || meta.title || "未命名 Skill",
-    description: meta.description || "",
-    triggers: (meta.triggers || meta.keywords || "").split(/[,，]/).map(s => s.trim()).filter(Boolean),
-    alwaysOn: meta.always_on === "true" || meta.alwaysOn === "true",
-    prompt: body,
-    priority: parseInt(meta.priority || "10", 10) || 10,
-    enabled: true,
-    sourceUrl: rawUrl,
-  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.text();
 }
 
 /** 检查是否重复安装 */
