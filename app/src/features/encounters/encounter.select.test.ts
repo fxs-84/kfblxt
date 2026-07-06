@@ -11,6 +11,7 @@ function makeEncounter(date: string, vas: number, regions: EncounterRecord["chie
     encounterDate: new Date(date),
     visitType: "复诊",
     status: "进行中" as const,
+    amount: 300,
     chiefComplaint: { regions, nature: ["麻木"], vas, durationText: "1月" },
   };
 }

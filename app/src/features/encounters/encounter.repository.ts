@@ -18,6 +18,7 @@ const seed: EncounterRecord[] = [
     encounterDate: new Date("2026-05-20"),
     visitType: "初诊",
     status: "已结束",
+    amount: 300,
     chiefComplaint: {
       regions: ["left-lower-back", "left-gluteal", "left-hamstring-内侧", "left-calves-内侧"],
       distributionNote: "左小腿后外侧 S1 皮区",
@@ -34,6 +35,7 @@ const seed: EncounterRecord[] = [
     encounterDate: new Date("2026-06-03"),
     visitType: "复诊",
     status: "已结束",
+    amount: 300,
     chiefComplaint: {
       regions: ["left-lower-back", "left-hamstring-内侧"],
       nature: ["麻木", "不稳感"],
@@ -49,6 +51,7 @@ const seed: EncounterRecord[] = [
     encounterDate: new Date("2026-06-20"),
     visitType: "复诊",
     status: "已结束",
+    amount: 300,
     chiefComplaint: {
       regions: ["left-calves-内侧"],
       nature: ["酸痛", "活动受限"],
@@ -64,6 +67,7 @@ const seed: EncounterRecord[] = [
     encounterDate: new Date("2026-06-02"),
     visitType: "初诊",
     status: "已结束",
+    amount: 300,
     chiefComplaint: {
       regions: ["left-neck", "left-chest", "left-trapezius", "left-front-deltoids", "left-forearm-内侧"],
       distributionNote: "C6 皮区,胸小肌卡压可疑",
@@ -80,6 +84,7 @@ const seed: EncounterRecord[] = [
     encounterDate: new Date("2026-06-18"),
     visitType: "复诊",
     status: "已结束",
+    amount: 300,
     chiefComplaint: {
       regions: ["left-neck", "left-forearm-内侧"],
       nature: ["麻木", "不稳感"],

@@ -76,7 +76,9 @@ function evalConditions(conditions: RuleCondition[], ctx: EvalContext): boolean 
 async function buildContext(event: TriggerEvent): Promise<EvalContext> {
   const m = await getOrCreateMembership(event.patientId);
   const ctx: EvalContext = { patientTier: m.tier };
-  if (event.type === "encounter.closed") ctx.encounterAmount = event.amount;
+  if (event.type === "encounter.closed" || event.type === "billing.consumed") {
+    ctx.encounterAmount = event.amount;
+  }
   return ctx;
 }
 
@@ -102,7 +104,8 @@ async function executeAction(
       operatorId,
     });
   } else if (rule.action.kind === "award_ratio") {
-    if (event.type !== "encounter.closed" || !event.amount) return;
+    const isConsumption = event.type === "encounter.closed" || event.type === "billing.consumed";
+    if (!isConsumption || !event.amount) return;
     const tiers = await findAllTiers();
     const tier = tiers.find(t => t.tier === ctx.patientTier);
     const multiplier = tier?.pointMultiplier ?? 1;
@@ -113,8 +116,8 @@ async function executeAction(
       reason: rule.action.reason,
       ruleId: rule.id,
       triggerType: event.type,
-      refType: "encounter",
-      refId: event.encounterId,
+      refType: event.type === "billing.consumed" ? "manual" : "encounter",
+      refId: "encounterId" in event ? event.encounterId : ("billingId" in event ? event.billingId : null),
       operatorId,
     });
   } else if (rule.action.kind === "set_tier") {
@@ -130,9 +133,10 @@ function refTypeOf(eventType: TriggerEvent["type"]): PointsLog["refType"] {
 }
 
 function getRefId(event: TriggerEvent): string | null {
-  if ("encounterId" in event) return event.encounterId;
-  if ("shareToken" in event) return event.shareToken;
-  if ("refPatientId" in event) return event.refPatientId;
+  if ("encounterId" in event) return event.encounterId ?? null;
+  if ("shareToken" in event) return event.shareToken ?? null;
+  if ("refPatientId" in event) return event.refPatientId ?? null;
+  if ("billingId" in event) return event.billingId ?? null;
   return null;
 }
 

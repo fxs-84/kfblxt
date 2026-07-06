@@ -76,6 +76,12 @@ export async function createSupabaseShare(input: {
 
   if (error) throw new Error(`Supabase 创建分享失败: ${error.message}`);
 
+  // 触发积分引擎:share.sent (分享奖励)
+  try {
+    const { onShareSent } = await import("../membership/integration");
+    await onShareSent(input.patientId, token);
+  } catch { /* 静默 */ }
+
   return {
     id: token,
     encounterId: input.encounterId,

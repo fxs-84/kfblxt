@@ -21,11 +21,15 @@ export function usePatient(id: string | undefined) {
 export function useCreatePatient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: PatientInput) => {
+    mutationFn: async (input: PatientInput) => {
       if (!can(getSession().role, "patient:write")) {
         throw new Error("当前角色无权新建患者");
       }
-      return patientRepository.create(input);
+      const created = await patientRepository.create(input);
+      // 触发积分引擎:patient.created (赠送注册积分)
+      const { onPatientCreated } = await import("../membership/integration");
+      await onPatientCreated(created.id);
+      return created;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

@@ -24,19 +24,9 @@ export function useCloseEncounter() {
   return useMutation({
     mutationFn: async (id: string) => {
       const e = await encounterRepository.update(id, { status: "已结束" });
-      // 触发积分引擎
-      try {
-        const { membershipBus } = await import("../membership/trigger-events");
-        const { checkTierUpgrade } = await import("../membership/rule-engine");
-        await membershipBus.emit({
-          type: "encounter.closed",
-          patientId: e.patientId,
-          encounterId: e.id,
-          amount: 0,
-          createdAt: new Date(),
-        });
-        await checkTierUpgrade(e.patientId, 0);
-      } catch { /* 引擎未启用时静默 */ }
+      // 触发积分引擎:encounter.closed + 自动升级等级(根据就诊金额)
+      const { onEncounterClosed } = await import("../membership/integration");
+      await onEncounterClosed(e.patientId, e.id, e.amount ?? 0);
       return e;
     },
     onSuccess: () => {
@@ -59,11 +49,15 @@ export function useUpdateEncounter() {
 export function useCreateEncounter() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: EncounterInput) => {
+    mutationFn: async (input: EncounterInput) => {
       if (!can(getSession().role, "encounter:write")) {
         throw new Error("当前角色无权新建就诊记录");
       }
-      return encounterRepository.create(input);
+      const created = await encounterRepository.create(input);
+      // 触发积分引擎:encounter.created(可触发里程碑等)
+      const { onEncounterCreated } = await import("../membership/integration");
+      await onEncounterCreated(created.patientId, created.id);
+      return created;
     },
     onSuccess: (created) =>
       qc.invalidateQueries({ queryKey: ["encounters", created.patientId] }),

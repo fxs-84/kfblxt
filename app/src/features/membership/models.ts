@@ -15,6 +15,8 @@ export const TRIGGER_TYPES = [
   "patient.recommend",
   "patient.birthday",
   "encounter.nth",
+  "billing.consumed",
+  "billing.recharged",
   "manual",
 ] as const;
 export type TriggerType = (typeof TRIGGER_TYPES)[number];
@@ -28,6 +30,8 @@ export const TRIGGER_LABEL: Record<TriggerType, string> = {
   "patient.recommend": "推荐新患者",
   "patient.birthday": "患者生日",
   "encounter.nth": "第 N 次就诊",
+  "billing.consumed": "消费扣款",
+  "billing.recharged": "充值入账",
   "manual": "治疗师手动调整",
 };
 
@@ -165,4 +169,6 @@ export type TriggerEvent =
   | { type: "patient.recommend"; patientId: string; refPatientId: string; createdAt: Date }
   | { type: "patient.birthday"; patientId: string; createdAt: Date }
   | { type: "encounter.nth"; patientId: string; encounterId: string; nth: number; createdAt: Date }
+  | { type: "billing.consumed"; patientId: string; billingId: string; amount: number; encounterId?: string; createdAt: Date }
+  | { type: "billing.recharged"; patientId: string; billingId: string; amount: number; createdAt: Date }
   | { type: "manual"; patientId: string; delta: number; reason: string; operatorId: string; createdAt: Date };

@@ -22,8 +22,19 @@ export function useAllBilling() {
 export function useCreateBilling() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<BillingInput, "orgId">) =>
-      billingRepository.create({ ...input, orgId: getSession().orgId }),
+    mutationFn: async (input: Omit<BillingInput, "orgId">) => {
+      const created = await billingRepository.create({ ...input, orgId: getSession().orgId });
+      // 触发积分引擎:billing.consumed (独立触发器,避免与 encounter.closed 双计)
+      try {
+        const { onBillingConsumed, onBillingRecharged } = await import("../membership/integration");
+        if (input.type === "消费" && input.amount > 0) {
+          await onBillingConsumed(input.patientId, created.id, input.amount, input.encounterId);
+        } else if (input.type === "充值" && input.amount > 0) {
+          await onBillingRecharged(input.patientId, created.id, input.amount);
+        }
+      } catch { /* 静默 */ }
+      return created;
+    },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["billing", vars.patientId] });
     },

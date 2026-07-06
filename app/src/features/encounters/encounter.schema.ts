@@ -53,6 +53,8 @@ export const encounterSchema = z.object({
   visitType: visitTypeEnum,
   status: z.enum(["进行中", "已结束"]).default("进行中"),
   chiefComplaint: chiefComplaintSchema,
+  /** 就诊实际消费金额(元) — 用于积分累计和升级 */
+  amount: z.number().min(0).optional().default(0),
   soapNote: z.string().optional().or(z.literal("")),
   createdAt: z.coerce.date().optional(),
 });
