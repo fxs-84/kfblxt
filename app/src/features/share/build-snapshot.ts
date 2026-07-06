@@ -46,7 +46,7 @@ export async function buildShareSnapshot(encounterId: string, patientId: string)
       frequency: p.frequency,
       duration: p.duration,
       interventionIds: p.interventionIds,
-      goals: p.goals,
+      goals: p.goals.map((g: { description?: string; targetDate?: string | Date; achieved?: boolean }) => (typeof g === "string" ? g : g.description ?? "")),
     })),
     attachments: attachments.map((a) => ({
       id: a.id,

@@ -66,7 +66,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [mcpServers, setMcpServers] = useState<MCPServerConfig[]>(getMCPServers);
   const [mcpAddForm, setMcpAddForm] = useState({ name: "", type: "http" as "http" | "stdio", url: "", command: "", args: "" });
   const [mcpTesting, setMcpTesting] = useState<string | null>(null);
-  const [mcpTestResult, setMcpTestResult] = useState<{ id: string; ok: boolean; toolCount?: number; error?: string } | null>(null);
+  const [mcpTestResult, setMcpTestResult] = useState<{ id: string; ok: boolean; serverName?: string; toolCount?: number; error?: string } | null>(null);
   // Skills
   const [skills, setSkills] = useState<SkillConfig[]>(getSkills);
   const [showSkillForm, setShowSkillForm] = useState(false);
@@ -89,7 +89,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
 
   const loadConversations = async () => {
     const all = await conversationRepository.findAll();
-    setConversations(all.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
+    setConversations(all.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0)));
   };
 
   // 自动滚动
@@ -283,7 +283,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
               cursor: "pointer",
             }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{c.title}</div>
-              <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{c.updatedAt.toISOString().slice(0, 16).replace("T", " ")} · {c.messages.length} 条消息</div>
+              <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{c.updatedAt?.toISOString().slice(0, 16).replace("T", " ") ?? ""} · {c.messages.length} 条消息</div>
             </button>
           ))}
         </div>
@@ -329,7 +329,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
               { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
               { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
             ].map(p => (
-              <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model })} style={{
+              <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: "" })} style={{
                 padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
                 background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
                 cursor: "pointer",

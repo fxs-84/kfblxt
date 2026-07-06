@@ -19,6 +19,7 @@ const conversationSchema = z.object({
 export interface ConversationInput {
   title: string;
   messages: AgentMessage[];
+  updatedAt?: Date;
 }
 
 export type ConversationRecord = ConversationInput & Entity;
@@ -49,7 +50,7 @@ export async function pruneOldConversations(): Promise<number> {
   const cutoff = Date.now() - RETENTION_DAYS * 86_400_000;
   let removed = 0;
   for (const c of all) {
-    if (c.updatedAt.getTime() < cutoff) {
+    if ((c.updatedAt?.getTime() ?? 0) < cutoff) {
       await conversationRepository.remove(c.id);
       removed++;
     }

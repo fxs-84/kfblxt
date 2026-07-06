@@ -28,13 +28,13 @@ export const searchPatientsTool: AgentTool<typeof searchPatientsSchema> = {
     const diagnoses = await diagnosisRepository.findAll();
 
     const q = query.toLowerCase().trim();
-    if (!q) return JSON.stringify(patients.slice(0, limit).map(p => ({ id: p.id, name: p.name, gender: p.gender, age: p.age })), null, 2);
+    const age = (b: Date) => new Date().getFullYear() - new Date(b).getFullYear();
+    if (!q) return JSON.stringify(patients.slice(0, limit).map(p => ({ id: p.id, name: p.name, sex: p.sex, age: p.birthDate ? age(p.birthDate) : null })), null, 2);
 
     const scored: Array<{ p: typeof patients[0]; score: number }> = [];
     for (const p of patients) {
       let score = 0;
       if (p.name.toLowerCase().includes(q)) score += 10;
-      if (p.chiefComplaint?.toLowerCase().includes(q)) score += 5;
       const encs = encounters.filter(e => e.patientId === p.id);
       for (const e of encs) {
         if (e.chiefComplaint?.regions?.some(r => regionLabel(r).toLowerCase().includes(q))) score += 3;
@@ -55,10 +55,10 @@ export const searchPatientsTool: AgentTool<typeof searchPatientsSchema> = {
       return {
         id: p.id,
         name: p.name,
-        gender: p.gender,
-        age: p.age,
+        sex: p.sex,
+        age: p.birthDate ? age(p.birthDate) : null,
         lastVisit: lastEnc ? lastEnc.encounterDate.toISOString().slice(0, 10) : null,
-        chiefComplaint: p.chiefComplaint,
+        chiefComplaint: lastEnc?.chiefComplaint?.nature?.join("、") ?? null,
         score,
       };
     });
@@ -79,16 +79,17 @@ export const getPatientTool: AgentTool<typeof getPatientSchema> = {
   execute: async ({ patientId }) => {
     const p = await patientRepository.findById(patientId);
     if (!p) return JSON.stringify({ error: "患者不存在" });
+    const age = (b: Date) => new Date().getFullYear() - new Date(b).getFullYear();
     return JSON.stringify({
       id: p.id,
       name: p.name,
-      gender: p.gender,
-      age: p.age,
+      sex: p.sex,
+      age: p.birthDate ? age(p.birthDate) : null,
       birthDate: p.birthDate?.toISOString().slice(0, 10),
       phone: p.phone,
-      chiefComplaint: p.chiefComplaint,
-      note: p.note,
-      createdAt: p.createdAt.toISOString().slice(0, 10),
+      dominantHand: p.dominantHand,
+      medicalRecordNo: p.medicalRecordNo,
+      createdAt: p.createdAt?.toISOString().slice(0, 10),
     }, null, 2);
   },
 };

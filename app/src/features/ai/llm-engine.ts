@@ -153,27 +153,31 @@ export async function getLLMConfig(): Promise<LLMConfig | null> {
   try {
     const raw = localStorage.getItem(LLM_CONFIG_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { enc?: string } & Partial<LLMConfig>;
-    // 新格式: 加密存储
-    if (parsed.enc) {
-      const decrypted = await decryptData(parsed.enc);
-      const cfg = JSON.parse(decrypted) as LLMConfig;
-      if (!cfg.apiUrl || !cfg.apiKey) return null;
-      return cfg;
-    }
-    // 旧格式兼容: 明文(自动迁移到加密)
-    if (parsed.apiUrl && parsed.apiKey) {
-      const cfg: LLMConfig = {
-        apiUrl: parsed.apiUrl,
-        apiKey: parsed.apiKey,
-        model: parsed.model || "claude-haiku-4-5",
-        corsProxy: parsed.corsProxy,
-      };
-      // 异步迁移(不阻塞返回)
-      saveLLMConfig(cfg).catch(() => {});
-      return cfg;
-    }
+    const parsed = JSON.parse(raw) as Partial<LLMConfig>;
+    if (!parsed.apiUrl || !parsed.apiKey) return null;
+    // apiKey 可能加密或明文 — 先尝试解密,失败则视为明文
+    let apiKey = parsed.apiKey;
+    try { apiKey = await decryptData(apiKey); } catch { /* 明文 key */ }
+    return {
+      apiUrl: parsed.apiUrl,
+      apiKey,
+      model: parsed.model || "claude-haiku-4-5",
+      corsProxy: parsed.corsProxy,
+    };
+  } catch {
     return null;
+  }
+}
+
+/** 同步读取 LLM 配置(仅 URL/model/corsProxy,不含 apiKey)。
+ *  供 UI 预填表单用 — key 始终留空显示。 */
+export function getLLMConfigSync(): { apiUrl: string; model: string; corsProxy?: string } | null {
+  try {
+    const raw = localStorage.getItem(LLM_CONFIG_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LLMConfig>;
+    if (!parsed.apiUrl) return null;
+    return { apiUrl: parsed.apiUrl, model: parsed.model || "claude-haiku-4-5", corsProxy: parsed.corsProxy };
   } catch {
     return null;
   }
@@ -185,10 +189,14 @@ export async function saveLLMConfig(cfg: LLMConfig): Promise<void> {
     let url = cfg.apiUrl.trim();
     if (/^ttps?:\/\//i.test(url)) url = "h" + url;
     if (!/^https?:\/\//i.test(url)) url = "https://" + url.replace(/^[:\/]+/, "");
-    const normalized = { ...cfg, apiUrl: url };
-    const plain = JSON.stringify(normalized);
-    const enc = await encryptData(plain);
-    localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify({ enc }));
+    // 仅加密 apiKey,URL/model/corsProxy 明文(UI 预填需要)
+    const encKey = await encryptData(cfg.apiKey);
+    localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify({
+      apiUrl: url,
+      apiKey: encKey,
+      model: cfg.model || "claude-haiku-4-5",
+      corsProxy: cfg.corsProxy,
+    }));
   } catch (e) {
     console.error("[llm-engine] 保存 LLM 配置失败:", e);
   }

@@ -54,7 +54,7 @@ export function toolsToAnthropicSchema() {
   return agentTools.map(t => ({
     name: t.name,
     description: t.description,
-    input_schema: zodToJsonSchema(t.inputSchema),
+    input_schema: zodToJsonSchema(t.inputSchema as Parameters<typeof zodToJsonSchema>[0]),
   }));
 }
 

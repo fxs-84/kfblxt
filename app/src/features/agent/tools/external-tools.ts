@@ -338,23 +338,23 @@ function parseFactor(tokens: Token[], arrays: Map<string, number[]>): number {
   }
   if (tok.type === "func") {
     const funcName = tok.value;
-    if (tokens.length === 0 || tokens[0].type !== "lparen") throw new Error(`${funcName} 后需要 "("`);
-    tokens.shift(); // (
+    if (tokens.length === 0 || (tokens[0] as Token).type !== "lparen") throw new Error(`${funcName} 后需要 "("`);
+    tokens.shift();
     const args: number[] = [];
-    if (tokens.length > 0 && tokens[0].type !== "rparen") {
+    if (tokens.length > 0 && (tokens[0] as Token).type !== "rparen") {
       args.push(parseExpression(tokens, arrays));
-      while (tokens.length > 0 && tokens[0].type === "comma") {
-        tokens.shift(); // ,
+      while (tokens.length > 0 && (tokens[0] as Token).type === "comma") {
+        tokens.shift();
         args.push(parseExpression(tokens, arrays));
       }
     }
-    if (tokens.length === 0 || tokens[0].type !== "rparen") throw new Error(`${funcName} 需要 ")"`);
-    tokens.shift(); // )
+    if (tokens.length === 0 || (tokens[0] as Token).type !== "rparen") throw new Error(`${funcName} 需要 ")"`);
+    tokens.shift();
     return applyFunction(funcName, args, arrays);
   }
   if (tok.type === "lparen") {
     const val = parseExpression(tokens, arrays);
-    if (tokens.length === 0 || tokens[0].type !== "rparen") throw new Error('缺少闭合 ")"');
+    if (tokens.length === 0 || (tokens[0] as Token).type !== "rparen") throw new Error('缺少闭合 ")"');
     tokens.shift();
     return val;
   }

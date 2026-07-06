@@ -99,7 +99,6 @@ function devApiProxy(): Plugin {
           const mcpId = url.slice('/api/mcp/'.length).split('/')[0];
           if (!mcpId) { res.statusCode = 400; res.end('missing server id'); return; }
 
-          const method = req.method || 'POST';
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(chunk);
           const body = Buffer.concat(chunks);
@@ -211,8 +210,8 @@ function devApiProxy(): Plugin {
               headers: {
                 'Content-Type': req.headers['content-type'] || 'application/json',
                 'Authorization': req.headers['authorization'] || '',
-                'x-api-key': req.headers['x-api-key'] || '',
-                'anthropic-version': req.headers['anthropic-version'] || '',
+                'x-api-key': String(req.headers['x-api-key'] || ''),
+                'anthropic-version': String(req.headers['anthropic-version'] || ''),
               },
               body: ['GET', 'HEAD'].includes(method) ? undefined : body,
             });
@@ -256,9 +255,9 @@ function devApiProxy(): Plugin {
             method,
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': req.headers['authorization'] || '',
-              'x-api-key': req.headers['x-api-key'] || '',
-              'anthropic-version': req.headers['anthropic-version'] || '',
+              'Authorization': String(req.headers['authorization'] || ''),
+              'x-api-key': String(req.headers['x-api-key'] || ''),
+              'anthropic-version': String(req.headers['anthropic-version'] || ''),
             },
             body: ['GET', 'HEAD'].includes(method) ? undefined : body,
           });

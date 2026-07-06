@@ -7,7 +7,7 @@ import { userRepository } from "../features/auth/user.repository";
  * 用户档案(profile) — 由 userRepository 提供,注册后才存在。
  * 替代早期版本的内置 mock 列表;无注册用户时返回空数组。
  */
-export type Profile = Pick<UserRecord, "userId" | "fullName" | "role"> & { id: string };
+export type Profile = Pick<UserRecord, "fullName" | "role"> & { id: string };
 
 export const ROLE_LABEL: Record<UserRole, string> = {
   admin: "管理员",
@@ -16,7 +16,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 export function toProfile(u: UserRecord): Profile {
-  return { id: u.id, userId: u.id, fullName: u.fullName, role: u.role };
+  return { id: u.id, fullName: u.fullName, role: u.role };
 }
 
 /** 异步查询 userId → Profile */

@@ -98,7 +98,7 @@ export class MCPClient {
   /** 调用工具 */
   async callTool(params: MCPCallToolParams): Promise<MCPCallToolResult> {
     if (!this.connected) await this.connect();
-    return await this.send("tools/call", params) as MCPCallToolResult;
+    return await this.send("tools/call", params as unknown as Record<string, unknown>) as MCPCallToolResult;
   }
 
   /** 发送 JSON-RPC 请求 */

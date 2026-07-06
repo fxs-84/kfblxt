@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { analyzeAsync, getLLMConfig, saveLLMConfig, clearLLMConfig, isLLMConfigured, type LLMConfig } from "./llm-engine";
+import { analyzeAsync, getLLMConfigSync, saveLLMConfig, clearLLMConfig, isLLMConfigured } from "./llm-engine";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";
 import type { AnalyzeResult } from "./llm-engine";
@@ -94,7 +94,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
   const [llmConfigured, setLlmConfigured] = useState(isLLMConfigured());
   const [showLlmSettings, setShowLlmSettings] = useState(false);
   const [llmForm, setLlmForm] = useState<{ apiUrl: string; apiKey: string; model: string; corsProxy: string }>(() => {
-    const c = getLLMConfig();
+    const c = getLLMConfigSync();
     return { apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5", corsProxy: c?.corsProxy ?? "" };
   });
   const [llmError, setLlmError] = useState<string | null>(null);
@@ -212,7 +212,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             <button
               className="btn btn--ghost"
               style={{ fontSize: "10px", padding: "1px 6px", marginLeft: "auto" }}
-              onClick={() => { const opening = !showLlmSettings; setShowLlmSettings(opening); if (opening) setKeyAlreadySet(Boolean(getLLMConfig()?.apiKey)); }}
+              onClick={() => { const opening = !showLlmSettings; setShowLlmSettings(opening); if (opening) setKeyAlreadySet(Boolean(getLLMConfigSync())); }}
               title="配置 LLM API key(仅本地)"
             >
               {llmConfigured ? "🔑" : "⚠️ 未配置 LLM"}
@@ -247,7 +247,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                 { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
                 { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
               ] as const).map(p => (
-                <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model })} style={{
+                <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: "" })} style={{
                   padding: "3px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
                   background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
                   cursor: "pointer",
@@ -306,23 +306,24 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
               <button
                 className="btn btn--primary"
                 style={{ fontSize: "var(--text-xs)" }}
-                onClick={() => {
+                onClick={async () => {
                   setLlmError(null);
                   const urlOk = llmForm.apiUrl.trim();
                   const keyOk = llmForm.apiKey.trim();
                   if (!urlOk) { setLlmError("API URL 必填"); return; }
                   if (!keyOk) {
                     if (keyAlreadySet) {
-                      // 保留已有 key
-                      const existing = getLLMConfig();
-                      if (!existing?.apiKey) { setLlmError("请输入 API Key"); return; }
-                      saveLLMConfig({ apiUrl: urlOk, apiKey: existing.apiKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
+                      // 保留已有加密 key — 仅更新 URL/model/corsProxy,key 不变
+                      const raw = localStorage.getItem("anrm_llm_config");
+                      if (!raw) { setLlmError("配置丢失,请重新输入 API Key"); return; }
+                      const stored = JSON.parse(raw) as Record<string, unknown>;
+                      await saveLLMConfig({ apiUrl: urlOk, apiKey: (stored.apiKey as string) || "", model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
                     } else {
                       setLlmError("API Key 必填");
                       return;
                     }
                   } else {
-                    saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
+                    await saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
                   }
                   setLlmConfigured(true);
                   setShowLlmSettings(false);
