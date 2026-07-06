@@ -94,9 +94,25 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
         </div>
         <div style={{ padding: "0 var(--space-5) var(--space-4)" }}>
 
-          {/* 临床诊断 */}
+          {/* 神经定位诊断 (先) */}
+          <div style={{ marginBottom: "var(--space-3)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 6 }}>🧠 神经定位诊断 (ANRM)</div>
+            <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
+              <span className="badge badge--abnormal">{side === "left" ? "左侧" : side === "right" ? "右侧" : side === "bilateral" ? "双侧" : "中线"}</span>
+              {diagnosis.levels.map((l) => <span key={l} className="exam-summary__item exam-summary__item--pos">{l}</span>)}
+            </div>
+            {diagnosis.segments?.length ? <div className="diagnosis-line">节段: {diagnosis.segments.join("、")}</div> : null}
+            {diagnosis.nerves?.length ? <div className="diagnosis-line">神经干: {diagnosis.nerves.join("、")}</div> : null}
+            {selectedCutaneous.length ? <div className="diagnosis-line">皮神经敏化: {selectedCutaneous.join("、")}</div> : null}
+            <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>机制: {diagnosis.mechanisms.join("、")}</div>
+            {diagnosis.reasoning && (
+              <div style={{ marginTop: "var(--space-2)", fontSize: "var(--text-sm)", fontStyle: "italic", borderLeft: "2px solid var(--color-accent)", paddingLeft: "var(--space-3)" }}>{diagnosis.reasoning}</div>
+            )}
+          </div>
+
+          {/* 临床诊断 (后) */}
           {clinicalList.length > 0 && (
-            <div style={{ marginBottom: "var(--space-3)", paddingBottom: "var(--space-3)", borderBottom: "1px solid var(--color-border)" }}>
+            <div style={{ paddingTop: "var(--space-3)", borderTop: "1px dashed var(--color-border)" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 6 }}>📋 临床诊断 (ICD-10)</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {clinicalList.map(d => (
@@ -116,19 +132,6 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
             </div>
           )}
 
-          {/* 神经定位诊断 */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 6 }}>🧠 神经定位诊断 (ANRM)</div>
-          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
-            <span className="badge badge--abnormal">{side === "left" ? "左侧" : side === "right" ? "右侧" : side === "bilateral" ? "双侧" : "中线"}</span>
-            {diagnosis.levels.map((l) => <span key={l} className="exam-summary__item exam-summary__item--pos">{l}</span>)}
-          </div>
-          {diagnosis.segments?.length ? <div className="diagnosis-line">节段: {diagnosis.segments.join("、")}</div> : null}
-          {diagnosis.nerves?.length ? <div className="diagnosis-line">神经干: {diagnosis.nerves.join("、")}</div> : null}
-          {selectedCutaneous.length ? <div className="diagnosis-line">皮神经敏化: {selectedCutaneous.join("、")}</div> : null}
-          <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>机制: {diagnosis.mechanisms.join("、")}</div>
-          {diagnosis.reasoning && (
-            <div style={{ marginTop: "var(--space-2)", fontSize: "var(--text-sm)", fontStyle: "italic", borderLeft: "2px solid var(--color-accent)", paddingLeft: "var(--space-3)" }}>{diagnosis.reasoning}</div>
-          )}
           <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginTop: "var(--space-2)" }}>{formatDate(diagnosis.createdAt)}</div>
         </div>
       </div>
@@ -144,16 +147,13 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
       </div>
       <div style={{ padding: "var(--space-4) var(--space-6)" }}>
 
-        {/* 临床诊断(必填) */}
+        {/* 神经定位诊断(ANRM) */}
         <div className="field" style={{ marginBottom: "var(--space-5)" }}>
-          <label>📋 临床诊断 (ICD-10) <span style={{ color: "var(--color-abnormal)" }}>*</span></label>
+          <label style={{ fontWeight: 700 }}>🧠 神经定位诊断 (ANRM) <span style={{ color: "var(--color-abnormal)" }}>*</span></label>
           <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 8 }}>
-            用于病案首页和医保结算。点击 ⭐ 标记主诊。⭐ 标识的第一个诊断为主诊。
+            症状分布 → 神经水平 → 节段/神经干 → 致病机制。用于推理康复治疗方向。
           </p>
-          <ClinicalDiagnosisSection diagnoses={clinicalDiagnoses} onChange={setClinicalDiagnoses} />
         </div>
-
-        <div className="divider" style={{ height: 1, background: "var(--color-border)", margin: "var(--space-4) 0" }} />
 
         <div className="field" style={{ marginBottom: "var(--space-4)" }}>
           <label>侧别</label>
@@ -246,11 +246,22 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
             style={{ width: "100%", padding: "var(--space-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", font: "inherit", resize: "vertical" }} />
         </div>
 
+        <div className="divider" style={{ height: 1, background: "var(--color-border)", margin: "var(--space-5) 0" }} />
+
+        {/* 临床诊断(必填) */}
+        <div className="field" style={{ marginBottom: "var(--space-5)" }}>
+          <label style={{ fontWeight: 700 }}>📋 临床诊断 (ICD-10) <span style={{ color: "var(--color-abnormal)" }}>*</span></label>
+          <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 8 }}>
+            用于病案首页和医保结算。点击 ⭐ 标记主诊。
+          </p>
+          <ClinicalDiagnosisSection diagnoses={clinicalDiagnoses} onChange={setClinicalDiagnoses} />
+        </div>
+
         {error && <div className="field__error" style={{ marginTop: "var(--space-4)" }}>{error}</div>}
 
         <div className="form-actions" style={{ padding: "var(--space-4) 0 0" }}>
           <button className="btn btn--primary" disabled={saving} onClick={handleSave}>
-            {saving ? "保存中…" : "保存定位诊断"}
+            {saving ? "保存中…" : "保存诊断"}
           </button>
           {diagnosis && <button className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>}
         </div>

@@ -56,12 +56,25 @@ export function PatientDetailPage() {
   const openExam = (eid: string) => {
     setDiagnosisEid(null);
     setExamEncounterId(eid === examEncounterId ? null : eid);
-    setTimeout(() => examSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    // 等 panel 渲染完成再滚动
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        examSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (examSectionRef.current) {
+          examSectionRef.current.style.boxShadow = "0 0 0 3px var(--color-accent)";
+          setTimeout(() => { if (examSectionRef.current) examSectionRef.current.style.boxShadow = ""; }, 1500);
+        }
+      });
+    });
   };
   const openDiagnosis = (eid: string) => {
     setExamEncounterId(null);
     setDiagnosisEid(eid === diagnosisEid ? null : eid);
-    setTimeout(() => diagnosisSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        diagnosisSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
   };
 
   const handleConfirmDelete = async () => {
