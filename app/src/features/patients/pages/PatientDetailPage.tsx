@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { usePatient, useDeletePatient } from "../usePatients";
 import { usePatientEncounters, useCloseEncounter, useUpdateEncounter } from "../../encounters/useEncounters";
@@ -24,7 +24,7 @@ import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantP
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useCreateTreatmentPlan } from "../../treatment/useTreatment";
 import type { NeuroLevel, Mechanism, SpinalSegment, NerveTrunk } from "../../diagnosis/localization.types";
-import { calcAge, SEX_LABELS, HAND_LABELS } from "../../../lib/format";
+import { calcAge, SEX_LABELS, HAND_LABELS, formatDate } from "../../../lib/format";
 import { TherapistAttribution } from "../../../components/auth/TherapistAttribution";
 import { OperationTimeline } from "../../../components/auth/OperationTimeline";
 
@@ -50,6 +50,19 @@ export function PatientDetailPage() {
   const [closing, setClosing] = useState(false);
   const [checklistEid, setChecklistEid] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const examSectionRef = useRef<HTMLDivElement>(null);
+  const diagnosisSectionRef = useRef<HTMLDivElement>(null);
+
+  const openExam = (eid: string) => {
+    setDiagnosisEid(null);
+    setExamEncounterId(eid === examEncounterId ? null : eid);
+    setTimeout(() => examSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+  const openDiagnosis = (eid: string) => {
+    setExamEncounterId(null);
+    setDiagnosisEid(eid === diagnosisEid ? null : eid);
+    setTimeout(() => diagnosisSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
 
   const handleConfirmDelete = async () => {
     await deletePatient.mutateAsync(id!);
@@ -161,16 +174,16 @@ export function PatientDetailPage() {
           <div className="card">
             <EncounterTable
               encounters={list}
-              onExam={(eid) => setExamEncounterId(examEncounterId === eid ? null : eid)}
+              onExam={openExam}
               activeExamId={examEncounterId ?? undefined}
               onCloseEncounter={handleCloseEncounter}
-              onOpenDiagnosis={(eid) => setDiagnosisEid(diagnosisEid === eid ? null : eid)}
+              onOpenDiagnosis={openDiagnosis}
             />
           </div>
 
           {/* 定位诊断(任意就诊) */}
           {diagnosisEid && (
-            <div style={{ marginTop: "1.5rem" }}>
+            <div ref={diagnosisSectionRef} style={{ marginTop: "1.5rem" }}>
               <DiagnosisPanel encounterId={diagnosisEid} />
               <div style={{ textAlign: "right", marginTop: "var(--space-3)" }}>
                 <button className="btn btn--ghost" onClick={() => setDiagnosisEid(null)}>收起</button>
@@ -180,7 +193,11 @@ export function PatientDetailPage() {
 
           {/* 查体 + 诊断 + 附件(进行中就诊) */}
           {examEncounterId && (
-            <div style={{ marginTop: "1.5rem" }}>
+            <div ref={examSectionRef} style={{ marginTop: "1.5rem", border: "2px solid var(--color-accent)", borderRadius: 8, padding: "var(--space-3)", background: "var(--color-accent-weak, #e6f0fa)22" }}>
+              <div style={{ marginBottom: "var(--space-3)", fontSize: 13, fontWeight: 600, color: "var(--color-accent)" }}>
+                📋 正在处理就诊:{formatDate(list.find(e => e.id === examEncounterId)?.encounterDate ?? new Date())} · {list.find(e => e.id === examEncounterId)?.visitType}
+                <button type="button" className="btn btn--ghost" style={{ float: "right", fontSize: 11, padding: "2px 10px" }} onClick={() => setExamEncounterId(null)}>收起</button>
+              </div>
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}

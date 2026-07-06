@@ -76,19 +76,19 @@ export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncoun
                 {hasActions && (
                   <td>
                     <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap" }}>
+                      {onExam && (
+                        <button className={`btn btn--ghost ${activeExamId === e.id ? "btn--primary" : ""}`}
+                          style={{ padding: "2px 6px", fontSize: "var(--text-xs)" }}
+                          onClick={() => onExam(e.id)}>
+                          {activeExamId === e.id ? "收起" : "查体"}
+                        </button>
+                      )}
                       {onOpenDiagnosis && (
                         <button className="btn btn--ghost"
                           style={{ padding: "2px 6px", fontSize: "var(--text-xs)" }}
                           onClick={() => onOpenDiagnosis(e.id)}
                           title={dx ? "查看/编辑诊断" : "添加诊断"}>
                           {dx ? "诊断" : "+ 诊断"}
-                        </button>
-                      )}
-                      {onExam && (
-                        <button className={`btn btn--ghost ${activeExamId === e.id ? "btn--primary" : ""}`}
-                          style={{ padding: "2px 6px", fontSize: "var(--text-xs)" }}
-                          onClick={() => onExam(e.id)}>
-                          {activeExamId === e.id ? "收起" : "查体"}
                         </button>
                       )}
                       {onCloseEncounter && e.status !== "已结束" && (
