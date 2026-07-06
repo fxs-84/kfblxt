@@ -250,10 +250,28 @@ export async function installSkillFromUrl(rawUrl: string): Promise<SkillConfig> 
   const urlErr = validateExternalUrl(rawUrl);
   if (urlErr) throw new Error(`URL 验证失败: ${urlErr}`);
 
-  // 本地开发走 Vite 代理(代理层已做二次验证)
-  const fetchUrl = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? `/api/proxy/${btoa(rawUrl)}`
-    : rawUrl;
+  // 决定 fetch URL:
+  //   - 本地 dev: 走 Vite 代理(自动处理 CORS);urlencoded 编码
+  //   - 生产 + 配了 corsProxy: 包到代理后面
+  //   - 生产直连: 浏览器会拦截 CORS,提示用户填 corsProxy
+  const { resolveFetchUrl } = await import("../../ai/llm-client");
+  const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]";
+  let fetchUrl: string;
+  if (isDev) {
+    fetchUrl = `/api/proxy/${encodeURIComponent(rawUrl)}`;
+  } else {
+    // 读 corsProxy 配置
+    let corsProxy: string | undefined;
+    try {
+      const raw = localStorage.getItem("anrm_llm_config");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { corsProxy?: string };
+        corsProxy = parsed.corsProxy || undefined;
+      }
+    } catch { /* ignore */ }
+    const resolved = resolveFetchUrl(rawUrl, corsProxy);
+    fetchUrl = resolved.url;
+  }
 
   const res = await fetch(fetchUrl);
   if (!res.ok) throw new Error(`HTTP ${res.status}: 无法获取 ${rawUrl}`);

@@ -73,7 +73,7 @@ export function cleanApiUrl(raw: string): string {
  * 三种情况:
  *   a. 本地开发 → 走 Vite 代理(避免浏览器 CORS)
  *      - 已知 provider: 精确重写到 /api/<provider>/<path>
- *      - 其他: 走通用 /api/proxy/<base64> 兜底
+ *      - 其他: 走通用 /api/proxy/<urlencoded> 兜底
  *   b. 生产 + 配了 corsProxy → URL 包到代理后面
  *   c. 生产 + 没配 corsProxy → 原 URL 直连(用户自己处理 CORS)
  */
