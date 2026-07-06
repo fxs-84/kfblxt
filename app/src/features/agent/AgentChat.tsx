@@ -9,7 +9,8 @@ import {
   type ConversationRecord,
 } from "./agent-conversations.repository";
 import { useSession } from "../../components/auth/useSession";
-import { isLLMConfigured, getLLMConfig, saveLLMConfig, clearLLMConfig } from "../ai/llm-engine";
+import { isLLMConfigured, getLLMConfig, saveLLMConfig, clearLLMConfig, pingLLM } from "../ai/llm-engine";
+import { LLMCallError, type PingResult } from "../ai/llm-client";
 import {
   getMCPServers,
   addMCPServer,
@@ -58,6 +59,8 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [showSkills, setShowSkills] = useState(false);
   const [llmForm, setLlmForm] = useState({ apiUrl: "", apiKey: "", model: "", corsProxy: "" });
   const [llmSaveMsg, setLlmSaveMsg] = useState<string | null>(null);
+  const [llmTesting, setLlmTesting] = useState(false);
+  const [llmTestResult, setLlmTestResult] = useState<PingResult | null>(null);
   const [keyAlreadySet, setKeyAlreadySet] = useState(false);
   const [configured, setConfigured] = useState(isLLMConfigured());
   // 搜索配置
@@ -419,7 +422,27 @@ export function AgentChat({ onClose }: AgentChatProps) {
               {llmSaveMsg}
             </div>
           )}
-          <div style={{ display: "flex", gap: 8 }}>
+          {/* 测试连接结果 */}
+          {llmTestResult && (
+            <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 4, fontSize: 12,
+              background: llmTestResult.ok ? "var(--color-normal-weak, #ecfdf5)" : "var(--color-abnormal-bg, #fef2f2)",
+              color: llmTestResult.ok ? "var(--color-normal)" : "var(--color-abnormal)",
+              whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+              {llmTestResult.ok ? (
+                <>
+                  ✅ 连接成功 — {llmTestResult.latencyMs}ms
+                  {"\n"}API 类型: {llmTestResult.apiType} | 模型: {llmTestResult.model}
+                  {llmTestResult.viaProxy ? "\n🔀 走代理: " + llmTestResult.resolvedUrl : ""}
+                </>
+              ) : (
+                <>
+                  ❌ {llmTestResult.error?.message ?? "连接失败"}
+                  {llmTestResult.error?.hint ? "\n💡 " + llmTestResult.error.hint : ""}
+                </>
+              )}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button type="button" onClick={async () => {
               const urlOk = llmForm.apiUrl.trim();
               const keyOk = llmForm.apiKey.trim();
@@ -428,12 +451,30 @@ export function AgentChat({ onClose }: AgentChatProps) {
               const finalKey = keyOk || (existingCfg?.apiKey ?? "");
               if (!urlOk) { setLlmSaveMsg("❌ API URL 必填"); return; }
               if (!finalKey) { setLlmSaveMsg("❌ 请输入 API Key"); return; }
-              await saveLLMConfig({ apiUrl: urlOk, apiKey: finalKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: proxyOk });
-              saveExtConfig(extCfg);
-              setConfigured(true);
-              setLlmSaveMsg("✅ 保存成功");
-              setTimeout(() => setShowSettings(false), 600);
+              try {
+                await saveLLMConfig({ apiUrl: urlOk, apiKey: finalKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: proxyOk });
+                saveExtConfig(extCfg);
+                setConfigured(true);
+                setLlmSaveMsg("✅ 保存成功");
+                setTimeout(() => setShowSettings(false), 600);
+              } catch (e) {
+                setLlmSaveMsg(`❌ ${e instanceof Error ? e.message : String(e)}`);
+              }
             }} style={btnPrimary}>保存</button>
+            <button type="button" disabled={llmTesting} onClick={async () => {
+              const urlOk = llmForm.apiUrl.trim();
+              const keyOk = llmForm.apiKey.trim();
+              const proxyOk = llmForm.corsProxy.trim() || undefined;
+              const existingCfg = keyAlreadySet ? await getLLMConfig() : null;
+              const finalKey = keyOk || (existingCfg?.apiKey ?? "");
+              if (!urlOk) { setLlmTestResult({ ok: false, latencyMs: 0, error: new LLMCallError("config", "API URL 必填") }); return; }
+              if (!finalKey) { setLlmTestResult({ ok: false, latencyMs: 0, error: new LLMCallError("config", "请先填入 API Key") }); return; }
+              setLlmTesting(true);
+              setLlmTestResult(null);
+              const r = await pingLLM({ apiUrl: urlOk, apiKey: finalKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: proxyOk });
+              setLlmTestResult(r);
+              setLlmTesting(false);
+            }} style={{ ...btnGhost, opacity: llmTesting ? 0.6 : 1 }}>{llmTesting ? "🔗 测试中…" : "🔗 测试连接"}</button>
             {configured && <button type="button" onClick={() => { clearLLMConfig(); setConfigured(false); setKeyAlreadySet(false); setLlmSaveMsg("🗑️ 已清除"); }} style={{ ...btnGhost, color: "var(--color-abnormal)" }}>清除</button>}
             <button type="button" onClick={() => setShowSettings(false)} style={btnGhost}>取消</button>
           </div>

@@ -2,25 +2,28 @@
  * Agent Loop — ReAct 风格的工具调用循环。
  * LLM 思考 → 调用工具 → 拿结果 → 再思考 → 直到 final_answer。
  *
- * 支持 Anthropic Messages API 和 OpenAI-compatible API(DeepSeek/OpenRouter/等)。
+ * 所有 HTTP/重试/超时/CORS 都在 llm-client,这里只管:
+ *   - 工具查找 + 执行
+ *   - 消息拼接(Anthropic vs OpenAI 格式差异)
+ *   - 工具结果回传
  *
  * 安全:仅在用户已配置 LLM key 时跑(llm-engine 已保证 key 不进 bundle)。
  * 限流:默认 8 轮工具调用,32K tokens 上限。
  */
-import { getLLMConfig, isLLMConfigured, resolveApiUrl } from "../ai/llm-engine";
+
+import { getLLMConfig, isLLMConfigured } from "../ai/llm-engine";
 import {
-  buildApiHeaders,
-  detectApiType,
-  type ApiType,
-  toolsToOpenAISchema,
-  parseAnthropicResponse,
-  parseOpenAIResponse,
-} from "../ai/api-adapter";
+  callLLM,
+  cleanApiUrl,
+  resolveFetchUrl,
+  LLMCallError,
+  type ChatMessage,
+  type ToolDescriptor,
+} from "../ai/llm-client";
 import { getTool } from "./tools/registry";
 import { MCPBridge } from "./tools/mcp-bridge";
 import { buildSkillPrompt } from "./tools/skill-system";
-import type { ToolContext } from "./tools/schemas";
-import type { AgentTool } from "./tools/schemas";
+import type { ToolContext, AgentTool } from "./tools/schemas";
 
 const MAX_TURNS = 8;
 const MAX_TOKENS = 32000;
@@ -96,11 +99,16 @@ const SYSTEM_PROMPT = `你是 ANRM 临床智能助手,服务神经康复治疗�
 - 医学建议仅供参考,最终决策由治疗师把握
 `;
 
+export type AgentTraceEvent =
+  | { type: "tool_call"; name: string; input: unknown }
+  | { type: "tool_result"; name: string; output: string }
+  | { type: "text"; text: string };
+
 export async function runAgent(
   userMessage: string,
   ctx: ToolContext,
   history: AgentMessage[] = [],
-  onTrace?: (event: { type: "tool_call"; name: string; input: unknown } | { type: "tool_result"; name: string; output: string } | { type: "text"; text: string }) => void,
+  onTrace?: (event: AgentTraceEvent) => void,
 ): Promise<AgentRunResult> {
   if (!isLLMConfigured()) {
     return {
@@ -120,103 +128,78 @@ export async function runAgent(
       truncated: false,
     };
   }
-  const apiType = detectApiType(cfg.apiUrl);
-  const requestUrl = resolveApiUrl(cfg.apiUrl, cfg.corsProxy);
 
-  // Skill 注入: 根据用户消息激活对应 skill
+  // Skill 注入
   const skillPrompt = buildSkillPrompt(userMessage);
-  const enhancedSystem = SYSTEM_PROMPT + skillPrompt;
+  const systemMessage: ChatMessage = { role: "system", content: SYSTEM_PROMPT + skillPrompt };
 
-  // 动态获取 MCP 工具 + 静态工具
-  const bridge = new MCPBridge(ctx);
+  // 加载工具(静态 + MCP)
   const [mcpTools, staticToolsModule] = await Promise.all([
-    bridge.getTools(),
+    new MCPBridge(ctx).getTools(),
     import("./tools/registry"),
   ]);
-
-  // 合并工具 schema: 静态 + MCP
   const staticAgentTools = staticToolsModule.agentTools;
-  const allAgentTools = [...staticAgentTools, ...mcpTools];
-  const anthropicTools = [
-    ...staticToolsModule.toolsToAnthropicSchema(),
-    ...mcpTools.map(t => ({
-      name: t.name,
-      description: t.description,
-      input_schema: jsonSchemaFromTool(t),
-    })),
-  ];
-
-  // 构建统一工具查找表
+  const allAgentTools: AgentTool[] = [...staticAgentTools, ...mcpTools];
   const toolMap = new Map<string, AgentTool>();
   for (const t of allAgentTools) toolMap.set(t.name, t);
 
-  const rawMessages: AgentMessage[] = [
-    { role: "system", content: enhancedSystem },
-    ...history,
+  const tools: ToolDescriptor[] = allAgentTools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: zodToJsonSchema(t),
+  }));
+
+  // 消息序列(扁平,便于维护)
+  const flatMessages: ChatMessage[] = [
+    systemMessage,
+    ...history.filter((m) => m.role !== "system").map(toChatMessage),
     { role: "user", content: userMessage },
   ];
+
+  // 工具调用记录(供后续格式转换)
+  const assistantRecords: AgentMessage[] = [];
   const trace: AgentRunResult["trace"] = [];
   let truncated = false;
   let usage: AgentRunResult["usage"];
   let totalOutputTokens = 0;
-  const headers = buildApiHeaders(cfg.apiKey, cfg.apiUrl);
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    let res: Response;
-    try {
-      res = await fetch(requestUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(buildRequestBody(apiType, rawMessages, anthropicTools, cfg.model)),
-      });
-    } catch (fetchErr: unknown) {
-      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-      if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
-        // 提取主机名用于诊断,不泄露完整 API URL
-        let apiHost = "unknown";
-        try { apiHost = new URL(cfg.apiUrl).hostname; } catch { /* ignore */ }
-        throw new Error(
-          `网络不通或 CORS 阻止\n` +
-          `目标 API: ${apiHost}\n` +
-          `Hostname: ${location.hostname}\n\n` +
-          `解决办法:\n` +
-          `1. 确保 Vite dev server 已重启 (Ctrl+C 再 npm run dev)\n` +
-          `2. 打开浏览器 F12 → Console 查看 [llm-engine] 日志\n` +
-          `3. 在配置中填入 CORS 代理`
-        );
-      }
-      throw new Error(`网络错误: ${msg}`);
-    }
+    const result = await callLLM(flatMessages, cfg, { tools, maxTokens: 4000 });
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      const hint = errText.slice(0, 300);
-      let apiHost = "unknown";
-      try { apiHost = new URL(cfg.apiUrl).hostname; } catch { /* ignore */ }
-      throw new Error(`API ${res.status} (${apiHost})${hint ? ": " + hint.slice(0, 200) : ""}`);
-    }
-    const data = await res.json() as Record<string, unknown>;
-    const parsed = apiType === "anthropic" ? parseAnthropicResponse(data) : parseOpenAIResponse(data);
-
-    usage = parsed.usage;
+    usage = result.usage;
     totalOutputTokens += usage?.output_tokens ?? 0;
-    if (totalOutputTokens > MAX_TOKENS) { truncated = true; break; }
-
-    if (parsed.text) onTrace?.({ type: "text", text: parsed.text });
-
-    rawMessages.push({
-      role: "assistant",
-      content: parsed.text,
-      toolCalls: parsed.toolCalls.length > 0 ? parsed.toolCalls : undefined,
-    });
-
-    if (parsed.toolCalls.length === 0) {
-      return { answer: parsed.text, messages: rawMessages, trace, usage, truncated };
+    if (totalOutputTokens > MAX_TOKENS) {
+      truncated = true;
+      break;
     }
+
+    if (result.text) onTrace?.({ type: "text", text: result.text });
+
+    // 没工具调用 → 最终答案
+    if (result.toolCalls.length === 0) {
+      const finalAssistant: AgentMessage = { role: "assistant", content: result.text };
+      assistantRecords.push(finalAssistant);
+      return {
+        answer: result.text,
+        messages: [...assistantRecords],
+        trace,
+        usage,
+        truncated,
+      };
+    }
+
+    // 记录 assistant 这一轮
+    const assistantRecord: AgentMessage = {
+      role: "assistant",
+      content: result.text,
+      toolCalls: result.toolCalls,
+    };
+    assistantRecords.push(assistantRecord);
+    flatMessages.push({ role: "assistant", content: result.text });
 
     // 执行工具
-    const results: ToolResultRecord[] = [];
-    for (const tc of parsed.toolCalls) {
+    const toolResultRecords: ToolResultRecord[] = [];
+    for (const tc of result.toolCalls) {
       onTrace?.({ type: "tool_call", name: tc.name, input: tc.input });
       const tool = toolMap.get(tc.name);
       const startedAt = Date.now();
@@ -227,12 +210,12 @@ export async function runAgent(
         error = true;
       } else {
         try {
-          const parsedInput = tool.inputSchema.safeParse(tc.input);
-          if (!parsedInput.success) {
-            output = `ERROR: ${parsedInput.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
+          const parsed = tool.inputSchema.safeParse(tc.input);
+          if (!parsed.success) {
+            output = `ERROR: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`;
             error = true;
           } else {
-            output = await tool.execute(parsedInput.data, ctx);
+            output = await tool.execute(parsed.data, ctx);
           }
         } catch (e) {
           output = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
@@ -241,63 +224,43 @@ export async function runAgent(
       }
       const durationMs = Date.now() - startedAt;
       trace.push({ turn, name: tc.name, input: tc.input, output: output.slice(0, 8000), durationMs });
-      results.push({ toolCallId: tc.id, name: tc.name, output: output.slice(0, 8000), error });
+      toolResultRecords.push({ toolCallId: tc.id, name: tc.name, output: output.slice(0, 8000), error });
       onTrace?.({ type: "tool_result", name: tc.name, output: output.slice(0, 200) });
     }
 
-    rawMessages.push({ role: "user", content: "", toolResults: results });
+    // 工具结果拼到下一轮 user 消息(让 LLM 看到)
+    const toolFeedback = toolResultRecords
+      .map((tr) => `[${tr.name}] ${tr.error ? "❌" : "✓"}\n${tr.output}`)
+      .join("\n\n");
+    flatMessages.push({ role: "user", content: toolFeedback });
+
+    assistantRecords.push({
+      role: "user",
+      content: "",
+      toolResults: toolResultRecords,
+    });
   }
 
   truncated = true;
-  const last = [...rawMessages].reverse().find(m => m.role === "assistant" && m.content);
-  return { answer: last?.content ?? "达到工具调用上限,会话中断。", messages: rawMessages, trace, usage, truncated };
-}
-
-/** 构建 Anthropic 格式的工具结果消息 */
-function buildAnthropicToolResult(toolResults: ToolResultRecord[]): Record<string, unknown> {
+  const last = [...assistantRecords].reverse().find((m) => m.role === "assistant" && m.content);
   return {
-    role: "user",
-    content: toolResults.map(tr => ({
-      type: "tool_result",
-      tool_use_id: tr.toolCallId,
-      content: tr.output,
-      is_error: tr.error,
-    })),
+    answer: last?.content ?? "达到工具调用上限,会话中断。",
+    messages: assistantRecords,
+    trace,
+    usage,
+    truncated,
   };
 }
 
-/** 构建 OpenAI 格式的工具结果消息 */
-function buildOpenAIToolMessages(
-  prevToolCalls: ToolCallRecord[],
-  toolResults: ToolResultRecord[],
-): Array<Record<string, unknown>> {
-  const msgs: Array<Record<string, unknown>> = [];
-
-  // 先把 assistant 的 tool_calls 发出去(已在 messages 列表中但需要组装到这里)
-  // OpenAI 格式: assistant 发 tool_calls → user 回 tool role message
-  msgs.push({
-    role: "assistant",
-    content: null,
-    tool_calls: prevToolCalls.map(tc => ({
-      id: tc.id,
-      type: "function",
-      function: { name: tc.name, arguments: JSON.stringify(tc.input) },
-    })),
-  });
-
-  for (let i = 0; i < toolResults.length; i++) {
-    const tr = toolResults[i];
-    msgs.push({
-      role: "tool",
-      tool_call_id: tr.toolCallId,
-      content: tr.output,
-    });
-  }
-  return msgs;
+function toChatMessage(m: AgentMessage): ChatMessage {
+  return { role: m.role === "system" ? "system" : m.role, content: m.content };
 }
 
-/** 将 MCP 工具的 Zod schema 转为简易 JSON Schema */
-function jsonSchemaFromTool(t: AgentTool): Record<string, unknown> {
+/* ============================================================
+ *  MCP 工具 schema 转换(只在 agent-loop 内部用)
+ * ============================================================ */
+
+function zodToJsonSchema(t: AgentTool): Record<string, unknown> {
   const schema: Record<string, unknown> = { type: "object", properties: {} };
   const props: Record<string, unknown> = {};
   try {
@@ -312,8 +275,7 @@ function jsonSchemaFromTool(t: AgentTool): Record<string, unknown> {
           ZodEnum: "string", ZodOptional: "string", ZodDefault: "string",
           ZodArray: "array",
         };
-        const jstype = typeMap[def.typeName || ""] || "string";
-        const p: Record<string, unknown> = { type: jstype };
+        const p: Record<string, unknown> = { type: typeMap[def.typeName || ""] || "string" };
         if (def.description) p.description = def.description;
         if (def.typeName === "ZodEnum" && def.values) p.enum = def.values;
         props[key] = p;
@@ -324,87 +286,5 @@ function jsonSchemaFromTool(t: AgentTool): Record<string, unknown> {
   return schema;
 }
 
-/** 构建请求体(Anthropic 或 OpenAI 格式) */
-function buildRequestBody(
-  apiType: ApiType,
-  allMessages: AgentMessage[],
-  anthropicTools: Array<Record<string, unknown>>,
-  model: string,
-): Record<string, unknown> {
-  const systemMsg = allMessages.find(m => m.role === "system");
-  const conv = allMessages.filter(m => m.role !== "system");
-
-  if (apiType === "anthropic") {
-    const anthropicMsgs: Array<Record<string, unknown>> = [];
-    for (let i = 0; i < conv.length; i++) {
-      const m = conv[i];
-      if (m.role === "user" && m.toolResults && m.toolResults.length > 0) {
-        anthropicMsgs.push(buildAnthropicToolResult(m.toolResults));
-        continue;
-      }
-      if (m.role === "assistant") {
-        const blocks: Array<Record<string, unknown>> = [];
-        if (m.content) blocks.push({ type: "text", text: m.content });
-        if (m.toolCalls) {
-          for (const tc of m.toolCalls) {
-            blocks.push({ type: "tool_use", id: tc.id, name: tc.name, input: tc.input });
-          }
-        }
-        anthropicMsgs.push({ role: "assistant", content: blocks });
-        continue;
-      }
-      anthropicMsgs.push({ role: m.role, content: m.content });
-    }
-    return {
-      model,
-      max_tokens: 4000,
-      system: systemMsg?.content ?? SYSTEM_PROMPT,
-      tools: anthropicTools,
-      messages: anthropicMsgs,
-    };
-  }
-
-  // OpenAI-compatible
-  const openaiTools = toolsToOpenAISchema(anthropicTools);
-  const openaiMsgs: Array<Record<string, unknown>> = [];
-  openaiMsgs.push({ role: "system", content: systemMsg?.content ?? SYSTEM_PROMPT });
-
-  for (let i = 0; i < conv.length; i++) {
-    const m = conv[i];
-    if (m.role === "user" && m.toolResults && m.toolResults.length > 0) {
-      // 需要回溯找到上一轮 assistant 的 tool_calls
-      const prevAssistant = i > 0 ? conv[i - 1] : null;
-      if (prevAssistant && prevAssistant.role === "assistant" && prevAssistant.toolCalls) {
-        openaiMsgs.push(...buildOpenAIToolMessages(prevAssistant.toolCalls, m.toolResults));
-      }
-      continue;
-    }
-    if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
-      // assistant 带 tool_calls → 按 OpenAI 格式发送
-      openaiMsgs.push({
-        role: "assistant",
-        content: m.content || null,
-        tool_calls: m.toolCalls.map(tc => ({
-          id: tc.id,
-          type: "function",
-          function: { name: tc.name, arguments: JSON.stringify(tc.input) },
-        })),
-      });
-      continue;
-    }
-    if (m.role === "assistant" && !m.toolCalls) {
-      openaiMsgs.push({ role: "assistant", content: m.content });
-      continue;
-    }
-    if (m.role === "user" && !m.toolResults) {
-      openaiMsgs.push({ role: "user", content: m.content });
-    }
-  }
-
-  return {
-    model,
-    max_tokens: 4000,
-    tools: openaiTools,
-    messages: openaiMsgs,
-  };
-}
+/* 重导出供 UI 接入 */
+export { cleanApiUrl, resolveFetchUrl, LLMCallError };
