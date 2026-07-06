@@ -22,7 +22,23 @@ export function useAllEncounters() {
 export function useCloseEncounter() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => encounterRepository.update(id, { status: "已结束" }),
+    mutationFn: async (id: string) => {
+      const e = await encounterRepository.update(id, { status: "已结束" });
+      // 触发积分引擎
+      try {
+        const { membershipBus } = await import("../membership/trigger-events");
+        const { checkTierUpgrade } = await import("../membership/rule-engine");
+        await membershipBus.emit({
+          type: "encounter.closed",
+          patientId: e.patientId,
+          encounterId: e.id,
+          amount: 0,
+          createdAt: new Date(),
+        });
+        await checkTierUpgrade(e.patientId, 0);
+      } catch { /* 引擎未启用时静默 */ }
+      return e;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["encounters"] });
     },

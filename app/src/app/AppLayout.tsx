@@ -8,6 +8,7 @@ import { AgentChatFAB } from "../features/agent/AgentChatFAB";
 const NAV = [
   { to: "/", label: "工作台", end: true, icon: "M3 12l9-9 9 9M5 10v10h14V10" },
   { to: "/patients", label: "患者", end: false, icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21v-1a6 6 0 0112 0v1" },
+  { to: "/membership/rules", label: "积分规则", end: false, icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" },
 ];
 
 const ROLE_LABEL: Record<string, string> = {

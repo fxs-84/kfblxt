@@ -5,6 +5,9 @@ import { PatientListPage } from "../features/patients/pages/PatientListPage";
 import { PatientFormPage } from "../features/patients/pages/PatientFormPage";
 import { PatientDetailPage } from "../features/patients/pages/PatientDetailPage";
 import { PatientViewPage } from "../features/share/PatientViewPage";
+import { MembershipEngineBootstrap } from "../features/membership/MembershipEngineBootstrap";
+import { RulesListPage } from "../features/membership/pages/RulesListPage";
+import { RuleEditPage } from "../features/membership/pages/RuleEditPage";
 
 const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 
@@ -16,7 +19,12 @@ const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 function LayoutGate() {
   const [searchParams] = useSearchParams();
   if (searchParams.get("share")) return <PatientViewPage />;
-  return <AppLayout />;
+  return (
+    <>
+      <MembershipEngineBootstrap />
+      <AppLayout />
+    </>
+  );
 }
 
 export const router = createBrowserRouter(
@@ -29,6 +37,10 @@ export const router = createBrowserRouter(
         { path: "patients", element: <PatientListPage /> },
         { path: "patients/new", element: <PatientFormPage /> },
         { path: "patients/:id", element: <PatientDetailPage /> },
+        { path: "patients/:id/membership", element: <PatientDetailPage /> },
+        { path: "membership/rules", element: <RulesListPage /> },
+        { path: "membership/rules/new", element: <RuleEditPage /> },
+        { path: "membership/rules/:id", element: <RuleEditPage /> },
         { path: "*", element: <Navigate to="/" replace /> },
       ],
     },
