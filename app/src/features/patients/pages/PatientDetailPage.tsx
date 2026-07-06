@@ -178,12 +178,13 @@ export function PatientDetailPage() {
             </div>
           )}
 
-          {/* 查体 + 附件(进行中就诊) */}
+          {/* 查体 + 诊断 + 附件(进行中就诊) */}
           {examEncounterId && (
             <div style={{ marginTop: "1.5rem" }}>
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}
+              <DiagnosisPanel encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
 

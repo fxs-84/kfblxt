@@ -53,9 +53,21 @@ export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncoun
                   {dx ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "var(--text-xs)" }}>
                       <span className="badge badge--normal">✓ 已诊断</span>
-                      <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
-                        {dx.levels.slice(0, 2).join(" · ")}{dx.levels.length > 2 ? "…" : ""}
-                      </span>
+                      {dx.clinicalDiagnoses.length > 0 && (
+                        <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
+                          {(() => {
+                            const primary = dx.clinicalDiagnoses.find(d => d.isPrimary);
+                            const txt = primary ? primary.code + " " + primary.name
+                              : dx.clinicalDiagnoses[0].code + " " + dx.clinicalDiagnoses[0].name;
+                            return txt.length > 22 ? txt.slice(0, 22) + "…" : txt;
+                          })()}
+                        </span>
+                      )}
+                      {!dx.clinicalDiagnoses.length && (
+                        <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
+                          {dx.levels.slice(0, 2).join(" · ")}{dx.levels.length > 2 ? "…" : ""}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className="badge badge--caution">未诊断</span>

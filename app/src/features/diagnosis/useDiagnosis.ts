@@ -18,10 +18,23 @@ export function useAllDiagnoses() {
 }
 
 /** 按 encounterId 索引诊断,一次查询拿到所有 encounter 的诊断状态 */
-export function useDiagnosisByEncounterMap(): Map<string, { id: string; levels: string[]; mechanisms: string[]; side: string; reasoning: string }> {
+export function useDiagnosisByEncounterMap(): Map<string, {
+  id: string;
+  levels: string[];
+  mechanisms: string[];
+  side: string;
+  reasoning: string;
+  clinicalDiagnoses: { code: string; name: string; isPrimary: boolean }[];
+}> {
   const { data: all = [] } = useAllDiagnoses();
-  const map = new Map<string, { id: string; levels: string[]; mechanisms: string[]; side: string; reasoning: string }>();
-  // 每 encounterId 只保留最新一条
+  const map = new Map<string, {
+    id: string;
+    levels: string[];
+    mechanisms: string[];
+    side: string;
+    reasoning: string;
+    clinicalDiagnoses: { code: string; name: string; isPrimary: boolean }[];
+  }>();
   const sorted = [...all].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   for (const d of sorted) {
     if (!map.has(d.encounterId)) {
@@ -31,6 +44,7 @@ export function useDiagnosisByEncounterMap(): Map<string, { id: string; levels: 
         mechanisms: d.mechanisms,
         side: d.side,
         reasoning: d.reasoning ?? "",
+        clinicalDiagnoses: d.clinicalDiagnoses ?? [],
       });
     }
   }
@@ -55,6 +69,7 @@ export function useCreateDiagnosis() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["diagnosis"] });
+      qc.invalidateQueries({ queryKey: ["encounters"] }); // EncounterTable 诊断列也刷新
     },
   });
 }

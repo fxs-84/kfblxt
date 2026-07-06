@@ -72,12 +72,34 @@ export function EncounterSummary({ encounter, patientName, patientSex }: Encount
           </div>
         </div>
 
-        {/* 定位诊断 */}
+        {/* 临床诊断 + 神经定位诊断 */}
         <div className="summary-section">
-          <h4 className="summary-section__title">神经定位诊断</h4>
+          <h4 className="summary-section__title">诊断</h4>
           <div className="summary-section__body">
             {diagnosis ? (
               <div>
+                {/* 临床诊断(ICD-10) */}
+                {diagnosis.clinicalDiagnoses && diagnosis.clinicalDiagnoses.length > 0 && (
+                  <div style={{ marginBottom: "var(--space-3)", paddingBottom: "var(--space-3)", borderBottom: "1px dashed var(--color-border)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 6 }}>📋 临床诊断 (ICD-10)</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {diagnosis.clinicalDiagnoses.map(d => (
+                        <span key={d.code} style={{
+                          padding: "2px 6px",
+                          border: d.isPrimary ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
+                          borderRadius: 4,
+                          background: d.isPrimary ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
+                          fontSize: 12,
+                          fontWeight: d.isPrimary ? 700 : 400,
+                        }}>
+                          {d.isPrimary && "⭐ "}<code>{d.code}</code> {d.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* 神经定位诊断 */}
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 4 }}>🧠 神经定位诊断 (ANRM)</div>
                 <p><strong>水平:</strong> {diagnosis.levels.join("、")} · {diagnosis.side === "left" ? "左侧" : diagnosis.side === "right" ? "右侧" : diagnosis.side === "bilateral" ? "双侧" : "中线"}</p>
                 {diagnosis.segments?.length ? <p><strong>节段:</strong> {diagnosis.segments.join("、")}</p> : null}
                 {diagnosis.nerves?.length ? <p><strong>神经干:</strong> {diagnosis.nerves.join("、")}</p> : null}
@@ -85,7 +107,7 @@ export function EncounterSummary({ encounter, patientName, patientSex }: Encount
                 <p><strong>机制:</strong> {diagnosis.mechanisms.join("、")}</p>
                 {diagnosis.reasoning && <p style={{ fontStyle: "italic", borderLeft: "2px solid var(--color-accent)", paddingLeft: "var(--space-3)" }}>{diagnosis.reasoning}</p>}
               </div>
-            ) : <p className="empty">暂无定位诊断</p>}
+            ) : <p className="empty">暂无诊断</p>}
           </div>
         </div>
 

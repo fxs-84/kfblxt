@@ -5,6 +5,7 @@ import {
   type NeuroLevel, type Mechanism, type SpinalSegment, type NerveTrunk,
   type LocalizationDiagnosis,
 } from "../localization.types";
+import { ClinicalDiagnosisSection, type ClinicalDx } from "./ClinicalDiagnosisSection";
 import { formatDate } from "../../../lib/format";
 
 interface DiagnosisPanelProps { encounterId: string }
@@ -20,6 +21,7 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
   const [cutaneousIds, setCutaneousIds] = useState<Set<string>>(new Set());
   const [side, setSide] = useState<LocalizationDiagnosis["side"]>("left");
   const [reasoning, setReasoning] = useState("");
+  const [clinicalDiagnoses, setClinicalDiagnoses] = useState<ClinicalDx[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cutaneousOpen, setCutaneousOpen] = useState<Set<string>>(new Set(["颈枕部", "前臂"]));
@@ -38,11 +40,16 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
     if (diagnosis.cutaneousNerveIds) setCutaneousIds(new Set(diagnosis.cutaneousNerveIds));
     setSide(diagnosis.side);
     setReasoning(diagnosis.reasoning ?? "");
+    setClinicalDiagnoses(diagnosis.clinicalDiagnoses ?? []);
   }, [diagnosis, isLoading]);
 
   const handleSave = async () => {
     if (levels.size === 0 || mechanisms.size === 0) {
       setError("请至少选择一个神经水平和一种致病机制");
+      return;
+    }
+    if (clinicalDiagnoses.length === 0) {
+      setError("请至少添加一个临床诊断(ICD-10)");
       return;
     }
     setError(null);
@@ -54,6 +61,7 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
         nerves: nerves.size ? [...nerves] : undefined,
         cutaneousNerveIds: cutaneousIds.size ? [...cutaneousIds] : undefined,
         side, reasoning,
+        clinicalDiagnoses,
       });
       setShowForm(false);
     } catch (e: unknown) {
@@ -77,13 +85,39 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
           }
           return id;
         }) : [];
+    const clinicalList = diagnosis.clinicalDiagnoses ?? [];
     return (
       <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>
         <div className="panel__head">
-          <h3 className="panel__title">神经定位诊断</h3>
+          <h3 className="panel__title">诊断</h3>
           <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>编辑</button>
         </div>
         <div style={{ padding: "0 var(--space-5) var(--space-4)" }}>
+
+          {/* 临床诊断 */}
+          {clinicalList.length > 0 && (
+            <div style={{ marginBottom: "var(--space-3)", paddingBottom: "var(--space-3)", borderBottom: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 6 }}>📋 临床诊断 (ICD-10)</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {clinicalList.map(d => (
+                  <span key={d.code} style={{
+                    padding: "3px 8px",
+                    border: d.isPrimary ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
+                    borderRadius: 4,
+                    background: d.isPrimary ? "var(--color-accent-weak, #e6f0fa)" : "var(--color-surface-sunken, #f9fafb)",
+                    fontSize: 12,
+                    fontWeight: d.isPrimary ? 700 : 400,
+                  }}>
+                    {d.isPrimary && "⭐ "}
+                    <code>{d.code}</code> {d.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 神经定位诊断 */}
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 6 }}>🧠 神经定位诊断 (ANRM)</div>
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
             <span className="badge badge--abnormal">{side === "left" ? "左侧" : side === "right" ? "右侧" : side === "bilateral" ? "双侧" : "中线"}</span>
             {diagnosis.levels.map((l) => <span key={l} className="exam-summary__item exam-summary__item--pos">{l}</span>)}
@@ -109,6 +143,17 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
         <span className="panel__hint">症状→水平→节段→神经→机制</span>
       </div>
       <div style={{ padding: "var(--space-4) var(--space-6)" }}>
+
+        {/* 临床诊断(必填) */}
+        <div className="field" style={{ marginBottom: "var(--space-5)" }}>
+          <label>📋 临床诊断 (ICD-10) <span style={{ color: "var(--color-abnormal)" }}>*</span></label>
+          <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 8 }}>
+            用于病案首页和医保结算。点击 ⭐ 标记主诊。⭐ 标识的第一个诊断为主诊。
+          </p>
+          <ClinicalDiagnosisSection diagnoses={clinicalDiagnoses} onChange={setClinicalDiagnoses} />
+        </div>
+
+        <div className="divider" style={{ height: 1, background: "var(--color-border)", margin: "var(--space-4) 0" }} />
 
         <div className="field" style={{ marginBottom: "var(--space-4)" }}>
           <label>侧别</label>
