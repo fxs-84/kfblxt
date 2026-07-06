@@ -9,6 +9,7 @@ import { EncounterSummary } from "../../encounters/components/EncounterSummary";
 import { CloseChecklist } from "../../encounters/components/CloseChecklist";
 import { VasTrendChart } from "../../encounters/components/VasTrendChart";
 import { vasSeries, aggregateRegions } from "../../encounters/encounter.select";
+import type { EncounterRecord } from "../../encounters/encounter.repository";
 import { BodyMap } from "../../../components/bodymap/BodyMap";
 import { ExamForm } from "../../exam/components/ExamForm";
 import { ExamResultSummary } from "../../exam/components/ExamResultSummary";
@@ -44,6 +45,7 @@ export function PatientDetailPage() {
 
   const [tab, setTab] = useState<TabType>("overview");
   const [showForm, setShowForm] = useState(false);
+  const [editingEncounter, setEditingEncounter] = useState<EncounterRecord | null>(null);
   const [examEncounterId, setExamEncounterId] = useState<string | null>(null);
   const [diagnosisEid, setDiagnosisEid] = useState<string | null>(null);
   const [summaryEncounterId, setSummaryEncounterId] = useState<string | null>(null);
@@ -56,7 +58,6 @@ export function PatientDetailPage() {
   const openExam = (eid: string) => {
     setDiagnosisEid(null);
     setExamEncounterId(eid === examEncounterId ? null : eid);
-    // 等 panel 渲染完成再滚动
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         examSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -73,6 +74,15 @@ export function PatientDetailPage() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         diagnosisSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+  const openEncounterEditor = (enc: EncounterRecord) => {
+    setShowForm(false);
+    setEditingEncounter(enc);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById("encounter-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
   };
@@ -184,6 +194,17 @@ export function PatientDetailPage() {
             <div style={{ marginBottom: "1rem" }}><button className="btn btn--ghost" onClick={() => setShowForm(true)}>+ 新建就诊</button></div>
           )}
 
+          {/* 编辑当前就诊的主诉(补充症状/体格信息) */}
+          {editingEncounter && (
+            <div id="encounter-edit-form" style={{ marginBottom: "1.5rem", border: "2px solid var(--color-caution, #f59e0b)", borderRadius: 8, padding: "var(--space-3)", background: "var(--color-caution-weak, #fef8ed)" }}>
+              <div style={{ marginBottom: "var(--space-3)", fontSize: 13, fontWeight: 600, color: "var(--color-caution, #f59e0b)" }}>
+                ✏️ 编辑就诊:{formatDate(editingEncounter.encounterDate)} · {editingEncounter.visitType}
+                <button type="button" className="btn btn--ghost" style={{ float: "right", fontSize: 11, padding: "2px 10px" }} onClick={() => setEditingEncounter(null)}>收起</button>
+              </div>
+              <EncounterForm patientId={patient.id} existing={editingEncounter} onDone={() => setEditingEncounter(null)} />
+            </div>
+          )}
+
           <div className="card">
             <EncounterTable
               encounters={list}
@@ -210,6 +231,14 @@ export function PatientDetailPage() {
               <div style={{ marginBottom: "var(--space-3)", fontSize: 13, fontWeight: 600, color: "var(--color-accent)" }}>
                 📋 正在处理就诊:{formatDate(list.find(e => e.id === examEncounterId)?.encounterDate ?? new Date())} · {list.find(e => e.id === examEncounterId)?.visitType}
                 <button type="button" className="btn btn--ghost" style={{ float: "right", fontSize: 11, padding: "2px 10px" }} onClick={() => setExamEncounterId(null)}>收起</button>
+                {(() => {
+                  const enc = list.find(e => e.id === examEncounterId);
+                  if (enc) return (
+                    <button type="button" className="btn btn--ghost" style={{ float: "right", fontSize: 11, padding: "2px 10px", marginRight: 6, color: "var(--color-caution, #f59e0b)", borderColor: "var(--color-caution, #f59e0b)" }}
+                      onClick={() => openEncounterEditor(enc)}>✏️ 补充症状</button>
+                  );
+                  return null;
+                })()}
               </div>
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />

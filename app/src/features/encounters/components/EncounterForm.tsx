@@ -7,8 +7,9 @@ import {
   SYMPTOM_GROUPS,
   SYMPTOM_GROUP_KEYS,
   type SymptomGroup,
+  type Encounter,
 } from "../encounter.schema";
-import { useCreateEncounter } from "../useEncounters";
+import { useCreateEncounter, useUpdateEncounter } from "../useEncounters";
 import { getSession } from "../../../lib/session";
 import { BodyMap } from "../../../components/bodymap/BodyMap";
 
@@ -17,26 +18,60 @@ type EncounterFormValues = z.input<typeof encounterFormSchema>;
 
 interface EncounterFormProps {
   patientId: string;
+  /** 编辑模式:传入现有 encounter */
+  existing?: Encounter;
   onDone: () => void;
 }
 
-export function EncounterForm({ patientId, onDone }: EncounterFormProps) {
+export function EncounterForm({ patientId, existing, onDone }: EncounterFormProps) {
   const createEncounter = useCreateEncounter();
+  const updateEncounter = useUpdateEncounter();
+  const isEdit = Boolean(existing);
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<EncounterFormValues>({
     resolver: zodResolver(encounterFormSchema),
-    defaultValues: {
-      visitType: "初诊",
-      encounterDate: new Date().toISOString().slice(0, 10),
-      chiefComplaint: { regions: [], nature: [], vas: 0 },
-    },
+    defaultValues: existing
+      ? {
+          encounterDate: existing.encounterDate.toISOString().slice(0, 10),
+          visitType: existing.visitType,
+          status: existing.status,
+          chiefComplaint: {
+            regions: existing.chiefComplaint.regions,
+            distributionNote: existing.chiefComplaint.distributionNote ?? "",
+            nature: existing.chiefComplaint.nature,
+            vas: existing.chiefComplaint.vas,
+            durationText: existing.chiefComplaint.durationText,
+            onset: existing.chiefComplaint.onset ?? "",
+          },
+          amount: existing.amount ?? 0,
+          soapNote: existing.soapNote ?? "",
+        }
+      : {
+          visitType: "初诊",
+          encounterDate: new Date().toISOString().slice(0, 10),
+          chiefComplaint: { regions: [], nature: [], vas: 0 },
+        },
   });
 
-  const [symptomOpen, setSymptomOpen] = useState<Set<SymptomGroup>>(new Set(["疼痛", "感觉异常"]));
+  const [symptomOpen, setSymptomOpen] = useState<Set<SymptomGroup>>(
+    existing ? new Set() : new Set(["疼痛", "感觉异常"]),
+  );
+
+  // 编辑模式下,根据已有症状性质自动展开分组
+  useEffect(() => {
+    if (!existing) return;
+    const existingNature = new Set(existing.chiefComplaint.nature);
+    const groupsToOpen = new Set<SymptomGroup>();
+    for (const g of SYMPTOM_GROUP_KEYS) {
+      if (SYMPTOM_GROUPS[g].some(n => existingNature.has(n))) groupsToOpen.add(g);
+    }
+    setSymptomOpen(groupsToOpen);
+  }, [existing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* P2: 体区→症状组映射 */
   const REGION_TO_GROUPS: Record<string, SymptomGroup[]> = {
@@ -82,11 +117,25 @@ export function EncounterForm({ patientId, onDone }: EncounterFormProps) {
 
   const onSubmit = handleSubmit(async (values) => {
     const parsed = encounterFormSchema.parse(values);
-    await createEncounter.mutateAsync({
-      ...parsed,
-      orgId: getSession().orgId,
-      patientId,
-    });
+    if (existing) {
+      await updateEncounter.mutateAsync({
+        id: existing.id!,
+        patch: {
+          encounterDate: new Date(String(parsed.encounterDate)),
+          visitType: parsed.visitType,
+          status: parsed.status ?? "进行中",
+          chiefComplaint: parsed.chiefComplaint,
+          amount: parsed.amount,
+          soapNote: parsed.soapNote,
+        },
+      });
+    } else {
+      await createEncounter.mutateAsync({
+        ...parsed,
+        orgId: getSession().orgId,
+        patientId,
+      });
+    }
     onDone();
   });
 
@@ -182,7 +231,7 @@ export function EncounterForm({ patientId, onDone }: EncounterFormProps) {
       </div>
       <div className="form-actions">
         <button type="submit" className="btn btn--primary" disabled={isSubmitting}>
-          {isSubmitting ? "保存中…" : "保存就诊"}
+          {isSubmitting ? "保存中…" : (isEdit ? "保存修改" : "保存就诊")}
         </button>
         <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
       </div>
