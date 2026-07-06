@@ -39,7 +39,19 @@ export function RulesListPage() {
     <div style={{ padding: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, gap: 8, alignItems: "center" }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>积分规则 ({rules.length})</h2>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => navigate("/membership/dashboard")} style={{
+            padding: "6px 12px", background: "transparent",
+            border: "1px solid var(--color-border)", borderRadius: 4, cursor: "pointer", fontSize: 12,
+          }}>数据看板</button>
+          <button type="button" onClick={() => navigate("/membership/review")} style={{
+            padding: "6px 12px", background: "transparent",
+            border: "1px solid var(--color-border)", borderRadius: 4, cursor: "pointer", fontSize: 12,
+          }}>兑换审核</button>
+          <button type="button" onClick={() => navigate("/membership/products")} style={{
+            padding: "6px 12px", background: "transparent",
+            border: "1px solid var(--color-border)", borderRadius: 4, cursor: "pointer", fontSize: 12,
+          }}>商品管理</button>
           <button type="button" onClick={() => navigate("/membership/tiers")} style={{
             padding: "6px 12px", background: "transparent",
             border: "1px solid var(--color-border)", borderRadius: 4, cursor: "pointer", fontSize: 12,

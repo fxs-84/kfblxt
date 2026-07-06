@@ -110,6 +110,51 @@ export const pointsLogSchema = z.object({
 });
 export type PointsLog = z.infer<typeof pointsLogSchema>;
 
+// ===== 兑换商品 =====
+export const REWARD_CATEGORIES = ["training", "consult", "product", "service", "discount"] as const;
+export type RewardCategory = (typeof REWARD_CATEGORIES)[number];
+
+export const REWARD_CATEGORY_LABEL: Record<RewardCategory, string> = {
+  training: "训练包",
+  consult: "咨询服务",
+  product: "康复用品",
+  service: "诊疗服务",
+  discount: "折扣券",
+};
+
+export const rewardProductSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  description: z.string(),
+  category: z.enum(REWARD_CATEGORIES),
+  pointsCost: z.number().int().min(0),
+  imageEmoji: z.string().default("🎁"),
+  stock: z.number().int().min(-1).default(-1), // -1 = 无限
+  tierRequired: z.enum(MEMBER_TIERS).nullable().default(null),
+  enabled: z.boolean().default(true),
+  createdAt: z.string(),
+});
+export type RewardProduct = z.infer<typeof rewardProductSchema>;
+
+// ===== 兑换订单 =====
+export const REDEMPTION_STATUSES = ["pending", "fulfilled", "cancelled", "expired"] as const;
+export type RedemptionStatus = (typeof REDEMPTION_STATUSES)[number];
+
+export const redemptionSchema = z.object({
+  id: z.string(),
+  patientId: z.string(),
+  rewardId: z.string(),
+  rewardName: z.string(), // 快照,商品改名也不影响历史
+  pointsCost: z.number().int(), // 快照
+  status: z.enum(REDEMPTION_STATUSES),
+  notes: z.string().nullable().default(null),
+  operatorId: z.string(),
+  createdAt: z.string(),
+  fulfilledAt: z.string().nullable().default(null),
+  cancelledAt: z.string().nullable().default(null),
+});
+export type Redemption = z.infer<typeof redemptionSchema>;
+
 /** 触发事件(规则引擎输入) */
 export type TriggerEvent =
   | { type: "encounter.closed"; patientId: string; encounterId: string; amount: number; createdAt: Date }

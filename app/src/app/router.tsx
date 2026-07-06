@@ -10,6 +10,10 @@ import { RulesListPage } from "../features/membership/pages/RulesListPage";
 import { RuleEditPage } from "../features/membership/pages/RuleEditPage";
 import { TierConfigPage } from "../features/membership/pages/TierConfigPage";
 import { RuleTestPage } from "../features/membership/pages/RuleTestPage";
+import { ShopPage } from "../features/membership/pages/ShopPage";
+import { RewardReviewPage } from "../features/membership/pages/RewardReviewPage";
+import { ProductManagePage } from "../features/membership/pages/ProductManagePage";
+import { MembershipDashboard } from "../features/membership/pages/MembershipDashboard";
 
 const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 
@@ -45,6 +49,10 @@ export const router = createBrowserRouter(
         { path: "membership/rules/:id", element: <RuleEditPage /> },
         { path: "membership/tiers", element: <TierConfigPage /> },
         { path: "membership/test", element: <RuleTestPage /> },
+        { path: "membership/products", element: <ProductManagePage /> },
+        { path: "membership/review", element: <RewardReviewPage /> },
+        { path: "membership/dashboard", element: <MembershipDashboard /> },
+        { path: "membership/shop/:patientId", element: <ShopPage /> },
         { path: "*", element: <Navigate to="/" replace /> },
       ],
     },

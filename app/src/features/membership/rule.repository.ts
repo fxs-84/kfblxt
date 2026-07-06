@@ -8,10 +8,14 @@ import {
   tierConfigSchema,
   patientMembershipSchema,
   pointsLogSchema,
+  rewardProductSchema,
+  redemptionSchema,
   type PointsRule,
   type TierConfig,
   type PatientMembership,
   type PointsLog,
+  type RewardProduct,
+  type Redemption,
 } from "./models";
 
 const PREFIX = "anrm_";
@@ -176,3 +180,79 @@ export const pointsLogRepository = {
 import type { MemberTier } from "./models";
 void tierRepository;
 void patientMembershipRepository;
+
+/** ===== 兑换商品 ===== */
+const REWARD_SEED: RewardProduct[] = [
+  { id: "reward_elastics", name: "弹力带训练包", description: "含 5 条不同阻力的弹力带 + 训练手册", category: "training", pointsCost: 300, imageEmoji: "🩰", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_balance_disc", name: "平衡训练光盘", description: "12 节平衡训练高清视频", category: "training", pointsCost: 500, imageEmoji: "💿", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_phone_followup", name: "电话回访 1 次", description: "治疗师主动电话回访 30 分钟", category: "service", pointsCost: 800, imageEmoji: "📞", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_online_qa", name: "在线答疑 30 分钟", description: "治疗师在线视频答疑", category: "consult", pointsCost: 1000, imageEmoji: "💬", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_discount_90", name: "9 折就诊券", description: "下次就诊 9 折优惠", category: "discount", pointsCost: 500, imageEmoji: "🎟️", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_free_visit", name: "免费复诊券", description: "下次复诊免费一次", category: "service", pointsCost: 2000, imageEmoji: "🎫", stock: -1, tierRequired: "gold", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_expert", name: "三甲专家会诊咨询", description: "三甲康复专家 30 分钟会诊咨询", category: "consult", pointsCost: 5000, imageEmoji: "👨‍⚕️", stock: 5, tierRequired: "diamond", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_plan", name: "个性化训练计划定制", description: "治疗师 1 对 1 定制 4 周训练计划", category: "training", pointsCost: 2000, imageEmoji: "📋", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
+];
+ensureSeeded("reward-products", REWARD_SEED);
+
+export async function findAllRewards(): Promise<RewardProduct[]> {
+  return load<RewardProduct>("reward-products");
+}
+export async function findRewardById(id: string): Promise<RewardProduct | null> {
+  return load<RewardProduct>("reward-products").find(r => r.id === id) ?? null;
+}
+export async function createReward(r: RewardProduct): Promise<RewardProduct> {
+  rewardProductSchema.parse(r);
+  const all = load<RewardProduct>("reward-products");
+  all.push(r);
+  save("reward-products", all);
+  return r;
+}
+export async function updateReward(id: string, patch: Partial<RewardProduct>): Promise<RewardProduct | null> {
+  const all = load<RewardProduct>("reward-products");
+  const idx = all.findIndex(r => r.id === id);
+  if (idx === -1) return null;
+  all[idx] = { ...all[idx], ...patch };
+  save("reward-products", all);
+  return all[idx];
+}
+export async function deleteReward(id: string): Promise<void> {
+  save("reward-products", load<RewardProduct>("reward-products").filter(r => r.id !== id));
+}
+
+/** ===== 兑换订单 ===== */
+export async function findAllRedemptions(): Promise<Redemption[]> {
+  return load<Redemption>("redemptions");
+}
+export async function findRedemptionsByPatient(patientId: string): Promise<Redemption[]> {
+  return load<Redemption>("redemptions").filter(r => r.patientId === patientId);
+}
+export async function createRedemption(r: Redemption): Promise<Redemption> {
+  redemptionSchema.parse(r);
+  const all = load<Redemption>("redemptions");
+  all.push(r);
+  save("redemptions", all);
+  return r;
+}
+export async function updateRedemption(id: string, patch: Partial<Redemption>): Promise<Redemption | null> {
+  const all = load<Redemption>("redemptions");
+  const idx = all.findIndex(r => r.id === id);
+  if (idx === -1) return null;
+  all[idx] = { ...all[idx], ...patch };
+  save("redemptions", all);
+  return all[idx];
+}
+
+export const rewardRepository = {
+  findAll: findAllRewards,
+  findById: findRewardById,
+  create: createReward,
+  update: updateReward,
+  remove: deleteReward,
+};
+
+export const redemptionRepository = {
+  findAll: findAllRedemptions,
+  findByPatient: findRedemptionsByPatient,
+  create: createRedemption,
+  update: updateRedemption,
+};
