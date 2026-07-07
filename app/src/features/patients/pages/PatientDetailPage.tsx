@@ -18,6 +18,7 @@ import { TreatmentPanel } from "../../treatment/components/TreatmentPanel";
 import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
 import { BillingPanel } from "../../billing/BillingPanel";
+import { MembershipPanelCard } from "../../membership/MembershipPanelCard";
 import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
@@ -182,6 +183,7 @@ export function PatientDetailPage() {
             </div>
           </div>
           <BillingPanel patientId={patient.id} />
+          <MembershipPanelCard patientId={patient.id} />
           <FollowupPanel patientId={patient.id} />
         </>
       )}

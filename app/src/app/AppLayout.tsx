@@ -5,10 +5,39 @@ import { resetSession, useSession } from "../components/auth/useSession";
 import { AgentMonitor } from "../features/agent/AgentMonitor";
 import { AgentChatFAB } from "../features/agent/AgentChatFAB";
 
-const NAV = [
-  { to: "/", label: "工作台", end: true, icon: "M3 12l9-9 9 9M5 10v10h14V10" },
-  { to: "/patients", label: "患者", end: false, icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21v-1a6 6 0 0112 0v1" },
-  { to: "/membership/rules", label: "积分规则", end: false, icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" },
+interface NavItem {
+  to: string;
+  label: string;
+  end: boolean;
+  icon: string;
+}
+
+const NAV: NavItem[] = [
+  {
+    to: "/",
+    label: "工作台",
+    end: true,
+    icon: "M3 12l9-9 9 9M5 10v10h14V10",
+  },
+  {
+    to: "/patients",
+    label: "患者",
+    end: false,
+    icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21v-1a6 6 0 0112 0v1",
+  },
+  {
+    to: "/membership/dashboard",
+    label: "会员中心",
+    end: false,
+    // 礼物/会员图标
+    icon: "M20 7h-1V6a3 3 0 00-3-3H8a3 3 0 00-3 3v1H4a2 2 0 00-2 2v2a4 4 0 004 4v3a2 2 0 002 2h8a2 2 0 002-2v-3a4 4 0 004-4V9a2 2 0 00-2-2zM7 6a1 1 0 011-1h8a1 1 0 011 1v1H7V6zm3 11v4H8v-4h2zm4 0h2v4h-2v-4z",
+  },
+  {
+    to: "/membership/rules",
+    label: "积分规则",
+    end: false,
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
