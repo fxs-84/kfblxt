@@ -442,9 +442,25 @@ export function AgentChat({ onClose }: AgentChatProps) {
                     autoComplete="off"
                     style={inputStyle}
                   />
-                  <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 2 }}>
-                    注册: portal.azure.com → 创建 Bing Search 资源 → Keys and Endpoint
-                  </div>
+                  <details style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 6 }}>
+                    <summary style={{ cursor: "pointer", color: "var(--color-accent)" }}>📖 怎么获取 Bing API Key?</summary>
+                    <div style={{ marginTop: 6, lineHeight: 1.6, padding: 8, background: "var(--color-surface-sunken, #f5f7fa)", borderRadius: 4 }}>
+                      <strong>5 分钟搞定,免费 1000 次/月:</strong>
+                      <ol style={{ margin: "6px 0", paddingLeft: 20 }}>
+                        <li>打开 <a href="https://portal.azure.com/" target="_blank" rel="noreferrer">portal.azure.com</a>,用微软账号登录</li>
+                        <li>顶部搜索 <code>Bing Search v7</code> → 点 <strong>"创建"</strong></li>
+                        <li>Subscription:学生选 <em>Azure for Students</em>;否则 Pay-As-You-Go(信用卡验证送 200 美元额度)</li>
+                        <li>Pricing tier:<strong style={{ color: "#10b981" }}>F1 Free</strong>(每月 1000 次)</li>
+                        <li>Region:选 <em>East Asia</em>(国内快)</li>
+                        <li>等 1-2 分钟部署完 → 点 <strong>"Go to resource"</strong></li>
+                        <li>左侧菜单 <strong>"Keys and Endpoint"</strong> → 复制 <strong>KEY 1</strong>(32 位字符串)</li>
+                        <li>粘到上面输入框 → 保存</li>
+                      </ol>
+                      <div style={{ marginTop: 4, fontSize: 10 }}>
+                        ⚠️ 国内访问 Azure 可能需要稳定的网络环境。如卡住,试试 <a href="https://brave.com/search/api/" target="_blank" rel="noreferrer">Brave Search API</a>(每月 2000 次免费)
+                      </div>
+                    </div>
+                  </details>
                 </div>
               )}
               {extCfg.searchBackend === "custom" && (
