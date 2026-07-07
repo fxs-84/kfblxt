@@ -261,7 +261,12 @@ export async function installSkillFromUrl(rawUrl: string): Promise<SkillConfig> 
   if (urlErr) throw new Error(`URL 验证失败: ${urlErr}`);
 
   const tried: string[] = [];
-  const candidates = buildSkillUrlCandidates(rawUrl);
+  // 仓库根 URL:先走 GitHub API 探文件树,挑所有 SKILL.md / skill.md / README.md
+  const githubApiUrls = await listSkillFilesFromGithubRepo(rawUrl);
+  const candidates = [
+    ...githubApiUrls,
+    ...buildSkillUrlCandidates(rawUrl),
+  ];
 
   let lastError = "";
   for (const candidate of candidates) {
@@ -325,6 +330,17 @@ export function buildSkillUrlCandidates(rawUrl: string): string[] {
       candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/${rest}`);
     }
 
+    // GitHub 仓库根 URL(没 blob 也没子路径):探 README.md / SKILL.md / skill.md 在 main 和 master 分支
+    const ghRepo = u.hostname === "github.com" && u.pathname.match(/^\/([^/]+)\/([^/]+)\/?$/);
+    if (ghRepo) {
+      const [, owner, repo] = ghRepo;
+      for (const branch of ["main", "master"]) {
+        for (const name of ["README.md", "SKILL.md", "skill.md", "index.md"]) {
+          candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${name}`);
+        }
+      }
+    }
+
     // GitHub gist: gist.github.com/{user}/{id}
     //   → gist.githubusercontent.com/{user}/{id}/raw
     const gist = u.hostname === "gist.github.com" && u.pathname.match(/^\/([^/]+)\/([^/]+)/);
@@ -339,10 +355,12 @@ export function buildSkillUrlCandidates(rawUrl: string): string[] {
       candidates.push(rawUrl.replace("/-/blob/", "/-/raw/"));
     }
 
-    // 任何域名:追加常见 .md 路径
-    candidates.push(new URL("/skill.md", u).toString());
-    candidates.push(new URL("/SKILL.md", u).toString());
-    candidates.push(new URL("/README.md", u).toString());
+    // 任何域名:在 path 后面追加常见 .md 文件名
+    // 注意:new URL("/x", u) 只会用 u 的 origin,丢掉 path — 必须手动拼接
+    const baseWithPath = u.origin + u.pathname.replace(/\/?$/, "");
+    candidates.push(`${baseWithPath}/skill.md`);
+    candidates.push(`${baseWithPath}/SKILL.md`);
+    candidates.push(`${baseWithPath}/README.md`);
 
     // Gitea/Forgejo: /owner/repo/src/branch/{path} → /owner/repo/raw/branch/{path}
     const gitea = u.pathname.match(/^\/([^/]+)\/([^/]+)\/src\/branch\/(.+)$/);
@@ -404,7 +422,43 @@ async function fetchAsText(rawUrl: string): Promise<string> {
   throw new Error(`fetch 失败: ${fetchUrl}`);
 }
 
-/** 检查是否重复安装 */
+/**
+ * GitHub 仓库根 URL → 递归探文件树,返回所有 SKILL.md / skill.md / README.md 的 raw URL。
+ * 失败(API 限流 / 非 GitHub / 网络错)返回空数组,主流程会继续走 buildSkillUrlCandidates 兜底。
+ * dev 走 Vite 代理(/api/proxy/...),prod 直连(github api 支持 CORS)。
+ */
+async function listSkillFilesFromGithubRepo(rawUrl: string): Promise<string[]> {
+  const m = rawUrl.match(/^https?:\/\/github\.com\/([^/]+)\/([^/?#]+)\/?$/);
+  if (!m) return [];
+  const [, owner, repo] = m;
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`;
+  try {
+    const isDev = typeof location !== "undefined" &&
+      (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+    const fetchUrl = isDev ? `/api/proxy/${encodeURIComponent(apiUrl)}` : apiUrl;
+    const res = await fetch(fetchUrl, {
+      headers: { "Accept": "application/vnd.github.v3+json" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as { tree?: Array<{ path: string; type: string }> };
+    const tree = data.tree ?? [];
+    const names = ["SKILL.md", "skill.md", "README.md"];
+    const found = tree.filter(n =>
+      n.type === "blob" && names.some(name => n.path.endsWith(`/${name}`) || n.path === name)
+    );
+    found.sort((a, b) => {
+      const pa = names.findIndex(name => a.path.endsWith(name));
+      const pb = names.findIndex(name => b.path.endsWith(name));
+      if (pa !== pb) return pa - pb;
+      return a.path.length - b.path.length;
+    });
+    return found.slice(0, 10).map(n =>
+      `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${n.path}`
+    );
+  } catch {
+    return [];
+  }
+}
 export function isSkillDuplicated(url: string): boolean {
   return getSkills().some(s => (s as SkillConfig & { sourceUrl?: string }).sourceUrl === url);
 }

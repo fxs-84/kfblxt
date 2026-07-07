@@ -41,9 +41,26 @@ describe("buildSkillUrlCandidates", () => {
   });
   it("任何域名都追加 /skill.md /SKILL.md /README.md 候选", () => {
     const urls = buildSkillUrlCandidates("https://example.com/foo");
-    expect(urls).toContain("https://example.com/skill.md");
-    expect(urls).toContain("https://example.com/SKILL.md");
-    expect(urls).toContain("https://example.com/README.md");
+    expect(urls).toContain("https://example.com/foo/skill.md");
+    expect(urls).toContain("https://example.com/foo/SKILL.md");
+    expect(urls).toContain("https://example.com/foo/README.md");
+  });
+
+  it("REGRESSION: 深层路径不会被 new URL 当成 base 丢掉 path", () => {
+    // 之前 new URL("/skill.md", u) 生成的 https://github.com/skill.md 是错的
+    // 应该保持原路径再加文件名
+    const urls = buildSkillUrlCandidates("https://github.com/KKKKhazix/khazix-skills");
+    expect(urls).toContain("https://github.com/KKKKhazix/khazix-skills/skill.md");
+    expect(urls).toContain("https://github.com/KKKKhazix/khazix-skills/SKILL.md");
+    expect(urls).toContain("https://github.com/KKKKhazix/khazix-skills/README.md");
+    expect(urls).not.toContain("https://github.com/skill.md");
+  });
+
+  it("GitHub 仓库根 URL 自动展开 main/master + 常见文件名", () => {
+    const urls = buildSkillUrlCandidates("https://github.com/KKKKhazix/khazix-skills");
+    expect(urls).toContain("https://raw.githubusercontent.com/KKKKhazix/khazix-skills/main/README.md");
+    expect(urls).toContain("https://raw.githubusercontent.com/KKKKhazix/khazix-skills/master/README.md");
+    expect(urls).toContain("https://raw.githubusercontent.com/KKKKhazix/khazix-skills/main/SKILL.md");
   });
   it("去重", () => {
     const urls = buildSkillUrlCandidates("https://example.com/skill.md");
