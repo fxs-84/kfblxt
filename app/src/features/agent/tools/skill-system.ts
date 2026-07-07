@@ -246,9 +246,15 @@ export function validateExternalUrl(rawUrl: string): string | null {
 
 /** 从 URL 安装 Skill(支持 GitHub Raw / Gist / 任意 .md / SPA → raw 链接自动转换) */
 export async function installSkillFromUrl(rawUrl: string): Promise<SkillConfig> {
-  // 关键词模式:不是合法 URL,先用 web_search 找候选 URL
+  // 关键词模式:不是合法 URL 时给出明确指引,不再尝试自动搜索
   if (!isLikelyUrl(rawUrl)) {
-    return installSkillByKeyword(rawUrl);
+    throw new Error(
+      `"${rawUrl}" 看起来不是 URL。install_skill 需要直接的文件 URL。\n\n` +
+      `解决方法:\n` +
+      `1. 直接粘贴 .md 文件 URL(支持 GitHub blob / gist / raw.githubusercontent.com)\n` +
+      `2. 从 Skill 库一键装: ${SKILL_GALLERY.map(s => s.name).slice(0, 4).join("、")} 等\n` +
+      `3. 手动创建: 粘贴带 YAML frontmatter 的 Markdown 内容`,
+    );
   }
   // URL 安全验证
   const urlErr = validateExternalUrl(rawUrl);
@@ -350,7 +356,12 @@ export function buildSkillUrlCandidates(rawUrl: string): string[] {
   return Array.from(new Set(candidates));
 }
 
-/** 走与 installSkillFromUrl 一致的 dev/prod 路径,返回响应文本 */
+/** 走与 installSkillFromUrl 一致的 dev/prod 路径,返回响应文本
+ * 生产环境自动兜底 CORS 代理(无需用户配置):
+ *   1. 用户配的 corsProxy
+ *   2. 内置公共代理(allorigins / corsproxy.io / cors.sh)
+ *   3. 直连(终极兜底,某些 CDN 不需要代理)
+ */
 async function fetchAsText(rawUrl: string): Promise<string> {
   const { resolveFetchUrl } = await import("../../ai/llm-client");
   const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]";
@@ -368,9 +379,29 @@ async function fetchAsText(rawUrl: string): Promise<string> {
     } catch { /* ignore */ }
     fetchUrl = resolveFetchUrl(rawUrl, corsProxy).url;
   }
-  const res = await fetch(fetchUrl);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.text();
+
+  // 先试直连
+  try {
+    const res = await fetch(fetchUrl);
+    if (res.ok) return await res.text();
+  } catch { /* CORS 或网络错误,继续尝试代理 */ }
+
+  // 生产环境自动兜底公共 CORS 代理(无需用户配置)
+  if (!isDev) {
+    const fallbacks = [
+      `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`,
+      `https://cors.sh/${rawUrl}`,
+    ];
+    for (const fb of fallbacks) {
+      try {
+        const res = await fetch(fb);
+        if (res.ok) return await res.text();
+      } catch { /* 这个代理也挂了,试下一个 */ }
+    }
+    throw new Error(`所有代理都失败: ${rawUrl}`);
+  }
+  throw new Error(`fetch 失败: ${fetchUrl}`);
 }
 
 /** 检查是否重复安装 */
@@ -438,77 +469,37 @@ export function extractSearchResultUrls(text: string): string[] {
   return dedup;
 }
 
-/** 关键词 → 搜索 → 候选 URL → 装第一个成功的 */
-async function installSkillByKeyword(keyword: string): Promise<SkillConfig> {
-  // 动态 import 避免循环依赖
-  const { webSearch } = await import("./external-tools");
-  const query = `${keyword} skill markdown github`;
-  let searchResult: string;
-  try {
-    searchResult = await webSearch(query, 8);
-  } catch (e) {
-    throw new Error(
-      `关键词安装失败: web_search 不可用。${e instanceof Error ? e.message : String(e)}\n` +
-      `解决方法: 在 LLM 配置面板里启用搜索后端(Bing/自配置),或直接粘贴 .md 链接`,
-    );
-  }
+/** 已知 skill 仓库的关键词 → 路径映射(保留以备未来拓展) */
+const SKILL_KEYWORD_HINTS: Record<string, string[]> = {
+  "翻译": ["anthropics/skills/skills/translation", "obra/superpowers/skills/translation"],
+  "translate": ["anthropics/skills/skills/translation"],
+  "代码审查": ["anthropics/skills/skills/code-review", "obra/superpowers/skills/code-review"],
+  "code review": ["anthropics/skills/skills/code-review"],
+  "调试": ["obra/superpowers/skills/debugging"],
+  "debug": ["obra/superpowers/skills/debugging"],
+  "测试": ["obra/superpowers/skills/test-driven-development"],
+  "test": ["obra/superpowers/skills/test-driven-development"],
+  "git": ["obra/superpowers/skills/git"],
+  "重构": ["obra/superpowers/skills/refactoring"],
+  "refactor": ["obra/superpowers/skills/refactoring"],
+  "写作": ["anthropics/skills/skills/writing"],
+  "writing": ["anthropics/skills/skills/writing"],
+  "summarize": ["anthropics/skills/skills/summarization"],
+  "摘要": ["anthropics/skills/skills/summarization"],
+};
 
-  const candidates = extractSearchResultUrls(searchResult);
-  if (candidates.length === 0) {
-    throw new Error(
-      `关键词 "${keyword}" 没搜到可安装的 Skill URL。\n` +
-      `搜索结果:\n${searchResult.slice(0, 500)}\n\n` +
-      `解决方法:\n` +
-      `1. 换个更具体的关键词(如 "文献综述 skill markdown")\n` +
-      `2. 直接粘贴 .md 链接到 install_skill`,
-    );
-  }
-
-  // 把所有候选展开成完整 URL 列表
-  const allCandidates: string[] = [];
-  for (const c of candidates) {
-    allCandidates.push(...buildSkillUrlCandidates(c));
-  }
-  const dedup = Array.from(new Set(allCandidates));
-
-  const tried: string[] = [];
-  let lastError = "";
-  for (const candidate of dedup) {
-    tried.push(candidate);
-    const urlErr = validateExternalUrl(candidate);
-    if (urlErr) {
-      lastError = urlErr;
-      continue;
-    }
-    try {
-      const md = await fetchAsText(candidate);
-      const parsed = parseFrontmatter(md);
-      if (parsed) {
-        const { meta, body } = parsed;
-        return addSkill({
-          name: meta.name || meta.title || keyword,
-          description: meta.description || `来自关键词 "${keyword}" 的搜索结果`,
-          triggers: (meta.triggers || meta.keywords || keyword).split(/[,，]/).map(s => s.trim()).filter(Boolean),
-          alwaysOn: meta.always_on === "true" || meta.alwaysOn === "true",
-          prompt: body,
-          priority: parseInt(meta.priority || "10", 10) || 10,
-          enabled: true,
-          sourceUrl: candidate,
-        });
+/** 从内置关键词库拿候选 GitHub URL */
+export function guessUrlsFromKeywordHints(keyword: string): string[] {
+  const lower = keyword.toLowerCase().trim();
+  const urls: string[] = [];
+  for (const [key, paths] of Object.entries(SKILL_KEYWORD_HINTS)) {
+    if (lower.includes(key) || key.includes(lower)) {
+      for (const p of paths) {
+        urls.push(`https://github.com/${p}`);
       }
-      lastError = `不是 markdown: ${candidate}`;
-    } catch (e) {
-      lastError = e instanceof Error ? e.message : String(e);
     }
   }
-
-  throw new Error(
-    `关键词 "${keyword}" 搜到 ${candidates.length} 个候选 URL,但都装不上。\n` +
-    `已尝试 ${tried.length} 个:\n${tried.map(u => "  • " + u).join("\n")}\n` +
-    `最后一错: ${lastError}\n\n` +
-    `可能原因: 候选 URL 全是 SPA 页面,需要手动找 .md 真实地址\n` +
-    `解决方法: 直接粘贴 GitHub Raw 链接或 .md 文件内容`,
-  );
+  return Array.from(new Set(urls));
 }
 
 /* ================================================================

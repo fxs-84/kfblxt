@@ -2,7 +2,7 @@
  * install_skill URL 候选生成 + 关键词搜索候选提取单测 — 不打网络,只验逻辑
  */
 import { describe, it, expect } from "vitest";
-import { buildSkillUrlCandidates, extractSearchResultUrls } from "./skill-system";
+import { buildSkillUrlCandidates, extractSearchResultUrls, installSkillFromUrl } from "./skill-system";
 
 describe("buildSkillUrlCandidates", () => {
   it("普通 URL 原样返回", () => {
@@ -102,5 +102,23 @@ https://codeberg.org/x/y/src/branch/main/foo.md
 `;
     const urls = extractSearchResultUrls(text);
     expect(urls[0]).toMatch(/github\.com|codeberg\.org/);
+  });
+});
+
+describe("installSkillFromUrl — 非 URL 输入给出清晰指引", () => {
+  it("纯中文关键词抛错并指引用户用 URL / Skill 库", async () => {
+    await expect(installSkillFromUrl("翻译助手")).rejects.toThrow(/不是 URL/);
+  });
+  it("空字符串抛错", async () => {
+    await expect(installSkillFromUrl("")).rejects.toThrow();
+  });
+  it("包含 GitHub 域名也算 URL,不走关键词分支", async () => {
+    // 这里不期待成功(没网络),只期待不抛"不是 URL"错误
+    try {
+      await installSkillFromUrl("https://github.com/x/y/blob/main/z.md");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      expect(msg).not.toMatch(/不是 URL/);
+    }
   });
 });
