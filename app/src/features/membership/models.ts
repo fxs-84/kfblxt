@@ -143,6 +143,12 @@ export type RewardProduct = z.infer<typeof rewardProductSchema>;
 // ===== 兑换订单 =====
 export const REDEMPTION_STATUSES = ["pending", "fulfilled", "cancelled", "expired"] as const;
 export type RedemptionStatus = (typeof REDEMPTION_STATUSES)[number];
+export const REDEMPTION_STATUS_LABEL: Record<RedemptionStatus, string> = {
+  pending: "待审核",
+  fulfilled: "已兑换",
+  cancelled: "已取消",
+  expired: "已过期",
+};
 
 export const redemptionSchema = z.object({
   id: z.string(),
