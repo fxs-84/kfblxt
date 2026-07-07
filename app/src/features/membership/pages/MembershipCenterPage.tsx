@@ -113,7 +113,7 @@ export function MembershipCenterPage() {
         <div style={{ display: "flex", gap: 8 }}>
           <Link to="/membership/rules" className="btn btn--ghost">⚙️ 积分规则</Link>
           <Link to="/membership/products" className="btn btn--ghost">📦 商品管理</Link>
-          <Link to="/membership/rewards" className="btn btn--ghost">📋 兑换审核</Link>
+          <Link to="/membership/review" className="btn btn--ghost">📋 兑换审核</Link>
         </div>
       </div>
 
@@ -224,7 +224,7 @@ export function MembershipCenterPage() {
       <div className="card panel">
         <div className="panel__head">
           <h3 className="panel__title">📋 最近兑换订单</h3>
-          <Link to="/membership/rewards" style={{ fontSize: 12 }}>查看全部 →</Link>
+          <Link to="/membership/review" style={{ fontSize: 12 }}>查看全部 →</Link>
         </div>
         {recentRedemptions.length === 0 ? <div className="empty">暂无兑换记录</div> :
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
