@@ -246,6 +246,10 @@ export function validateExternalUrl(rawUrl: string): string | null {
 
 /** 从 URL 安装 Skill(支持 GitHub Raw / Gist / 任意 .md / SPA → raw 链接自动转换) */
 export async function installSkillFromUrl(rawUrl: string): Promise<SkillConfig> {
+  // 关键词模式:不是合法 URL,先用 web_search 找候选 URL
+  if (!isLikelyUrl(rawUrl)) {
+    return installSkillByKeyword(rawUrl);
+  }
   // URL 安全验证
   const urlErr = validateExternalUrl(rawUrl);
   if (urlErr) throw new Error(`URL 验证失败: ${urlErr}`);
@@ -372,6 +376,139 @@ async function fetchAsText(rawUrl: string): Promise<string> {
 /** 检查是否重复安装 */
 export function isSkillDuplicated(url: string): boolean {
   return getSkills().some(s => (s as SkillConfig & { sourceUrl?: string }).sourceUrl === url);
+}
+
+/* ================================================================
+ * 关键词模式: 不是 URL 就先搜后装
+ * ================================================================ */
+
+/** 判定输入是否"看起来是个 URL" — 含协议头或以 www./github.com/ 等开头 */
+export function isLikelyUrl(input: string): boolean {
+  const s = input.trim();
+  if (!s) return false;
+  // 显式协议
+  if (/^https?:\/\//i.test(s)) return true;
+  // 常见代码托管域名
+  if (/^(www\.)?(github|gitlab|bitbucket|gitea|codeberg)\.(com|io|org)/i.test(s)) return true;
+  // 尝试 URL 解析
+  try {
+    const u = new URL(s.startsWith("http") ? s : `https://${s}`);
+    return u.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 从搜索结果文本里抽出候选 URL。
+ * 优先保留代码托管平台链接(GitHub/GitLab/Codeberg/raw),过滤:
+ *   - 锚点 (#section)
+ *   - 相对路径 (/foo/bar)
+ *   - 内部 / API 调用
+ */
+export function extractSearchResultUrls(text: string): string[] {
+  if (!text) return [];
+  const urlRe = /https?:\/\/[^\s)\]\"'<>]+/g;
+  const raw = text.match(urlRe) ?? [];
+  const filtered = raw
+    .map(u => u.replace(/[.,;:!?)]+$/, "")) // 去尾标点
+    .filter(u => !u.includes("#"))           // 去锚点
+    .filter(u => !u.startsWith("/"))         // 去相对路径(防御)
+    .filter(u => {
+      try {
+        const h = new URL(u).hostname.toLowerCase();
+        return h.includes("github.com") || h.includes("gitlab.com")
+          || h.includes("codeberg.org") || h.includes("gist.github.com")
+          || h.includes("raw.githubusercontent.com")
+          || /\.md(\?|$)/i.test(u);
+      } catch { return false; }
+    });
+
+  // 优先 GitHub/GitLab/Codeberg 链接,然后 .md 直链,然后 raw
+  const priority = (u: string): number => {
+    const h = (() => { try { return new URL(u).hostname; } catch { return ""; } })();
+    if (h.includes("github.com") || h.includes("gitlab.com") || h.includes("codeberg.org")) return 0;
+    if (h.includes("raw.githubusercontent.com")) return 1;
+    if (/\.md(\?|$)/i.test(u)) return 2;
+    return 3;
+  };
+
+  const dedup = Array.from(new Set(filtered));
+  dedup.sort((a, b) => priority(a) - priority(b));
+  return dedup;
+}
+
+/** 关键词 → 搜索 → 候选 URL → 装第一个成功的 */
+async function installSkillByKeyword(keyword: string): Promise<SkillConfig> {
+  // 动态 import 避免循环依赖
+  const { webSearch } = await import("./external-tools");
+  const query = `${keyword} skill markdown github`;
+  let searchResult: string;
+  try {
+    searchResult = await webSearch(query, 8);
+  } catch (e) {
+    throw new Error(
+      `关键词安装失败: web_search 不可用。${e instanceof Error ? e.message : String(e)}\n` +
+      `解决方法: 在 LLM 配置面板里启用搜索后端(Bing/自配置),或直接粘贴 .md 链接`,
+    );
+  }
+
+  const candidates = extractSearchResultUrls(searchResult);
+  if (candidates.length === 0) {
+    throw new Error(
+      `关键词 "${keyword}" 没搜到可安装的 Skill URL。\n` +
+      `搜索结果:\n${searchResult.slice(0, 500)}\n\n` +
+      `解决方法:\n` +
+      `1. 换个更具体的关键词(如 "文献综述 skill markdown")\n` +
+      `2. 直接粘贴 .md 链接到 install_skill`,
+    );
+  }
+
+  // 把所有候选展开成完整 URL 列表
+  const allCandidates: string[] = [];
+  for (const c of candidates) {
+    allCandidates.push(...buildSkillUrlCandidates(c));
+  }
+  const dedup = Array.from(new Set(allCandidates));
+
+  const tried: string[] = [];
+  let lastError = "";
+  for (const candidate of dedup) {
+    tried.push(candidate);
+    const urlErr = validateExternalUrl(candidate);
+    if (urlErr) {
+      lastError = urlErr;
+      continue;
+    }
+    try {
+      const md = await fetchAsText(candidate);
+      const parsed = parseFrontmatter(md);
+      if (parsed) {
+        const { meta, body } = parsed;
+        return addSkill({
+          name: meta.name || meta.title || keyword,
+          description: meta.description || `来自关键词 "${keyword}" 的搜索结果`,
+          triggers: (meta.triggers || meta.keywords || keyword).split(/[,，]/).map(s => s.trim()).filter(Boolean),
+          alwaysOn: meta.always_on === "true" || meta.alwaysOn === "true",
+          prompt: body,
+          priority: parseInt(meta.priority || "10", 10) || 10,
+          enabled: true,
+          sourceUrl: candidate,
+        });
+      }
+      lastError = `不是 markdown: ${candidate}`;
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  throw new Error(
+    `关键词 "${keyword}" 搜到 ${candidates.length} 个候选 URL,但都装不上。\n` +
+    `已尝试 ${tried.length} 个:\n${tried.map(u => "  • " + u).join("\n")}\n` +
+    `最后一错: ${lastError}\n\n` +
+    `可能原因: 候选 URL 全是 SPA 页面,需要手动找 .md 真实地址\n` +
+    `解决方法: 直接粘贴 GitHub Raw 链接或 .md 文件内容`,
+  );
 }
 
 /* ================================================================

@@ -536,15 +536,20 @@ export const searchPubmedTool: AgentTool<typeof pubmedSchema> = {
 import { installSkillFromUrl, isSkillDuplicated, SKILL_GALLERY } from "./skill-system";
 
 const installSkillSchema = z.object({
-  url: z.string().describe("Skill 文件的 URL(GitHub Raw URL / Gist raw URL 等),必须是 .md 文件带 YAML frontmatter"),
+  url: z.string().describe(
+    "Skill 来源,两种形式:\n" +
+    "1. 直接 URL(GitHub blob / gist / 任意 .md),自动转 raw 形式\n" +
+    "2. 关键词(如 \"翻译助手\" / \"代码审查\")— 系统自动 web_search 找候选,装第一个能解析 frontmatter 的(需要 web_search 已启用)",
+  ),
 });
 
 export const installSkillTool: AgentTool<typeof installSkillSchema> = {
   name: "install_skill",
   description:
-    "从外部 URL 安装一个 Skill。Skill 是给 Agent 的专业指令集(Markdown + YAML frontmatter),安装后用户消息匹配触发词时自动激活。" +
+    "安装一个新 Skill。Skill 是给 Agent 的专业指令集(Markdown + YAML frontmatter),安装后用户消息匹配触发词时自动激活。" +
+    "支持两种入参: 直接 URL(GitHub/Gist/.md) 或关键词(自动 web_search 找候选并装第一个可用的)。" +
     "也可以推荐 Skill 库中的技能: " + SKILL_GALLERY.map(s => s.name).join("、") +
-    "。或帮助用户从 GitHub/Gist 等 URL 安装自定义 Skill。",
+    "。当用户说\"装个 XX skill\"或\"帮我安装翻译助手\"时,直接调用本工具,不需要用户先提供 URL。",
   inputSchema: installSkillSchema,
   execute: async (input, _ctx) => {
     const { url } = input;
@@ -562,6 +567,7 @@ export const installSkillTool: AgentTool<typeof installSkillSchema> = {
           triggers: installed.triggers,
           priority: installed.priority,
         },
+        sourceUrl: installed.sourceUrl,
       }, null, 2);
     } catch (e) {
       return `ERROR: 安装失败 — ${e instanceof Error ? e.message : String(e)}`;
