@@ -416,11 +416,17 @@ export function AgentChat({ onClose }: AgentChatProps) {
             </summary>
             <div style={{ marginTop: 8, padding: 8, background: "var(--color-surface-sunken, #f5f7fa)", borderRadius: 4 }}>
               <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 8, lineHeight: 1.6 }}>
-                💡 搜索后端说明:LLM 本身已能回答大部分临床问题(知识截止 2025 年)。
-                <br />• <code>web_fetch</code> 抓任意 URL(无需配置)
-                <br />• <code>search_pubmed</code> 查 PubMed 文献(无需配置,免费)
-                <br />• <code>web_search</code> 通用搜索(需下拉选 Bing + 填 key,或自配 SearXNG)
-                <br />• 内部病历查询(无需配置,默认就有)
+                💡 工具能力清单(按"零摩擦可用度"排序):
+                <br /><strong style={{ color: "#10b981" }}>✅ 无需任何配置,开箱即用:</strong>
+                <br />• <code>search_pubmed</code> — PubMed 2500 万+ 文献检索(医学证据首选)
+                <br />• <code>calculate</code> — 药物剂量、量表分数计算
+                <br />• <code>get_current_time</code> — 日期时间
+                <br />• <code>install_skill</code> — 从 GitHub URL 装 Skill(自动探仓库文件树)
+                <br />• 内部病历查询 — 16+ 个临床工具
+                <br /><strong style={{ color: "#f59e0b" }}>⚠️ 部分可用(已知限制):</strong>
+                <br />• <code>web_fetch</code> — 大部分网站能抓,但微信公众号(腾讯人机验证)、SPA 页面不行
+                <br /><strong style={{ color: "#ef4444" }}>❌ 需要 API Key(可选,大部分问题用不到):</strong>
+                <br />• <code>web_search</code> — 通用搜索,配 Bing 后解锁(高级设置里填)
               </div>
               <label style={{ ...labelStyle, fontSize: 12 }}>🔍 搜索后端</label>
               <select
