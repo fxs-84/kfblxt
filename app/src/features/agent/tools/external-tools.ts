@@ -125,27 +125,46 @@ const webFetchSchema = z.object({
 export const webFetchTool: AgentTool<typeof webFetchSchema> = {
   name: "web_fetch",
   description:
-    "抓取指定网页的内容，提取纯文本。适合阅读文章、获取页面详情、查阅在线文档。注意:不是搜索引擎，需要提供具体 URL。",
+    "抓取指定网页的内容,提取纯文本。适合阅读文章、获取页面详情、查阅在线文档。" +
+    "已知限制: 微信公众号(已被腾讯人机验证屏蔽)、登录墙后的页面无法直接抓取 — " +
+    "遇到这些情况会自动尝试搜狗微信搜索镜像或搜索引擎摘要作为降级方案。" +
+    "不是搜索引擎,需要提供具体 URL。",
   inputSchema: webFetchSchema,
   execute: async (input, _ctx) => {
     const { url, extract_text } = input;
     try {
+      // 微信公众号 → 走搜狗微信搜索(镜像了公众号内容)
+      if (/^https?:\/\/mp\.weixin\.qq\.com\//i.test(url)) {
+        return await fetchWechatArticle(url);
+      }
+
       // 走通用 Vite 代理 /api/proxy/<urlencoded>
       const proxyPath = `/api/proxy/${encodeURIComponent(url)}`;
-      const res = await fetch(proxyPath);
+      let res: Response;
+      try {
+        res = await fetch(proxyPath);
+      } catch (e) {
+        return await fetchWithSearchFallback(url, e);
+      }
+
       if (!res.ok) {
-        return JSON.stringify({
-          ok: false,
-          error: `抓取失败: HTTP ${res.status}`,
-          url,
-        });
+        // 抓取失败:尝试搜索引擎降级
+        return await fetchWithSearchFallback(url, `HTTP ${res.status}`);
       }
       const raw = await res.text();
 
+      // 检测 SPA 骨架(JS 渲染页,几乎没文本内容)
+      const stripped = raw.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ").trim();
+      if (stripped.length < 200 && raw.length > 5000) {
+        // 大概率是 SPA,尝试搜索引擎降级
+        return await fetchWithSearchFallback(url, `SPA 页面(JS 渲染,服务器返回 ${raw.length} 字节 HTML 骨架)`);
+      }
+
       if (!extract_text) {
         return JSON.stringify({
-          ok: true,
-          url,
+          ok: true, url,
           content_length: raw.length,
           content: raw.slice(0, 6000),
           truncated: raw.length > 6000,
@@ -168,17 +187,48 @@ export const webFetchTool: AgentTool<typeof webFetchSchema> = {
         .slice(0, 8000);
 
       return JSON.stringify({
-        ok: true,
-        url,
+        ok: true, url,
         text_length: text.length,
         text,
         truncated: raw.length > 8000,
       });
     } catch (e) {
-      return `ERROR: 抓取失败 — ${e instanceof Error ? e.message : String(e)}`;
+      return await fetchWithSearchFallback(url, e);
     }
   },
 };
+
+/** 微信公众号文章 — 直接返回明确指引(不在工具内做搜索,避免循环 import) */
+async function fetchWechatArticle(url: string): Promise<string> {
+  return JSON.stringify({
+    ok: false,
+    url,
+    error: "微信公众号被腾讯人机验证拦截,web_fetch 无法直接抓取 mp.weixin.qq.com",
+    reason: "Tencent anti-bot (poc_token captcha) — curl/任何非浏览器 UA 都会被 302 到验证页",
+    workaround: [
+      "1. 在浏览器中打开原文:" + url,
+      "2. 用 web_search 搜文章标题找镜像(搜狗微信/今日头条/知乎转载)",
+      "3. 让用户提供文章纯文本,我直接处理",
+    ],
+  });
+}
+
+/** 抓取失败 — 返回明确指引(不在工具内做搜索,避免循环 import) */
+async function fetchWithSearchFallback(url: string, reason: unknown): Promise<string> {
+  const reasonStr = reason instanceof Error ? reason.message : String(reason);
+  const isSPA = /SPA|JS 渲染|HTML 骨架/.test(reasonStr);
+  return JSON.stringify({
+    ok: false,
+    url,
+    error: `抓取失败: ${reasonStr}`,
+    likelyReason: isSPA ? "页面是 SPA(JS 渲染),服务器只返回空 HTML 骨架" : "网络或反爬限制",
+    workaround: [
+      "1. 在浏览器打开:" + url,
+      isSPA ? "2. 用 web_search 搜索页面标题找替代来源" : "2. 用 web_search 找该 URL 的镜像或摘要",
+      "3. 让用户提供文本内容,直接处理",
+    ],
+  });
+}
 
 /* ================================================================
  * 3. calculate — 数学计算
