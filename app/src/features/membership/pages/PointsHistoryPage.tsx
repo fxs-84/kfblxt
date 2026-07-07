@@ -1,10 +1,12 @@
 /**
  * 会员积分流水页 — 显示某个患者的所有积分变化记录
  * 每条: 时间 / 事件类型 / 增减数 / 操作后余额 / 操作人 / 关联事件
+ * 顶部有"手动调整积分"按钮(转介绍 / 补偿 / 活动奖励等诊疗流程外场景)
  */
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { usePatients } from "../../patients/usePatients";
+import { useAdjustPoints } from "../hooks/useMembership";
 import {
   findAllLogs,
   findAllRules,
@@ -12,6 +14,15 @@ import {
   getOrCreateMembership,
 } from "../rule.repository";
 import type { PatientMembership, PointsLog, PointsRule, TierConfig } from "../models";
+
+// 治疗师手动加分的预设原因(转介绍、补偿、活动奖励等诊疗流程外场景)
+const MANUAL_REASON_PRESETS = [
+  { label: "转介绍奖励", delta: 200 },
+  { label: "活动奖励", delta: 100 },
+  { label: "补偿调整", delta: 0 }, // 自由填
+  { label: "客服致歉", delta: 50 },
+  { label: "生日礼", delta: 100 },
+];
 
 const TRIGGER_LABEL: Record<string, string> = {
   "encounter.closed": "就诊结束奖励",
@@ -31,6 +42,14 @@ export function PointsHistoryPage() {
   const [tiers, setTiers] = useState<TierConfig[]>([]);
   const [rules, setRules] = useState<PointsRule[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 手动调整积分 modal
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustDelta, setAdjustDelta] = useState("");
+  const [adjustReason, setAdjustReason] = useState(MANUAL_REASON_PRESETS[0].label);
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+  const adjustPoints = useAdjustPoints();
 
   useEffect(() => {
     if (!patientId) return;
@@ -85,7 +104,20 @@ export function PointsHistoryPage() {
               <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>累计消费</div>
               <div style={{ fontSize: 18 }}>¥{(membership.totalSpent / 100).toFixed(0)}</div>
             </div>
-            <div style={{ marginLeft: "auto" }}>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  setAdjustDelta("");
+                  setAdjustReason(MANUAL_REASON_PRESETS[0].label);
+                  setAdjustError(null);
+                  setAdjustOpen(true);
+                }}
+                data-testid="open-adjust"
+              >
+                ✏️ 手动调整
+              </button>
               <Link to={`/membership/redeem/${patientId}`} className="btn btn--primary" style={{ textDecoration: "none" }}>
                 🎁 发起兑换
               </Link>
@@ -93,6 +125,145 @@ export function PointsHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* 手动调整积分 modal */}
+      {adjustOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="手动调整积分"
+          data-testid="adjust-modal"
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+          }}
+          onClick={() => !adjustSubmitting && setAdjustOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "var(--color-surface, white)", borderRadius: 8, padding: 20,
+              minWidth: 360, maxWidth: 480, boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>✏️ 手动调整积分</h3>
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 12 }}>
+              {patient?.name ?? patientId} · 当前 {membership?.points.toLocaleString() ?? 0} 分
+            </div>
+
+            <label style={{ display: "block", fontSize: 12, color: "var(--color-text-muted)", marginBottom: 4 }}>
+              调整分数(正=加,负=减)
+            </label>
+            <input
+              type="number"
+              value={adjustDelta}
+              onChange={e => setAdjustDelta(e.target.value)}
+              placeholder="如 200 或 -50"
+              data-testid="adjust-delta"
+              autoFocus
+              style={{
+                width: "100%", padding: "6px 10px", fontSize: 14,
+                border: "1px solid var(--color-border)", borderRadius: 4, marginBottom: 12,
+              }}
+            />
+
+            <label style={{ display: "block", fontSize: 12, color: "var(--color-text-muted)", marginBottom: 4 }}>
+              原因(必填,会写入积分流水)
+            </label>
+            <select
+              value={adjustReason}
+              onChange={e => {
+                const reason = e.target.value;
+                setAdjustReason(reason);
+                // 选预设时自动填入推荐分值
+                const preset = MANUAL_REASON_PRESETS.find(p => p.label === reason);
+                if (preset && preset.delta !== 0 && !adjustDelta) {
+                  setAdjustDelta(String(preset.delta));
+                }
+              }}
+              data-testid="adjust-reason-preset"
+              style={{
+                width: "100%", padding: "6px 10px", fontSize: 13,
+                border: "1px solid var(--color-border)", borderRadius: 4, marginBottom: 8,
+              }}
+            >
+              {MANUAL_REASON_PRESETS.map(p => (
+                <option key={p.label} value={p.label}>
+                  {p.label}{p.delta > 0 ? ` (+${p.delta})` : ""}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={adjustReason.startsWith("__custom__") ? adjustReason.slice("__custom__:".length) : (MANUAL_REASON_PRESETS.some(p => p.label === adjustReason) ? "" : adjustReason)}
+              onChange={e => setAdjustReason(`__custom__:${e.target.value}`)}
+              placeholder="或自定义原因…"
+              data-testid="adjust-reason-custom"
+              style={{
+                width: "100%", padding: "6px 10px", fontSize: 13,
+                border: "1px solid var(--color-border)", borderRadius: 4, marginBottom: 12,
+              }}
+            />
+
+            {adjustError && (
+              <div style={{ padding: 8, background: "#fee2e2", color: "#991b1b", borderRadius: 4, marginBottom: 12, fontSize: 12 }}>
+                {adjustError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setAdjustOpen(false)}
+                disabled={adjustSubmitting}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={adjustSubmitting}
+                onClick={async () => {
+                  if (!patientId) return;
+                  const delta = parseInt(adjustDelta, 10);
+                  if (!Number.isFinite(delta) || delta === 0) {
+                    setAdjustError("请输入非零整数");
+                    return;
+                  }
+                  const reasonRaw = adjustReason.startsWith("__custom__:")
+                    ? adjustReason.slice("__custom__:".length).trim()
+                    : adjustReason.trim();
+                  if (!reasonRaw) {
+                    setAdjustError("原因不能为空");
+                    return;
+                  }
+                  setAdjustSubmitting(true);
+                  setAdjustError(null);
+                  try {
+                    await adjustPoints(patientId, delta, reasonRaw);
+                    // 刷新本页数据
+                    const [allLogs, m] = await Promise.all([
+                      findAllLogs(),
+                      getOrCreateMembership(patientId),
+                    ]);
+                    setLogs(allLogs.filter(l => l.patientId === patientId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+                    setMembership(m);
+                    setAdjustOpen(false);
+                  } catch (e) {
+                    setAdjustError(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setAdjustSubmitting(false);
+                  }
+                }}
+                data-testid="adjust-submit"
+              >
+                {adjustSubmitting ? "提交中…" : `确认${parseInt(adjustDelta, 10) > 0 ? "加" : "减"} ${Math.abs(parseInt(adjustDelta, 10) || 0)} 分`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card panel" data-testid="points-log">
         <div className="panel__head">
