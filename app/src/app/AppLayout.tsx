@@ -32,12 +32,6 @@ const NAV: NavItem[] = [
     // 礼物/会员图标
     icon: "M20 7h-1V6a3 3 0 00-3-3H8a3 3 0 00-3 3v1H4a2 2 0 00-2 2v2a4 4 0 004 4v3a2 2 0 002 2h8a2 2 0 002-2v-3a4 4 0 004-4V9a2 2 0 00-2-2zM7 6a1 1 0 011-1h8a1 1 0 011 1v1H7V6zm3 11v4H8v-4h2zm4 0h2v4h-2v-4z",
   },
-  {
-    to: "/membership/rules",
-    label: "积分规则",
-    end: false,
-    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
-  },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
