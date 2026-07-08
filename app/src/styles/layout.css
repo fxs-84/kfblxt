@@ -902,6 +902,27 @@ body {
   font-weight: 700;
 }
 
+/* 已答题(轻微变淡,行尾绿色对勾) */
+.brain-item--answered { background: rgba(45, 157, 90, 0.03); }
+
+/* 刚作答的题 — 黄色脉冲高亮 1.2s */
+.brain-item--just-answered {
+  background: rgba(255, 215, 0, 0.18) !important;
+  border-left: 3px solid #ffc107;
+  padding-left: 12px !important;
+  transition: background 1.2s ease-out, border-color 1.2s ease-out;
+}
+
+.brain-item--pulse {
+  animation: brain-item-pulse 1.2s ease-out;
+}
+
+@keyframes brain-item-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.6); }
+  50%  { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0.18); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
 /* 严重度分级(模块小计 vs 模块满分) */
 .brain-severity {
   display: inline-block;

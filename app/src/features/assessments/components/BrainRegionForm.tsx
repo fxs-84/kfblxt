@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import {
   BRAIN_REGION_DEFS,
   BRAIN_REGION_ITEMS,
   PHONE_EAR_OPTIONS,
+  SCORE_DESCRIPTORS,
   scoreBrainRegion,
   regionMaxScore,
   classifyRegionSeverity,
@@ -19,15 +20,20 @@ interface BrainRegionFormProps {
   onDone: () => void;
 }
 
-const SCORE_LABELS = ["无症状", "很少", "经常", "频繁", "总是"] as const;
+/** 可滚动答题题号(排除第 46 题,该题为三选一) */
+const SCORABLE_INDEXES: readonly number[] = BRAIN_REGION_ITEMS
+  .filter((i) => i.index !== 46)
+  .map((i) => i.index)
+  .sort((a, b) => a - b);
 
 /**
- * 大脑区域定位表填写表单(弹窗版,加大字体)。
+ * 大脑区域定位表填写表单(弹窗版,加大字体 + 自动滚动)。
  * - 顶部 sticky 进度条
  * - 16 个分区可折叠
  * - 每题 0-4 单选(第 46 题改为 3 选 1)
+ * - 评分标准含 0/25/50/75/100% 时间百分比
+ * - 答完一题后,自动滚到下一未答题(避免漏答)
  * - 实时显示分区小计 + 严重度
- * - 提交时一次性写入 assessment 仓储
  */
 export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionFormProps) {
   const createAssessment = useCreateAssessment();
@@ -36,14 +42,59 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
   const [phoneEar, setPhoneEar] = useState<PhoneEarPreference | null>(null);
   const [note, setNote] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(
-    new Set(BRAIN_REGION_DEFS.map((d) => d.id)), // 弹窗空间大,默认全展开方便连续填写
+    new Set(BRAIN_REGION_DEFS.map((d) => d.id)),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 最近一次作答的题号(用于视觉高亮) */
+  const [lastAnswered, setLastAnswered] = useState<number | null>(null);
 
-  const setItem = (index: number, value: number) => {
-    setItems((prev) => ({ ...prev, [index]: value }));
-  };
+  /** 题号 → DOM 元素(用于自动滚动) */
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const setItemRef = useCallback((index: number) => (el: HTMLDivElement | null) => {
+    if (el) itemRefs.current.set(index, el);
+    else itemRefs.current.delete(index);
+  }, []);
+
+  /**
+   * 答题处理:
+   *  1. 记录答卷
+   *  2. 高亮刚刚作答的题
+   *  3. 找到下一未答题,平滑滚到视口中上部
+   *  4. 若是最后一道题答完,滚到保存按钮
+   */
+  const setItem = useCallback((index: number, value: number) => {
+    let wasUnanswered = false;
+    setItems((prev) => {
+      wasUnanswered = prev[index] === undefined;
+      return { ...prev, [index]: value };
+    });
+    setLastAnswered(index);
+
+    // 重新作答(改答案)不触发滚动
+    if (!wasUnanswered) return;
+
+    // 找到下一未答题(题号大于当前、按题号顺序)
+    const currentItems = { ...items, [index]: value };
+    const nextUnanswered = SCORABLE_INDEXES.find((i) => currentItems[i] === undefined);
+
+    // 等 React 提交 DOM 更新后再滚动
+    requestAnimationFrame(() => {
+      if (nextUnanswered !== undefined) {
+        const el = itemRefs.current.get(nextUnanswered);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          // 视觉脉冲
+          el.classList.add("brain-item--pulse");
+          setTimeout(() => el.classList.remove("brain-item--pulse"), 1200);
+        }
+      } else {
+        // 全部答完,滚到保存按钮
+        const foot = document.getElementById("brain-form-foot");
+        if (foot) foot.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    });
+  }, [items]);
 
   const toggleRegion = (id: string) => {
     setExpanded((prev) => {
@@ -62,7 +113,7 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
       let count = 0;
       for (const item of BRAIN_REGION_ITEMS) {
         if (item.index < def.range[0] || item.index > def.range[1]) continue;
-        if (item.index === 46) continue; // 单选,不计分
+        if (item.index === 46) continue;
         const v = items[item.index];
         if (v !== undefined) {
           score += v;
@@ -78,7 +129,7 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
     () => Object.values(items).filter((v) => v !== undefined).length,
     [items],
   );
-  const totalQuestions = BRAIN_REGION_ITEMS.filter((i) => i.index !== 46).length;
+  const totalQuestions = SCORABLE_INDEXES.length;
   const isComplete = totalAnswered === totalQuestions;
   const progressPct = Math.round((totalAnswered / totalQuestions) * 100);
 
@@ -127,25 +178,38 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
             style={{ width: `${progressPct}%` }}
           />
         </div>
-        <span style={{ minWidth: 72, textAlign: "right" }}>
-          <b style={{ color: isComplete ? "var(--color-normal)" : "var(--color-accent)" }}>{totalAnswered}</b>
+        <span style={{ minWidth: 96, textAlign: "right" }}>
+          <b style={{ color: isComplete ? "var(--color-normal)" : "var(--color-accent)", fontSize: "var(--text-lg)" }}>{totalAnswered}</b>
           <span style={{ color: "var(--color-text-muted)" }}> / {totalQuestions}</span>
+          <span style={{ marginLeft: 6, color: "var(--color-text-muted)" }}>({progressPct}%)</span>
         </span>
       </div>
 
-      {/* 评分标准说明 */}
+      {/* 评分标准说明(含 0-100% 时间) */}
       <div className="brain-form__hint">
-        <div style={{ fontWeight: 700, marginBottom: 6, fontSize: "var(--text-base)" }}>📖 评分标准</div>
-        请根据 <b>0-4</b> 的标准选择最适合的答案:
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-3)", marginTop: 6 }}>
-          {SCORE_LABELS.map((label, idx) => (
-            <span key={idx} style={{ padding: "2px 10px", background: "var(--color-surface)", borderRadius: 999, border: "1px solid var(--color-border)" }}>
-              <b style={{ color: "var(--color-accent)", fontSize: "var(--text-lg)" }}>{idx}</b>
-              <span style={{ marginLeft: 4 }}>= {label}</span>
+        <div style={{ fontWeight: 700, marginBottom: 10, fontSize: "var(--text-lg)" }}>📖 评分标准</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+          {SCORE_DESCRIPTORS.map((d) => (
+            <span
+              key={d.value}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                background: "var(--color-surface)",
+                borderRadius: 8,
+                border: "1px solid var(--color-border)",
+                fontSize: "var(--text-sm)",
+              }}
+            >
+              <b style={{ color: "var(--color-accent)", fontSize: "var(--text-lg)" }}>{d.value}</b>
+              <span>= {d.label}</span>
+              <span style={{ color: "var(--color-text-muted)" }}>({d.percent})</span>
             </span>
           ))}
         </div>
-        <div style={{ marginTop: 8, fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
+        <div style={{ marginTop: 10, fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
           部分题目标注 <b style={{ background: "#e3f2fd", color: "#1565c0", padding: "0 4px", borderRadius: 3 }}>L</b> = 左半球主控、<b style={{ background: "#fce4ec", color: "#c62828", padding: "0 4px", borderRadius: 3 }}>R</b> = 右半球主控。第 46 题改用「右耳/左耳/无偏好」三选一。
         </div>
       </div>
@@ -185,9 +249,9 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
                       if (item.index === 46) {
                         // 第 46 题:三选一
                         return (
-                          <div key={item.index} className="exam-item brain-item--lg brain-special-item">
+                          <div key={item.index} ref={setItemRef(46)} className={`exam-item brain-item--lg brain-special-item ${lastAnswered === 46 ? "brain-item--just-answered" : ""}`}>
                             <div className="exam-item__label">
-                              <span style={{ minWidth: 32, color: "var(--color-text-muted)", fontWeight: 600 }}>{item.index}.</span>
+                              <span style={{ minWidth: 40, color: "var(--color-text-muted)", fontWeight: 700 }}>{item.index}.</span>
                               <span>{item.text}</span>
                             </div>
                             <div className="brain-radio-group">
@@ -211,26 +275,31 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
                       }
                       const v = items[item.index];
                       return (
-                        <div key={item.index} className="exam-item brain-item--lg">
+                        <div
+                          key={item.index}
+                          ref={setItemRef(item.index)}
+                          className={`exam-item brain-item--lg ${v !== undefined ? "brain-item--answered" : ""} ${lastAnswered === item.index ? "brain-item--just-answered" : ""}`}
+                        >
                           <div className="exam-item__label">
-                            <span style={{ minWidth: 32, color: "var(--color-text-muted)", fontWeight: 600 }}>{item.index}.</span>
+                            <span style={{ minWidth: 40, color: v !== undefined ? "var(--color-normal)" : "var(--color-text-muted)", fontWeight: 700 }}>{item.index}.</span>
                             <span>{item.text}</span>
                             {item.side && <span className={`brain-side brain-side--${item.side}`} title={item.side === "L" ? "左半球主控" : "右半球主控"}>{item.side}</span>}
+                            {v !== undefined && <span style={{ marginLeft: 6, color: "var(--color-normal)", fontSize: "var(--text-sm)", fontWeight: 600 }}>✓ 已答</span>}
                           </div>
                           <div className="brain-radio-group">
-                            {[0, 1, 2, 3, 4].map((n) => (
+                            {SCORE_DESCRIPTORS.map((d) => (
                               <label
-                                key={n}
-                                className={`brain-chip brain-chip--lg ${v === n ? "brain-chip--on" : ""}`}
-                                title={SCORE_LABELS[n]}
+                                key={d.value}
+                                className={`brain-chip brain-chip--lg ${v === d.value ? "brain-chip--on" : ""}`}
+                                title={d.full}
                               >
                                 <input
                                   type="radio"
                                   name={`q-${item.index}`}
-                                  checked={v === n}
-                                  onChange={() => setItem(item.index, n)}
+                                  checked={v === d.value}
+                                  onChange={() => setItem(item.index, d.value)}
                                 />
-                                {n}
+                                {d.value}
                               </label>
                             ))}
                           </div>
@@ -258,9 +327,9 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
       </div>
 
       {/* 错误提示 + 底部 sticky 操作条 */}
-      {error && <div className="field__error" style={{ margin: "var(--space-2) var(--space-6)" }}>{error}</div>}
+      {error && <div className="field__error" style={{ margin: "var(--space-2) var(--space-8)" }}>{error}</div>}
 
-      <div className="brain-form__foot">
+      <div className="brain-form__foot" id="brain-form-foot">
         <span className="brain-form__foot-status">
           {isComplete ? "✅ 已完成全部题目,可保存" : `⏳ 还需作答 ${totalQuestions - totalAnswered} 题`}
         </span>

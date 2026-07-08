@@ -107,6 +107,24 @@ export const BRAIN_REGION_DEFS: readonly BrainRegionDef[] = [
 
 export type Hemisphere = "L" | "R" | null;
 
+/**
+ * 0-4 评分标准(PDF 说明页口径):
+ *   0 = 我从没有症状(0% 的时间)
+ *   1 = 我很少有症状(< 25% 的时间)
+ *   2 = 我经常有症状(50% 的时间)
+ *   3 = 我频繁地有症状(75% 的时间)
+ *   4 = 我总是有症状(100% 的时间)
+ */
+export const SCORE_DESCRIPTORS: ReadonlyArray<{ value: number; label: string; percent: string; full: string }> = [
+  { value: 0, label: "无症状", percent: "0% 的时间",   full: "0 = 我从没有症状 (0% 的时间)" },
+  { value: 1, label: "很少",   percent: "< 25% 的时间", full: "1 = 我很少有症状 (< 25% 的时间)" },
+  { value: 2, label: "经常",   percent: "50% 的时间",  full: "2 = 我经常有症状 (50% 的时间)" },
+  { value: 3, label: "频繁",   percent: "75% 的时间",  full: "3 = 我频繁地有症状 (75% 的时间)" },
+  { value: 4, label: "总是",   percent: "100% 的时间", full: "4 = 我总是有症状 (100% 的时间)" },
+];
+
+export const SCORE_LABELS = SCORE_DESCRIPTORS.map((d) => d.label);
+
 /** 量表单项定义 */
 export interface BrainRegionItem {
   /** 题号 1-100 */
