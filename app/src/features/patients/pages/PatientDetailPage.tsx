@@ -250,10 +250,10 @@ export function PatientDetailPage() {
                   return null;
                 })()}
               </div>
+              <BrainRegionPanel patientId={patient.id} encounterId={examEncounterId} />
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}
-              <BrainRegionPanel patientId={patient.id} encounterId={examEncounterId} />
               <DiagnosisPanel encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
