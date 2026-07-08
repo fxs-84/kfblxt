@@ -216,15 +216,17 @@ export function PatientDetailPage() {
             </div>
           )}
 
-          <div className="card">
-            <EncounterTable
-              encounters={list}
-              onExam={openExam}
-              activeExamId={examEncounterId ?? undefined}
-              onCloseEncounter={handleCloseEncounter}
-              onOpenDiagnosis={openDiagnosis}
-            />
-          </div>
+          <CollapseCard title="既往就诊记录" extra={<span className="panel__hint">{list.length} 次</span>} defaultOpen>
+            <div className="card" style={{ marginTop: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+              <EncounterTable
+                encounters={list}
+                onExam={openExam}
+                activeExamId={examEncounterId ?? undefined}
+                onCloseEncounter={handleCloseEncounter}
+                onOpenDiagnosis={openDiagnosis}
+              />
+            </div>
+          </CollapseCard>
 
           {/* 定位诊断(任意就诊) */}
           {diagnosisEid && (
