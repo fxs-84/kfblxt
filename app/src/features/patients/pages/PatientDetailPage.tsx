@@ -22,6 +22,7 @@ import { MembershipPanelCard } from "../../membership/MembershipPanelCard";
 import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
+import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useCreateTreatmentPlan } from "../../treatment/useTreatment";
@@ -247,6 +248,7 @@ export function PatientDetailPage() {
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}
               <DiagnosisPanel encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} />
+              <BrainRegionPanel patientId={patient.id} encounterId={examEncounterId} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
 
               {/* 结束就诊按钮 */}

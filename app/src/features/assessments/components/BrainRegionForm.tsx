@@ -1,0 +1,247 @@
+import { useMemo, useState } from "react";
+import {
+  BRAIN_REGION_DEFS,
+  BRAIN_REGION_ITEMS,
+  PHONE_EAR_OPTIONS,
+  scoreBrainRegion,
+  regionMaxScore,
+  type BrainRegionResponses,
+  type PhoneEarPreference,
+} from "../scales/brain-region";
+import { useCreateAssessment } from "../useAssessments";
+
+interface BrainRegionFormProps {
+  patientId: string;
+  encounterId: string;
+  onDone: () => void;
+}
+
+const SCORE_LABELS = ["无症状", "很少", "经常", "频繁", "总是"] as const;
+
+/**
+ * 大脑区域定位表填写表单。
+ * - 16 个分区可折叠
+ * - 每题 0-4 单选(第 46 题改为 3 选 1)
+ * - 实时显示分区小计 + 全表总分
+ * - 提交时一次性写入 assessment 仓储
+ */
+export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionFormProps) {
+  const createAssessment = useCreateAssessment();
+
+  const [items, setItems] = useState<Record<number, number>>({});
+  const [phoneEar, setPhoneEar] = useState<PhoneEarPreference | null>(null);
+  const [note, setNote] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(
+    new Set([BRAIN_REGION_DEFS[0]!.id]), // 默认展开第一个分区
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const setItem = (index: number, value: number) => {
+    setItems((prev) => ({ ...prev, [index]: value }));
+  };
+
+  const toggleRegion = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  /** 分区小计(实时) */
+  const regionSubtotals = useMemo(() => {
+    const map: Record<string, { score: number; max: number; count: number }> = {};
+    for (const def of BRAIN_REGION_DEFS) {
+      let score = 0;
+      let count = 0;
+      for (const item of BRAIN_REGION_ITEMS) {
+        if (item.index < def.range[0] || item.index > def.range[1]) continue;
+        if (item.index === 46) continue; // 单选,不计分
+        const v = items[item.index];
+        if (v !== undefined) {
+          score += v;
+          count += 1;
+        }
+      }
+      map[def.id] = { score, max: regionMaxScore(def), count };
+    }
+    return map;
+  }, [items]);
+
+  const totalAnswered = useMemo(
+    () => Object.values(items).filter((v) => v !== undefined).length,
+    [items],
+  );
+  const totalQuestions = BRAIN_REGION_ITEMS.filter((i) => i.index !== 46).length;
+  const isComplete = totalAnswered === totalQuestions;
+
+  const handleSave = async () => {
+    setError(null);
+    if (!isComplete) {
+      setError(`还有 ${totalQuestions - totalAnswered} 题未作答,请补齐后再保存`);
+      return;
+    }
+    const responses: BrainRegionResponses = { items, phoneEar };
+    let score;
+    try {
+      score = scoreBrainRegion(responses);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "评分失败");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createAssessment.mutateAsync({
+        patientId,
+        encounterId,
+        type: "brain_region",
+        responses,
+        score,
+        phoneEar,
+        note: note.trim() || undefined,
+      });
+      onDone();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "保存失败,请重试");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+      <div className="exam-panel__header">
+        <h3 className="panel__title">🧠 大脑区域定位表</h3>
+        <span className="panel__hint">
+          {totalAnswered} / {totalQuestions} 题已作答
+        </span>
+      </div>
+
+      <div style={{ padding: "var(--space-2) var(--space-6) var(--space-3)", background: "var(--color-surface-sunken, #f9fafb)", borderRadius: "var(--radius-sm)", margin: "0 var(--space-4) var(--space-3)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>说明</div>
+        请根据 0-4 的标准选择最适合的答案:
+        {SCORE_LABELS.map((label, idx) => (
+          <span key={idx} style={{ marginLeft: 8 }}>
+            <b>{idx}</b>={label}
+            {idx < SCORE_LABELS.length - 1 ? ";" : ""}
+          </span>
+        ))}
+        <div style={{ marginTop: 4 }}>部分题目标注 <b>L</b> = 左半球主控、<b>R</b> = 右半球主控。第 46 题改用「右耳/左耳/无偏好」三选一。</div>
+      </div>
+
+      <div className="exam-body">
+        {BRAIN_REGION_DEFS.map((def) => {
+          const open = expanded.has(def.id);
+          const sub = regionSubtotals[def.id]!;
+          const ratio = sub.max > 0 ? sub.score / sub.max : 0;
+          const tone = ratio >= 0.5 ? "high" : ratio >= 0.25 ? "mid" : "low";
+          return (
+            <div key={def.id} className="exam-cat">
+              <button type="button" className="exam-cat__toggle" onClick={() => toggleRegion(def.id)} aria-expanded={open}>
+                <span className="exam-cat__chevron">{open ? "▾" : "▸"}</span>
+                <span style={{ flex: 1, textAlign: "left" }}>
+                  {def.label}
+                  {def.detail && <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: "var(--text-xs)", marginLeft: 6 }}>{def.detail}</span>}
+                </span>
+                <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginRight: 8 }}>
+                  小计 {sub.score} / {sub.max}
+                </span>
+                <span
+                  className={`brain-burden brain-burden--${tone}`}
+                  title={`完成度 ${sub.count}/${def.range[1] - def.range[0] + 1 - (def.id === "auditoryCortex" ? 1 : 0)}`}
+                >
+                  {ratio >= 0.5 ? "高负担" : ratio >= 0.25 ? "中负担" : ratio > 0 ? "低负担" : "—"}
+                </span>
+              </button>
+              {open && (
+                <div className="exam-cat__body">
+                  {BRAIN_REGION_ITEMS.filter((it) => it.index >= def.range[0] && it.index <= def.range[1]).map((item) => {
+                    if (item.index === 46) {
+                      // 第 46 题:三选一
+                      return (
+                        <div key={item.index} className="exam-item brain-special-item">
+                          <div className="exam-item__label">
+                            <span style={{ minWidth: 22, color: "var(--color-text-muted)" }}>{item.index}.</span>
+                            <span>{item.text}</span>
+                          </div>
+                          <div className="brain-radio-group">
+                            {PHONE_EAR_OPTIONS.map((opt) => (
+                              <label
+                                key={opt.value}
+                                className={`brain-chip ${phoneEar === opt.value ? "brain-chip--on" : ""}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="phone-ear"
+                                  checked={phoneEar === opt.value}
+                                  onChange={() => setPhoneEar(opt.value)}
+                                />
+                                {opt.label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    const v = items[item.index];
+                    return (
+                      <div key={item.index} className="exam-item">
+                        <div className="exam-item__label">
+                          <span style={{ minWidth: 22, color: "var(--color-text-muted)" }}>{item.index}.</span>
+                          <span>{item.text}</span>
+                          {item.side && <span className={`brain-side brain-side--${item.side}`} title={item.side === "L" ? "左半球主控" : "右半球主控"}>{item.side}</span>}
+                        </div>
+                        <div className="brain-radio-group">
+                          {[0, 1, 2, 3, 4].map((n) => (
+                            <label
+                              key={n}
+                              className={`brain-chip ${v === n ? "brain-chip--on" : ""}`}
+                              title={SCORE_LABELS[n]}
+                            >
+                              <input
+                                type="radio"
+                                name={`q-${item.index}`}
+                                checked={v === n}
+                                onChange={() => setItem(item.index, n)}
+                              />
+                              {n}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: "var(--space-3) var(--space-6) var(--space-2)" }}>
+        <label className="field" style={{ margin: 0 }}>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>备注(可选)</span>
+          <textarea
+            rows={2}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="如:患者主诉最近 2 周记忆明显下降,已完成 MMSE 排除重度认知障碍"
+            style={{ width: "100%", padding: "var(--space-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", font: "inherit", resize: "vertical", marginTop: 4 }}
+          />
+        </label>
+      </div>
+
+      {error && <div className="field__error" style={{ margin: "0 var(--space-6) var(--space-3)" }}>{error}</div>}
+
+      <div className="form-actions" style={{ paddingTop: 0 }}>
+        <button type="button" className="btn btn--primary" onClick={handleSave} disabled={saving || !isComplete}>
+          {saving ? "保存中…" : isComplete ? "保存问卷" : `还需 ${totalQuestions - totalAnswered} 题`}
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
+      </div>
+    </div>
+  );
+}
