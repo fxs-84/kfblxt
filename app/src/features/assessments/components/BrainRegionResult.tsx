@@ -61,8 +61,33 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
         </div>
       </div>
       <div style={{ padding: "0 var(--space-5) var(--space-4)" }}>
+        {/* 高负担警示条(顶部,一目了然) */}
+        {(() => {
+          const severe = score.affectedRegions.filter((id) => score.severityByRegion[id] === "severe");
+          const moderate = score.affectedRegions.filter((id) => score.severityByRegion[id] === "moderate");
+          if (severe.length > 0) {
+            const names = severe.map((id) => BRAIN_REGION_DEFS.find((d) => d.id === id)?.label ?? id);
+            return (
+              <div className="brain-alert brain-alert--severe">
+                <span className="brain-alert__icon">🔴</span>
+                <span>检测到 <b>{severe.length}</b> 个重度负担分区:{names.join("、")}</span>
+              </div>
+            );
+          }
+          if (moderate.length > 0) {
+            const names = moderate.map((id) => BRAIN_REGION_DEFS.find((d) => d.id === id)?.label ?? id);
+            return (
+              <div className="brain-alert brain-alert--moderate">
+                <span className="brain-alert__icon">🟧</span>
+                <span>检测到 <b>{moderate.length}</b> 个中度负担分区:{names.join("、")}</span>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* 总览 */}
-        <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap", alignItems: "baseline", marginBottom: "var(--space-3)" }}>
+        <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap", alignItems: "center", marginBottom: "var(--space-3)" }}>
           <div>
             <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>总分(参考)</div>
             <div style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--color-text)" }}>
@@ -70,10 +95,11 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
             </div>
           </div>
           <div>
-            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>有问题分区</div>
-            <div style={{ fontSize: "var(--text-3xl)", fontWeight: 700, color: score.affectedRegions.length > 0 ? "var(--color-abnormal)" : "var(--color-normal)" }}>
-              {score.affectedRegions.length}<span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", fontWeight: 400 }}> / 16</span>
-            </div>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginBottom: 4 }}>有问题分区</div>
+            <span className={`brain-affected-chip ${score.affectedRegions.length > 0 ? "brain-affected-chip--has-issue" : ""}`}>
+              {score.affectedRegions.length > 0 && <span className="brain-affected-chip__pulse" />}
+              {score.affectedRegions.length} / 16
+            </span>
           </div>
           <div>
             <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>第46题·电话偏好</div>
@@ -95,8 +121,14 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
                 className={`brain-region-bar brain-region-bar--${severity}`}
                 title={`${def.label}: ${sub}/${max} (${pct}%) — ${REGION_SEVERITY_LABELS[severity]}`}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "var(--text-xs)", marginBottom: 2 }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: isAffected ? 600 : 400 }}>{def.label}</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "var(--text-xs)", marginBottom: 4 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: isAffected ? 700 : 400, color: severity === "severe" ? "var(--color-abnormal)" : severity === "moderate" ? "#c45a00" : severity === "mild" ? "#d68a1a" : "inherit" }}>
+                    {severity === "severe" && <span style={{ marginRight: 2 }}>🔴</span>}
+                    {severity === "moderate" && <span style={{ marginRight: 2 }}>🟧</span>}
+                    {severity === "mild" && <span style={{ marginRight: 2 }}>🟡</span>}
+                    <span className={`brain-region-bar__dot brain-region-bar__dot--${severity}`} />
+                    {def.label}
+                  </span>
                   <span className={`brain-severity brain-severity--${severity}`}>{REGION_SEVERITY_LABELS[severity]}</span>
                 </div>
                 <div className="brain-region-bar__track">
@@ -105,7 +137,7 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 2 }}>{sub} / {max}</div>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 3, textAlign: "right" }}>{sub} / {max}</div>
               </div>
             );
           })}
@@ -122,19 +154,19 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
               <b style={{ color: "var(--color-abnormal)" }}>问题分区</b>(模块小计 ≥ 模块满分 1/4):
               {severe.length > 0 && (
                 <div style={{ marginTop: 4 }}>
-                  <span className="brain-severity brain-severity--severe">重度</span>
+                  <span className="brain-severity brain-severity--severe">🔴 重度</span>
                   {severe.map(labelOf).join("、")}
                 </div>
               )}
               {moderate.length > 0 && (
                 <div style={{ marginTop: 4 }}>
-                  <span className="brain-severity brain-severity--moderate">中度</span>
+                  <span className="brain-severity brain-severity--moderate">🟧 中度</span>
                   {moderate.map(labelOf).join("、")}
                 </div>
               )}
               {mild.length > 0 && (
                 <div style={{ marginTop: 4 }}>
-                  <span className="brain-severity brain-severity--mild">轻度</span>
+                  <span className="brain-severity brain-severity--mild">🟡 轻度</span>
                   {mild.map(labelOf).join("、")}
                 </div>
               )}

@@ -155,6 +155,9 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
                   className={`brain-severity brain-severity--${severity}`}
                   title={`阈值:≥${sub.max}/4 即有问题`}
                 >
+                  {severity === "severe" && "🔴 "}
+                  {severity === "moderate" && "🟧 "}
+                  {severity === "mild" && "🟡 "}
                   {REGION_SEVERITY_LABELS[severity]}
                 </span>
               </button>
