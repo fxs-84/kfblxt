@@ -18,20 +18,26 @@ body {
 
 /* ---- 应用外壳 ---- */
 .app-shell {
-  display: grid;
-  grid-template-columns: 252px 1fr;
   min-height: 100%;
+  padding-left: 252px;
 }
 
-/* ---- 深色侧栏 ---- */
+/* ---- 深色侧栏(固定,不随页面滚动) ---- */
 .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 252px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--color-sidebar-bg);
   border-right: 1px solid var(--color-sidebar-border);
   padding: var(--space-6) var(--space-4);
-  display: flex;
-  flex-direction: column;
   gap: var(--space-6);
   color: var(--color-sidebar-text);
+  z-index: 100;
+  overflow-y: auto;
 }
 
 .sidebar__brand {
