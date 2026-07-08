@@ -25,6 +25,7 @@ import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
 import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
+import { NewEncounterFlow } from "./NewEncounterFlow";
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useCreateTreatmentPlan } from "../../treatment/useTreatment";
 import type { NeuroLevel, Mechanism, SpinalSegment, NerveTrunk } from "../../diagnosis/localization.types";
@@ -199,10 +200,12 @@ export function PatientDetailPage() {
 
       {tab === "encounters" && (
         <>
-          {showForm ? (
-            <div style={{ marginBottom: "1.5rem" }}><EncounterForm patientId={patient.id} onDone={() => setShowForm(false)} /></div>
-          ) : (
-            <div style={{ marginBottom: "1rem" }}><button className="btn btn--ghost" onClick={() => setShowForm(true)}>+ 新建就诊</button></div>
+          <div style={{ marginBottom: "1rem" }}>
+            <button className="btn btn--primary" onClick={() => setShowForm(true)}>+ 新建就诊</button>
+          </div>
+
+          {showForm && (
+            <NewEncounterFlow patientId={patient.id} onDone={() => setShowForm(false)} />
           )}
 
           {/* 编辑当前就诊的主诉(补充症状/体格信息) */}
