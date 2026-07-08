@@ -25,7 +25,7 @@ import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
 import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
-import { NewEncounterFlow } from "./NewEncounterFlow";
+import { NewEncounterPage } from "./NewEncounterPage";
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useCreateTreatmentPlan } from "../../treatment/useTreatment";
 import type { NeuroLevel, Mechanism, SpinalSegment, NerveTrunk } from "../../diagnosis/localization.types";
@@ -33,7 +33,7 @@ import { calcAge, SEX_LABELS, HAND_LABELS, formatDate } from "../../../lib/forma
 import { TherapistAttribution } from "../../../components/auth/TherapistAttribution";
 import { OperationTimeline } from "../../../components/auth/OperationTimeline";
 
-type TabType = "overview" | "encounters" | "treatment";
+type TabType = "overview" | "encounters" | "new" | "treatment";
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +48,6 @@ export function PatientDetailPage() {
   const deletePatient = useDeletePatient();
 
   const [tab, setTab] = useState<TabType>("overview");
-  const [showForm, setShowForm] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState<EncounterRecord | null>(null);
   const [examEncounterId, setExamEncounterId] = useState<string | null>(null);
   const [diagnosisEid, setDiagnosisEid] = useState<string | null>(null);
@@ -82,7 +81,6 @@ export function PatientDetailPage() {
     });
   };
   const openEncounterEditor = (enc: EncounterRecord) => {
-    setShowForm(false);
     setEditingEncounter(enc);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -142,7 +140,7 @@ export function PatientDetailPage() {
           >
             删除
           </button>
-          <button className="btn btn--primary" onClick={() => { setTab("encounters"); setShowForm(true); }}>+ 新建就诊</button>
+          <button className="btn btn--primary" onClick={() => setTab("new")}>+ 新建就诊</button>
         </div>
       </header>
 
@@ -164,6 +162,7 @@ export function PatientDetailPage() {
       <nav className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === "overview"} className={`tab ${tab === "overview" ? "tab--active" : ""}`} onClick={() => setTab("overview")}>概览</button>
         <button role="tab" aria-selected={tab === "encounters"} className={`tab ${tab === "encounters" ? "tab--active" : ""}`} onClick={() => setTab("encounters")}>就诊记录 · {list.length}</button>
+        <button role="tab" aria-selected={tab === "new"} className={`tab ${tab === "new" ? "tab--active" : ""}`} onClick={() => setTab("new")} style={{color:"var(--color-accent)",fontWeight:700}}>+ 新建就诊</button>
         <button role="tab" aria-selected={tab === "treatment"} className={`tab ${tab === "treatment" ? "tab--active" : ""}`} onClick={() => setTab("treatment")}>治疗计划</button>
       </nav>
 
@@ -200,14 +199,6 @@ export function PatientDetailPage() {
 
       {tab === "encounters" && (
         <>
-          <div style={{ marginBottom: "1rem" }}>
-            <button className="btn btn--primary" onClick={() => setShowForm(true)}>+ 新建就诊</button>
-          </div>
-
-          {showForm && (
-            <NewEncounterFlow patientId={patient.id} onDone={() => setShowForm(false)} />
-          )}
-
           {/* 编辑当前就诊的主诉(补充症状/体格信息) */}
           {editingEncounter && (
             <div id="encounter-edit-form" style={{ marginBottom: "1.5rem", border: "2px solid var(--color-caution, #f59e0b)", borderRadius: 8, padding: "var(--space-3)", background: "var(--color-caution-weak, #fef8ed)" }}>
@@ -296,6 +287,10 @@ export function PatientDetailPage() {
             );
           })()}
         </>
+      )}
+
+      {tab === "new" && (
+        <NewEncounterPage patientId={patient.id} onDone={() => setTab("encounters")} />
       )}
 
       {tab === "treatment" && list.length > 0 && (
