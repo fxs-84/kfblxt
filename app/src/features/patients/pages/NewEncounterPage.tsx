@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCreateEncounter } from "../../encounters/useEncounters";
 import { useCreateExamSession } from "../../exam/useExam";
 import { getSession } from "../../../lib/session";
 import type { EncounterData } from "./NewEncounterFields";
 import type { ExamResult } from "../../exam/exam.types";
+import type { ExamSessionInput } from "../../exam/exam.repository";
 import { EncounterFields } from "./NewEncounterFields";
 import { ExamFields } from "./NewExamFields";
-import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
+import { BrainRegionForm } from "../../assessments/components/BrainRegionForm";
 import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
 import { SharePanel } from "../../share/SharePanel";
@@ -17,9 +18,9 @@ interface NewEncounterPageProps {
 }
 
 /**
- * 新建就诊综合页面(内联):
- * 阶段1: 症状定位 + 基础信息 + 大脑区域定位表 + ANRM 查体 → 创建就诊
- * 阶段2: 使用新就诊 ID → 神经定位诊断 + 附件 + 分享
+ * 新建就诊:
+ * 1. 先填基本信息 + 保存 → 创建 encounter
+ * 2. 然后展开完整的大表单(脑区+查体+诊断+附件+分享),和就诊记录展开效果一样
  */
 export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
   const createEncounter = useCreateEncounter();
@@ -35,9 +36,9 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [encounterId, setEncounterId] = useState<string | null>(null);
-  const [phase1Done, setPhase1Done] = useState(false);
 
-  const handleSavePhase1 = async () => {
+  /** 保存基本会诊 → 创建 encounter */
+  const handleSaveEncounter = async () => {
     setError(null);
     if (!encounterData.chiefComplaint.regions.length) { setError("请至少标记一个症状区域"); return; }
     if (!encounterData.chiefComplaint.nature.length) { setError("请至少选择一项症状性质"); return; }
@@ -61,17 +62,7 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
         },
         amount: encounterData.amount,
       });
-
-      const hasExam = Object.keys(examResults).length > 0;
-      if (hasExam) {
-        await createExam.mutateAsync({
-          encounterId: encounter.id,
-          results: examResults as Record<string, { left?: unknown; right?: unknown; value?: unknown; note?: string }>,
-        });
-      }
-
       setEncounterId(encounter.id);
-      setPhase1Done(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "保存失败,请重试");
     } finally {
@@ -79,108 +70,90 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
     }
   };
 
-  // ESC 关闭(仅阶段2)
-  useEffect(() => {
-    if (!phase1Done) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDone(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [phase1Done, onDone]);
+  /* ── 未保存 → 显示基础信息表单 ── */
+  if (!encounterId) {
+    return (
+      <div style={{ marginTop: "var(--space-4)" }}>
+        <div className="card">
+          <div className="exam-panel__header">
+            <h3 className="panel__title">📋 新建就诊 — 基本信息</h3>
+          </div>
+          <div style={{ padding: "var(--space-4) var(--space-6)" }}>
+            <EncounterFields value={encounterData} onChange={setEncounterData} />
+            {error && <div className="field__error" style={{ marginTop: "var(--space-3)" }}>{error}</div>}
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn--primary" onClick={handleSaveEncounter} disabled={saving}
+              style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
+              {saving ? "保存中…" : "💾 保存基本信息"}
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  /* ── 已保存 → 展开完整大表单 ── */
   return (
     <div style={{ marginTop: "var(--space-4)" }}>
+      {/* 大脑区域定位表 */}
       <div className="card" style={{ marginBottom: "var(--space-4)" }}>
         <div className="exam-panel__header">
-          <h3 className="panel__title" style={{ fontSize: "var(--text-lg)" }}>📋 新建就诊</h3>
-          {phase1Done && (
-            <span className="panel__hint">阶段1已完成 · 可继续完成诊断与记录</span>
-          )}
+          <h3 className="panel__title">🧠 大脑区域定位表</h3>
         </div>
+        <BrainRegionForm patientId={patientId} encounterId={encounterId} onDone={() => {}} />
+      </div>
 
-        {!phase1Done ? (
-          /* ══════════ 阶段1:创建就诊 ══════════ */
-          <>
-            {/* 区块:症状定位 + 基础信息 */}
-            <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
-              <div className="exam-panel__header">
-                <h3 className="panel__title">🩻 症状定位与基本信息</h3>
-              </div>
-              <div style={{ padding: "var(--space-4) var(--space-6)" }}>
-                <EncounterFields value={encounterData} onChange={setEncounterData} />
-              </div>
-            </div>
+      {/* ANRM 查体 */}
+      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+        <div className="exam-panel__header">
+          <h3 className="panel__title">📋 ANRM 神经科学查体</h3>
+        </div>
+        <div style={{ padding: "var(--space-4) var(--space-6)" }}>
+          <ExamFields results={examResults} onChange={setExamResults} />
+        </div>
+        <div className="form-actions">
+          <button type="button" className="btn btn--primary" onClick={async () => {
+            const hasResults = Object.keys(examResults).length > 0;
+            if (!hasResults) return;
+            await createExam.mutateAsync({
+              encounterId,
+              results: examResults,
+            } as ExamSessionInput);
+          }} style={{ fontSize: "var(--text-base)" }}>保存查体</button>
+        </div>
+      </div>
 
-            {/* 区块:大脑区域定位表 */}
-            <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
-              <div className="exam-panel__header">
-                <h3 className="panel__title">🧠 大脑区域定位表</h3>
-              </div>
-              <div style={{ padding: "var(--space-3) var(--space-4)" }}>
-                <BrainRegionPanel patientId={patientId} />
-              </div>
-            </div>
+      {/* 神经定位诊断 */}
+      <div className="card" style={{ marginBottom: "var(--space-4)", border: "2px solid var(--color-accent)", borderRadius: 8 }}>
+        <div className="exam-panel__header" style={{ borderBottom: "1px solid var(--color-border)" }}>
+          <h3 className="panel__title">🧠 神经定位诊断</h3>
+        </div>
+        <DiagnosisPanel encounterId={encounterId} />
+      </div>
 
-            {/* 区块:ANRM 查体 */}
-            <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
-              <div className="exam-panel__header">
-                <h3 className="panel__title">📋 ANRM 神经科学查体</h3>
-              </div>
-              <div style={{ padding: "var(--space-4) var(--space-6)" }}>
-                <ExamFields results={examResults} onChange={setExamResults} />
-              </div>
-            </div>
+      {/* 附件 */}
+      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+        <div className="exam-panel__header">
+          <h3 className="panel__title">📎 检查报告</h3>
+        </div>
+        <AttachmentPanel encounterId={encounterId} />
+      </div>
 
-            {error && <div className="field__error" style={{ margin: "var(--space-2) var(--space-6)" }}>{error}</div>}
+      {/* 分享 */}
+      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+        <div className="exam-panel__header">
+          <h3 className="panel__title">🔗 分享</h3>
+        </div>
+        <SharePanel encounterId={encounterId} patientId={patientId} />
+      </div>
 
-            <div className="form-actions">
-              <button type="button" className="btn btn--primary" onClick={handleSavePhase1} disabled={saving}
-                style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
-                {saving ? "保存中…" : "💾 保存就诊 (会诊 + 查体)"}
-              </button>
-              <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
-            </div>
-          </>
-        ) : (
-          /* ══════════ 阶段2:诊断 + 附件 + 分享 ══════════ */
-          <>
-            {encounterId && (
-              <>
-                {/* 神经定位诊断 + 临床诊断 */}
-                <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
-                  <div className="exam-panel__header">
-                    <h3 className="panel__title">🧠 神经定位诊断</h3>
-                    <span className="panel__hint">ANRM 定位 + ICD-10 临床诊断</span>
-                  </div>
-                  <DiagnosisPanel encounterId={encounterId} />
-                </div>
-
-                {/* 附件(检查报告等) */}
-                <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
-                  <div className="exam-panel__header">
-                    <h3 className="panel__title">📎 检查报告</h3>
-                  </div>
-                  <AttachmentPanel encounterId={encounterId} />
-                </div>
-
-                {/* 分享二维码 */}
-                <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
-                  <div className="exam-panel__header">
-                    <h3 className="panel__title">🔗 分享</h3>
-                  </div>
-                  <SharePanel encounterId={encounterId} patientId={patientId} />
-                </div>
-              </>
-            )}
-
-            <div className="form-actions">
-              <button type="button" className="btn btn--primary" onClick={onDone}
-                style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
-                完成就诊记录
-              </button>
-              <button type="button" className="btn btn--ghost" onClick={onDone}>关闭</button>
-            </div>
-          </>
-        )}
+      <div className="form-actions" style={{ justifyContent: "center", gap: "var(--space-3)" }}>
+        <button type="button" className="btn btn--primary" onClick={onDone}
+          style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-6)" }}>
+          ✅ 完成就诊
+        </button>
       </div>
     </div>
   );
