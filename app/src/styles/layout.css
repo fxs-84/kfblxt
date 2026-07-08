@@ -794,20 +794,20 @@ body {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
   flex-shrink: 0;
 }
 
 .brain-form-progress__track {
   flex: 1;
-  height: 8px;
+  height: 10px;
   background: var(--color-border);
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
 }
 
@@ -827,7 +827,7 @@ body {
 }
 
 .brain-form__hint {
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-4) var(--space-8);
   background: var(--color-accent-weak, #e4f0f7);
   font-size: var(--text-base);
   color: var(--color-text);
@@ -839,7 +839,7 @@ body {
 .brain-form__hint b { color: var(--color-accent); }
 
 .brain-form__body {
-  padding: var(--space-2) var(--space-6) var(--space-4);
+  padding: var(--space-3) var(--space-8) var(--space-6);
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -849,37 +849,40 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
   border-top: 1px solid var(--color-border);
   background: #fafbfc;
   flex-shrink: 0;
 }
 
 .brain-form__foot-status {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 .brain-form__foot-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 /* 弹窗内放大的单选 chip */
 .brain-chip--lg {
-  min-width: 48px;
-  height: 40px;
-  padding: 0 var(--space-3);
-  font-size: var(--text-base);
+  min-width: 56px;
+  height: 48px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-lg);
   font-weight: 700;
+  border-radius: 8px;
 }
 
 .brain-item--lg {
-  padding: var(--space-3) 0;
-  gap: var(--space-4);
-  min-height: 56px;
+  padding: var(--space-4) 0;
+  gap: var(--space-6);
+  min-height: 64px;
   font-size: var(--text-base);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .brain-item--lg .exam-item__label {
@@ -888,9 +891,15 @@ body {
   line-height: 1.5;
 }
 
+.brain-item--lg .exam-item__label > span:first-child {
+  font-size: var(--text-lg);
+  min-width: 40px;
+}
+
 .brain-cat--lg .exam-cat__toggle {
-  padding: var(--space-3) var(--space-6);
-  font-size: var(--text-base);
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-lg);
+  font-weight: 700;
 }
 
 /* 严重度分级(模块小计 vs 模块满分) */
@@ -1527,8 +1536,8 @@ body {
 
 /* 宽屏弹窗(用于问卷/表单) */
 .modal-card--wide {
-  max-width: 880px;
-  width: 95vw;
+  max-width: 1200px;
+  width: 96vw;
 }
 
 .modal-card--scroll .modal-card__body {
