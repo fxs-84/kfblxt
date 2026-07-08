@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   BRAIN_REGION_DEFS,
   BRAIN_REGION_MAX_TOTAL,
+  BRAIN_REGION_SCORED_ITEM_COUNT,
   PHONE_EAR_OPTIONS,
   regionMaxScore,
   REGION_SEVERITY_LABELS,
@@ -47,7 +48,7 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
         <h3 className="panel__title">🧠 大脑区域定位表</h3>
         <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
           <span className="panel__hint">
-            {formatDate(record.createdAt)} · {answered}/98 题
+            {formatDate(record.createdAt)} · {answered}/{BRAIN_REGION_SCORED_ITEM_COUNT} 题
           </span>
           {confirming ? (
             <>

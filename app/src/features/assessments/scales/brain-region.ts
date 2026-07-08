@@ -15,10 +15,10 @@
  */
 
 export const BRAIN_REGION_ITEM_COUNT = 100; // 题号名义上 1-100(PDF 序号)
-export const BRAIN_REGION_SCORED_ITEM_COUNT = 98; // 实际可评分题:100 - 第46题(单选) - 第65题(PDF 缺)
+export const BRAIN_REGION_SCORED_ITEM_COUNT = 99; // 实际可评分题:100 - 第46题(单选);#65 已补
 export const BRAIN_REGION_MIN_ITEM = 0;
 export const BRAIN_REGION_MAX_ITEM = 4;
-export const BRAIN_REGION_MAX_TOTAL = BRAIN_REGION_SCORED_ITEM_COUNT * BRAIN_REGION_MAX_ITEM; // 392
+export const BRAIN_REGION_MAX_TOTAL = BRAIN_REGION_SCORED_ITEM_COUNT * BRAIN_REGION_MAX_ITEM; // 396
 
 /**
  * 评判规则(用户明确口径):
@@ -213,19 +213,20 @@ export const BRAIN_REGION_ITEMS: readonly BrainRegionItem[] = [
   { index: 51, text: "对日期、时间流逝或地点感到困惑", side: null },
   { index: 52, text: "难以回忆事件", side: null },
   { index: 53, text: "东西容易放错地方并难以回忆经过", side: null },
-  { index: 54, text: "记忆地点(如地址)的困难", side: null },
+  { index: 54, text: "记忆地点(如地址)的困难", side: "R" },
   { index: 55, text: "视觉记忆的困难", side: "R" },
-  { index: 56, text: "常常忘记放置的物品,如钥匙、钱包、手机等", side: null },
+  { index: 56, text: "常常忘记放置的物品,如钥匙、钱包、手机等", side: "R" },
   { index: 57, text: "难以记住面孔", side: "R" },
-  { index: 58, text: "难以将名字与面孔联系起来", side: null },
+  { index: 58, text: "难以将名字与面孔联系起来", side: "L" },
   { index: 59, text: "记忆单词的困难", side: "L" },
   { index: 60, text: "记忆数字的困难", side: "L" },
-  { index: 61, text: "难以记住准时或按时做事", side: null },
+  { index: 61, text: "难以记住准时或按时做事", side: "L" },
 
   // 9. 枕叶(62-66)
   { index: 62, text: "难以区分相似的颜色深浅", side: null },
   { index: 63, text: "看见物品的色彩变得暗淡", side: null },
   { index: 64, text: "难以协调视觉输入和手部动作,导致无法有效地伸手取物", side: null },
+  { index: 65, text: "视野中出现局部暗点或盲区(视野缺损)", side: null },
   { index: 66, text: "视野中出现飞蚊症或光晕", side: null },
 
   // 10. 小脑 - 脊髓小脑(67-70)

@@ -37,7 +37,7 @@ describe("findRegionForItem", () => {
   it("题号 100 收尾于交感神经", () => {
     expect(findRegionForItem(100)?.id).toBe("sympathetic");
   });
-  it("题号 65 虽未列出但属于枕叶区间", () => {
+  it("题号 65 已补入,属于枕叶区间", () => {
     expect(findRegionForItem(65)?.id).toBe("occipital");
   });
   it("题号 0 / 101 返回 null", () => {
@@ -54,6 +54,10 @@ describe("regionMaxScore", () => {
   it("听觉皮层 8 题 - 第46题 = 7 × 4 = 28", () => {
     const def = BRAIN_REGION_DEFS.find((d) => d.id === "auditoryCortex")!;
     expect(regionMaxScore(def)).toBe(28);
+  });
+  it("枕叶 5 题(含 #65) × 4 = 20", () => {
+    const def = BRAIN_REGION_DEFS.find((d) => d.id === "occipital")!;
+    expect(regionMaxScore(def)).toBe(20);
   });
 });
 
@@ -243,12 +247,25 @@ describe("阈值常量", () => {
 });
 
 describe("BRAIN_REGION_ITEMS 完整性", () => {
-  it("100 道题都有题号 1-100(缺 65)", () => {
+  it("100 道题都有题号 1-100(#65 已补全)", () => {
     const indexes = BRAIN_REGION_ITEMS.map((i) => i.index).sort((a, b) => a - b);
     expect(indexes[0]).toBe(1);
     expect(indexes.at(-1)).toBe(100);
     expect(new Set(indexes).size).toBe(indexes.length);
-    expect(indexes.length).toBeGreaterThanOrEqual(99);
-    expect(indexes.length).toBeLessThanOrEqual(100);
+    expect(indexes.length).toBe(100);
+  });
+
+  it("#65 归属枕叶(范围 62-66)且内容非空", () => {
+    const item65 = BRAIN_REGION_ITEMS.find((i) => i.index === 65);
+    expect(item65).toBeDefined();
+    expect(findRegionForItem(65)?.id).toBe("occipital");
+    expect(item65!.text.length).toBeGreaterThan(0);
+  });
+
+  it("#54 #56 标 R,#58 #61 标 L", () => {
+    expect(BRAIN_REGION_ITEMS.find((i) => i.index === 54)?.side).toBe("R");
+    expect(BRAIN_REGION_ITEMS.find((i) => i.index === 56)?.side).toBe("R");
+    expect(BRAIN_REGION_ITEMS.find((i) => i.index === 58)?.side).toBe("L");
+    expect(BRAIN_REGION_ITEMS.find((i) => i.index === 61)?.side).toBe("L");
   });
 });
