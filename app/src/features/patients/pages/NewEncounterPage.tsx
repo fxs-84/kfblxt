@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCreateEncounter } from "../../encounters/useEncounters";
 import { useCreateExamSession } from "../../exam/useExam";
 import { getSession } from "../../../lib/session";
@@ -6,7 +6,10 @@ import type { EncounterData } from "./NewEncounterFields";
 import type { ExamResult } from "../../exam/exam.types";
 import { EncounterFields } from "./NewEncounterFields";
 import { ExamFields } from "./NewExamFields";
-import { BrainRegionForm } from "../../assessments/components/BrainRegionForm";
+import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
+import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
+import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
+import { SharePanel } from "../../share/SharePanel";
 
 interface NewEncounterPageProps {
   patientId: string;
@@ -14,11 +17,9 @@ interface NewEncounterPageProps {
 }
 
 /**
- * 新建就诊综合页面(内联,非弹窗):
- * - 症状定位 + 基础信息 (EncounterFields)
- * - 大脑区域定位表   (BrainRegionForm)
- * - ANRM 神经科学查体 (ExamFields)
- * - 一次性保存:encounter → assessment → exam
+ * 新建就诊综合页面(内联):
+ * 阶段1: 症状定位 + 基础信息 + 大脑区域定位表 + ANRM 查体 → 创建就诊
+ * 阶段2: 使用新就诊 ID → 神经定位诊断 + 附件 + 分享
  */
 export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
   const createEncounter = useCreateEncounter();
@@ -33,17 +34,10 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
   const [examResults, setExamResults] = useState<Record<string, ExamResult>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [encounterId, setEncounterId] = useState<string | null>(null);
+  const [phase1Done, setPhase1Done] = useState(false);
 
-  /** 新建就诊各表单区块的默认展开配置 */
-  const [sectionsOpen, setSectionsOpen] = useState<Record<string, boolean>>({
-    symptom: true,
-    brain: false,
-    exam: false,
-  });
-  const toggleSection = (key: string) => setSectionsOpen((p) => ({ ...p, [key]: !p[key] }));
-
-  const handleSaveAll = async () => {
+  const handleSavePhase1 = async () => {
     setError(null);
     if (!encounterData.chiefComplaint.regions.length) { setError("请至少标记一个症状区域"); return; }
     if (!encounterData.chiefComplaint.nature.length) { setError("请至少选择一项症状性质"); return; }
@@ -76,8 +70,8 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
         });
       }
 
-      setDone(true);
-      onDone();
+      setEncounterId(encounter.id);
+      setPhase1Done(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "保存失败,请重试");
     } finally {
@@ -85,72 +79,109 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
     }
   };
 
-  if (done) return null;
+  // ESC 关闭(仅阶段2)
+  useEffect(() => {
+    if (!phase1Done) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDone(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase1Done, onDone]);
 
   return (
     <div style={{ marginTop: "var(--space-4)" }}>
       <div className="card" style={{ marginBottom: "var(--space-4)" }}>
         <div className="exam-panel__header">
-          <h3 className="panel__title" style={{ fontSize: "var(--text-lg)" }}>📋 新建就诊 — 综合表单</h3>
-          <span className="panel__hint">所有数据一次性保存</span>
-        </div>
-
-        {/* === 区块1:症状定位 + 基础信息 === */}
-        <div>
-          <SectionToggle title="🩻 症状定位与基本信息" open={sectionsOpen.symptom} onToggle={() => toggleSection("symptom")} />
-          {sectionsOpen.symptom && (
-            <div style={{ padding: "var(--space-4) var(--space-6)" }}>
-              <EncounterFields value={encounterData} onChange={setEncounterData} />
-            </div>
+          <h3 className="panel__title" style={{ fontSize: "var(--text-lg)" }}>📋 新建就诊</h3>
+          {phase1Done && (
+            <span className="panel__hint">阶段1已完成 · 可继续完成诊断与记录</span>
           )}
         </div>
 
-        {/* === 区块2:大脑区域定位表 === */}
-        <div>
-          <SectionToggle title="🧠 大脑区域定位表" open={sectionsOpen.brain} onToggle={() => toggleSection("brain")} />
-          {sectionsOpen.brain && (
-            <div style={{ padding: "var(--space-3) var(--space-4)" }}>
-              <BrainRegionForm patientId={patientId} encounterId="new" onDone={() => toggleSection("exam")} />
+        {!phase1Done ? (
+          /* ══════════ 阶段1:创建就诊 ══════════ */
+          <>
+            {/* 区块:症状定位 + 基础信息 */}
+            <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
+              <div className="exam-panel__header">
+                <h3 className="panel__title">🩻 症状定位与基本信息</h3>
+              </div>
+              <div style={{ padding: "var(--space-4) var(--space-6)" }}>
+                <EncounterFields value={encounterData} onChange={setEncounterData} />
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* === 区块3:ANRM 查体 === */}
-        <div>
-          <SectionToggle title="📋 ANRM 神经科学查体" open={sectionsOpen.exam} onToggle={() => toggleSection("exam")} />
-          {sectionsOpen.exam && (
-            <div style={{ padding: "var(--space-4) var(--space-6)" }}>
-              <ExamFields results={examResults} onChange={setExamResults} />
+            {/* 区块:大脑区域定位表 */}
+            <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
+              <div className="exam-panel__header">
+                <h3 className="panel__title">🧠 大脑区域定位表</h3>
+              </div>
+              <div style={{ padding: "var(--space-3) var(--space-4)" }}>
+                <BrainRegionPanel patientId={patientId} />
+              </div>
             </div>
-          )}
-        </div>
 
-        {error && <div className="field__error" style={{ margin: "var(--space-3) var(--space-6)" }}>{error}</div>}
+            {/* 区块:ANRM 查体 */}
+            <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
+              <div className="exam-panel__header">
+                <h3 className="panel__title">📋 ANRM 神经科学查体</h3>
+              </div>
+              <div style={{ padding: "var(--space-4) var(--space-6)" }}>
+                <ExamFields results={examResults} onChange={setExamResults} />
+              </div>
+            </div>
 
-        <div className="form-actions" style={{ borderTop: "1px solid var(--color-border)", background: "#fafbfc" }}>
-          <button type="button" className="btn btn--primary" onClick={handleSaveAll} disabled={saving}
-            style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
-            {saving ? "保存中…" : "💾 一键保存就诊 (会诊 + 查体)"}
-          </button>
-        </div>
+            {error && <div className="field__error" style={{ margin: "var(--space-2) var(--space-6)" }}>{error}</div>}
+
+            <div className="form-actions">
+              <button type="button" className="btn btn--primary" onClick={handleSavePhase1} disabled={saving}
+                style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
+                {saving ? "保存中…" : "💾 保存就诊 (会诊 + 查体)"}
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
+            </div>
+          </>
+        ) : (
+          /* ══════════ 阶段2:诊断 + 附件 + 分享 ══════════ */
+          <>
+            {encounterId && (
+              <>
+                {/* 神经定位诊断 + 临床诊断 */}
+                <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
+                  <div className="exam-panel__header">
+                    <h3 className="panel__title">🧠 神经定位诊断</h3>
+                    <span className="panel__hint">ANRM 定位 + ICD-10 临床诊断</span>
+                  </div>
+                  <DiagnosisPanel encounterId={encounterId} />
+                </div>
+
+                {/* 附件(检查报告等) */}
+                <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
+                  <div className="exam-panel__header">
+                    <h3 className="panel__title">📎 检查报告</h3>
+                  </div>
+                  <AttachmentPanel encounterId={encounterId} />
+                </div>
+
+                {/* 分享二维码 */}
+                <div className="card" style={{ margin: "0 var(--space-4) var(--space-3)", border: "1px solid var(--color-border)", boxShadow: "none" }}>
+                  <div className="exam-panel__header">
+                    <h3 className="panel__title">🔗 分享</h3>
+                  </div>
+                  <SharePanel encounterId={encounterId} patientId={patientId} />
+                </div>
+              </>
+            )}
+
+            <div className="form-actions">
+              <button type="button" className="btn btn--primary" onClick={onDone}
+                style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
+                完成就诊记录
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={onDone}>关闭</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
-  );
-}
-
-/** 可折叠区块头 */
-function SectionToggle({ title, open, onToggle }: { title: string; open: boolean; onToggle: () => void }) {
-  return (
-    <button type="button" onClick={onToggle} aria-expanded={open}
-      style={{
-        display: "flex", alignItems: "center", gap: "var(--space-2)",
-        width: "100%", background: "var(--color-surface-sunken)", border: "none",
-        borderBottom: "1px solid var(--color-border)",
-        padding: "var(--space-3) var(--space-6)", font: "inherit",
-        fontSize: "var(--text-base)", fontWeight: 600, cursor: "pointer", textAlign: "left",
-      }}>
-      <span style={{ fontSize: "var(--text-xs)", width: 16 }}>{open ? "▾" : "▸"}</span>
-      {title}
-    </button>
   );
 }
