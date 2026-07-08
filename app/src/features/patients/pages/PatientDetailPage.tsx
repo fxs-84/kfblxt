@@ -174,7 +174,14 @@ export function PatientDetailPage() {
               {regions.length === 0 ? <div className="empty">尚无标记。</div> : <BodyMap value={regions} intensity={intensity} />}
             </div>
             <div className="card panel">
-              <div className="panel__head"><h3 className="panel__title">VAS 疼痛趋势</h3><span className="panel__hint">绿/黄/红 = 轻/中/重</span></div>
+              <div className="panel__head">
+                <h3 className="panel__title">VAS 疼痛趋势</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                  <span style={{ color: "#2d9d5a", fontWeight: 700 }}>● 轻 (0-3)</span>
+                  <span style={{ color: "#e68a00", fontWeight: 700 }}>● 中 (4-6)</span>
+                  <span style={{ color: "#c62828", fontWeight: 700 }}>● 重 (7-10)</span>
+                </div>
+              </div>
               <VasTrendChart data={series} />
               <div className="stat-row">
                 <div className="stat"><span className="stat__value">{list.length}</span><span className="stat__label">就诊次数</span></div>

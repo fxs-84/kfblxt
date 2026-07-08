@@ -82,10 +82,6 @@ export function VasTrendChart({ data }: VasTrendChartProps) {
             );
           }}
         />
-        {/* 图例 */}
-        <text x={12} y={18} fontSize={11} fill="#2d9d5a" fontWeight={600}>● 轻 (VAS 0-3)</text>
-        <text x={112} y={18} fontSize={11} fill="#e68a00" fontWeight={600}>● 中 (VAS 4-6)</text>
-        <text x={212} y={18} fontSize={11} fill="#c62828" fontWeight={600}>● 重 (VAS 7-10)</text>
       </LineChart>
     </ResponsiveContainer>
   );
