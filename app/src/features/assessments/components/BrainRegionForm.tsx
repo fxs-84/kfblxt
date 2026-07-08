@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import {
   BRAIN_REGION_DEFS,
   BRAIN_REGION_ITEMS,
@@ -56,45 +56,16 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
     else itemRefs.current.delete(index);
   }, []);
 
+  /** 记录上一次 totalAnswered,用于判断是否新增了一题 */
+  const prevCountRef = useRef(0);
+
   /**
-   * 答题处理:
-   *  1. 记录答卷
-   *  2. 高亮刚刚作答的题
-   *  3. 找到下一未答题,平滑滚到视口中上部
-   *  4. 若是最后一道题答完,滚到保存按钮
+   * 答题处理:只改状态,不做滚动(让 useEffect 接管)
    */
   const setItem = useCallback((index: number, value: number) => {
-    let wasUnanswered = false;
-    setItems((prev) => {
-      wasUnanswered = prev[index] === undefined;
-      return { ...prev, [index]: value };
-    });
+    setItems((prev) => ({ ...prev, [index]: value }));
     setLastAnswered(index);
-
-    // 重新作答(改答案)不触发滚动
-    if (!wasUnanswered) return;
-
-    // 找到下一未答题(题号大于当前、按题号顺序)
-    const currentItems = { ...items, [index]: value };
-    const nextUnanswered = SCORABLE_INDEXES.find((i) => currentItems[i] === undefined);
-
-    // 等 React 提交 DOM 更新后再滚动
-    requestAnimationFrame(() => {
-      if (nextUnanswered !== undefined) {
-        const el = itemRefs.current.get(nextUnanswered);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          // 视觉脉冲
-          el.classList.add("brain-item--pulse");
-          setTimeout(() => el.classList.remove("brain-item--pulse"), 1200);
-        }
-      } else {
-        // 全部答完,滚到保存按钮
-        const foot = document.getElementById("brain-form-foot");
-        if (foot) foot.scrollIntoView({ behavior: "smooth", block: "end" });
-      }
-    });
-  }, [items]);
+  }, []);
 
   const toggleRegion = (id: string) => {
     setExpanded((prev) => {
@@ -132,6 +103,32 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
   const totalQuestions = SCORABLE_INDEXES.length;
   const isComplete = totalAnswered === totalQuestions;
   const progressPct = Math.round((totalAnswered / totalQuestions) * 100);
+
+  /**
+   * useEffect 接管滚动:每当 totalAnswered 增量变化时就滚到下一题。
+   * - 用 prevCountRef 判断是否真的新增了(改答案不触发)
+   * - DOM 已经 commit,可直接 scrollIntoView
+   */
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    prevCountRef.current = totalAnswered;
+    if (totalAnswered <= prev) return; // 不是新增,不滚动
+
+    const nextUnanswered = SCORABLE_INDEXES.find((i) => items[i] === undefined);
+    requestAnimationFrame(() => {
+      if (nextUnanswered !== undefined) {
+        const el = itemRefs.current.get(nextUnanswered);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("brain-item--pulse");
+          setTimeout(() => el.classList.remove("brain-item--pulse"), 1200);
+        }
+      } else {
+        const foot = document.getElementById("brain-form-foot");
+        if (foot) foot.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    });
+  }, [totalAnswered, items]);
 
   const handleSave = async () => {
     setError(null);
