@@ -20,7 +20,7 @@ interface NewEncounterPageProps {
 /**
  * 新建就诊:
  * 1. 先填基本信息 + 保存 → 创建 encounter
- * 2. 然后展开完整的大表单(脑区+查体+诊断+附件+分享),和就诊记录展开效果一样
+ * 2. 然后展开可折叠的各区块:脑区/查体/诊断/附件/分享
  */
 export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
   const createEncounter = useCreateEncounter();
@@ -36,8 +36,10 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [encounterId, setEncounterId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  /** 保存基本会诊 → 创建 encounter */
+  const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
+
   const handleSaveEncounter = async () => {
     setError(null);
     if (!encounterData.chiefComplaint.regions.length) { setError("请至少标记一个症状区域"); return; }
@@ -83,78 +85,92 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
             {error && <div className="field__error" style={{ marginTop: "var(--space-3)" }}>{error}</div>}
           </div>
           <div className="form-actions">
-            <button type="button" className="btn btn--primary" onClick={handleSaveEncounter} disabled={saving}
+            <button className="btn btn--primary" onClick={handleSaveEncounter} disabled={saving}
               style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
               {saving ? "保存中…" : "💾 保存基本信息"}
             </button>
-            <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
+            <button className="btn btn--ghost" onClick={onDone}>取消</button>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ── 已保存 → 展开完整大表单 ── */
+  /* ── 已保存 → 可折叠的各区块 ── */
   return (
     <div style={{ marginTop: "var(--space-4)" }}>
       {/* 大脑区域定位表 */}
-      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
-        <div className="exam-panel__header">
-          <h3 className="panel__title">🧠 大脑区域定位表</h3>
+      <FoldSection title="🧠 大脑区域定位表" open={!!expanded.brain} onToggle={() => toggle("brain")}>
+        <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
+          <BrainRegionForm patientId={patientId} encounterId={encounterId} onDone={() => {}} />
         </div>
-        <BrainRegionForm patientId={patientId} encounterId={encounterId} onDone={() => {}} />
-      </div>
+      </FoldSection>
 
       {/* ANRM 查体 */}
-      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
-        <div className="exam-panel__header">
-          <h3 className="panel__title">📋 ANRM 神经科学查体</h3>
+      <FoldSection title="📋 ANRM 神经科学查体" open={!!expanded.exam} onToggle={() => toggle("exam")}>
+        <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
+          <div style={{ padding: "var(--space-4) var(--space-6)" }}>
+            <ExamFields results={examResults} onChange={setExamResults} />
+          </div>
+          <div className="form-actions">
+            <button className="btn btn--primary" onClick={async () => {
+              if (Object.keys(examResults).length === 0) return;
+              await createExam.mutateAsync({ encounterId, results: examResults } as ExamSessionInput);
+            }} style={{ fontSize: "var(--text-base)" }}>保存查体</button>
+          </div>
         </div>
-        <div style={{ padding: "var(--space-4) var(--space-6)" }}>
-          <ExamFields results={examResults} onChange={setExamResults} />
-        </div>
-        <div className="form-actions">
-          <button type="button" className="btn btn--primary" onClick={async () => {
-            const hasResults = Object.keys(examResults).length > 0;
-            if (!hasResults) return;
-            await createExam.mutateAsync({
-              encounterId,
-              results: examResults,
-            } as ExamSessionInput);
-          }} style={{ fontSize: "var(--text-base)" }}>保存查体</button>
-        </div>
-      </div>
+      </FoldSection>
 
-      {/* 神经定位诊断 */}
-      <div className="card" style={{ marginBottom: "var(--space-4)", border: "2px solid var(--color-accent)", borderRadius: 8 }}>
-        <div className="exam-panel__header" style={{ borderBottom: "1px solid var(--color-border)" }}>
-          <h3 className="panel__title">🧠 神经定位诊断</h3>
+      {/* 神经定位诊断 — 自身带 card/header,不再额外包装 */}
+      <FoldSection title="🧠 神经定位诊断 (ANRM) + 临床诊断" open={!!expanded.diagnosis} onToggle={() => toggle("diagnosis")}>
+        <div style={{ marginBottom: "var(--space-4)" }}>
+          <DiagnosisPanel encounterId={encounterId} />
         </div>
-        <DiagnosisPanel encounterId={encounterId} />
-      </div>
+      </FoldSection>
 
-      {/* 附件 */}
-      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
-        <div className="exam-panel__header">
-          <h3 className="panel__title">📎 检查报告</h3>
+      {/* 检查报告 */}
+      <FoldSection title="📎 检查报告" open={!!expanded.attachment} onToggle={() => toggle("attachment")}>
+        <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
+          <AttachmentPanel encounterId={encounterId} />
         </div>
-        <AttachmentPanel encounterId={encounterId} />
-      </div>
+      </FoldSection>
 
       {/* 分享 */}
-      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
-        <div className="exam-panel__header">
-          <h3 className="panel__title">🔗 分享</h3>
+      <FoldSection title="🔗 分享" open={!!expanded.share} onToggle={() => toggle("share")}>
+        <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
+          <SharePanel encounterId={encounterId} patientId={patientId} />
         </div>
-        <SharePanel encounterId={encounterId} patientId={patientId} />
-      </div>
+      </FoldSection>
 
       <div className="form-actions" style={{ justifyContent: "center", gap: "var(--space-3)" }}>
-        <button type="button" className="btn btn--primary" onClick={onDone}
+        <button className="btn btn--primary" onClick={onDone}
           style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-6)" }}>
           ✅ 完成就诊
         </button>
       </div>
+    </div>
+  );
+}
+
+/** 可折叠区块 */
+function FoldSection({ title, open, children, onToggle }: { title: string; open: boolean; children: React.ReactNode; onToggle: () => void }) {
+  return (
+    <div style={{ marginBottom: "var(--space-4)" }}>
+      <button type="button" onClick={onToggle} aria-expanded={open}
+        style={{
+          display: "flex", alignItems: "center", gap: "var(--space-2)", width: "100%",
+          background: "var(--color-surface-sunken)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)",
+          padding: "var(--space-3) var(--space-5)", font: "inherit",
+          fontSize: "var(--text-base)", fontWeight: 600, cursor: "pointer", textAlign: "left",
+          borderBottomLeftRadius: open ? 0 : undefined,
+          borderBottomRightRadius: open ? 0 : undefined,
+          borderBottom: open ? "none" : undefined,
+        }}>
+        <span style={{ fontSize: "var(--text-xs)", width: 16, flexShrink: 0 }}>{open ? "▾" : "▸"}</span>
+        <span style={{ flex: 1 }}>{title}</span>
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>{open ? "收起" : "展开"}</span>
+      </button>
+      {open && children}
     </div>
   );
 }
