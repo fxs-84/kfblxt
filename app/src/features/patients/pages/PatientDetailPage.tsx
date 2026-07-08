@@ -19,6 +19,7 @@ import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
 import { BillingPanel } from "../../billing/BillingPanel";
 import { MembershipPanelCard } from "../../membership/MembershipPanelCard";
+import { CollapseCard } from "../../../components/ui/CollapseCard";
 import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
@@ -190,9 +191,9 @@ export function PatientDetailPage() {
               </div>
             </div>
           </div>
-          <BillingPanel patientId={patient.id} />
+          <CollapseCard title="卡次 / 消费记录"><BillingPanel patientId={patient.id} /></CollapseCard>
           <MembershipPanelCard patientId={patient.id} />
-          <FollowupPanel patientId={patient.id} />
+          <CollapseCard title="复诊提醒"><FollowupPanel patientId={patient.id} /></CollapseCard>
         </>
       )}
 
@@ -295,7 +296,13 @@ export function PatientDetailPage() {
       {tab === "treatment" && list.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
           <TreatmentPanel encounterId={list[0].id} />
-          {list.slice(1).map((e) => <TreatmentPanel key={e.id} encounterId={e.id} />)}
+          {list.length > 1 && (
+            <CollapseCard title="更多就诊治疗计划" extra={<span className="panel__hint">{list.length - 1} 条</span>}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+                {list.slice(1).map((e) => <TreatmentPanel key={e.id} encounterId={e.id} />)}
+              </div>
+            </CollapseCard>
+          )}
         </div>
       )}
       {tab === "treatment" && list.length === 0 && <div className="empty">尚无就诊记录,请先创建就诊。</div>}
@@ -342,11 +349,13 @@ export function PatientDetailPage() {
       })()}
       <p className="disclaimer">本系统为临床辅助记录工具,查体量表阈值待医师签字确认,不作为独立诊断依据。</p>
 
-      <OperationTimeline
-        patientId={id!}
-        patientCreatedAt={patient.createdAt}
-        patientCreatedBy={patient.createdBy}
-      />
+      <CollapseCard title="操作历史">
+        <OperationTimeline
+          patientId={id!}
+          patientCreatedAt={patient.createdAt}
+          patientCreatedBy={patient.createdBy}
+        />
+      </CollapseCard>
 
       <ConfirmDialog
         open={confirmDelete}
