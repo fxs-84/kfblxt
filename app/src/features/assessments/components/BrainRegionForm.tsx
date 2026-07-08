@@ -5,8 +5,11 @@ import {
   PHONE_EAR_OPTIONS,
   scoreBrainRegion,
   regionMaxScore,
+  classifyRegionSeverity,
+  REGION_SEVERITY_LABELS,
   type BrainRegionResponses,
   type PhoneEarPreference,
+  type RegionSeverity,
 } from "../scales/brain-region";
 import { useCreateAssessment } from "../useAssessments";
 
@@ -136,8 +139,7 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
         {BRAIN_REGION_DEFS.map((def) => {
           const open = expanded.has(def.id);
           const sub = regionSubtotals[def.id]!;
-          const ratio = sub.max > 0 ? sub.score / sub.max : 0;
-          const tone = ratio >= 0.5 ? "high" : ratio >= 0.25 ? "mid" : "low";
+          const severity: RegionSeverity = classifyRegionSeverity(sub.score, sub.max);
           return (
             <div key={def.id} className="exam-cat">
               <button type="button" className="exam-cat__toggle" onClick={() => toggleRegion(def.id)} aria-expanded={open}>
@@ -150,10 +152,10 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
                   小计 {sub.score} / {sub.max}
                 </span>
                 <span
-                  className={`brain-burden brain-burden--${tone}`}
-                  title={`完成度 ${sub.count}/${def.range[1] - def.range[0] + 1 - (def.id === "auditoryCortex" ? 1 : 0)}`}
+                  className={`brain-severity brain-severity--${severity}`}
+                  title={`阈值:≥${sub.max}/4 即有问题`}
                 >
-                  {ratio >= 0.5 ? "高负担" : ratio >= 0.25 ? "中负担" : ratio > 0 ? "低负担" : "—"}
+                  {REGION_SEVERITY_LABELS[severity]}
                 </span>
               </button>
               {open && (

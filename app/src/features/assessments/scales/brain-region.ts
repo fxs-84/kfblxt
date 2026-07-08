@@ -20,6 +20,43 @@ export const BRAIN_REGION_MIN_ITEM = 0;
 export const BRAIN_REGION_MAX_ITEM = 4;
 export const BRAIN_REGION_MAX_TOTAL = BRAIN_REGION_SCORED_ITEM_COUNT * BRAIN_REGION_MAX_ITEM; // 392
 
+/**
+ * 评判规则(用户明确口径):
+ *   每个模块按模块题目数量来判定,模块小计 ≥ 该模块满分 1/4 即"有问题";
+ *   评分越高,问题越重。
+ *   示例:前额叶 17 题 × 4 = 68,17/68 = 25%,即小计 ≥ 17 即有问题。
+ *
+ * 严重度分级(以 1/4 为粒度,便于临床医师快速判定):
+ *   < 1/4          → normal  正常
+ *   [1/4, 1/2)    → mild    轻度
+ *   [1/2, 3/4)    → moderate 中度
+ *   ≥ 3/4          → severe   重度
+ */
+export const AFFECTED_THRESHOLD = 0.25; // 模块小计/模块满分 ≥ 此值即"有问题"
+export const MILD_THRESHOLD = 0.25;
+export const MODERATE_THRESHOLD = 0.5;
+export const SEVERE_THRESHOLD = 0.75;
+
+export type RegionSeverity = "normal" | "mild" | "moderate" | "severe";
+
+/** 模块中文标签(给 UI 用) */
+export const REGION_SEVERITY_LABELS: Record<RegionSeverity, string> = {
+  normal: "正常",
+  mild: "轻度",
+  moderate: "中度",
+  severe: "重度",
+};
+
+/** 给定模块小计+满分,返回严重度分级 */
+export function classifyRegionSeverity(score: number, max: number): RegionSeverity {
+  if (max <= 0) return "normal";
+  const ratio = score / max;
+  if (ratio >= SEVERE_THRESHOLD) return "severe";
+  if (ratio >= MODERATE_THRESHOLD) return "moderate";
+  if (ratio >= MILD_THRESHOLD) return "mild";
+  return "normal";
+}
+
 /** 16 个脑功能分区(题目区间按 PDF 顺序 1-100) */
 export type BrainRegionId =
   | "prefrontal"        // 前额叶,背外侧和眶前区(9、10、11、12)
@@ -95,12 +132,14 @@ export interface BrainRegionResponses {
 export interface BrainRegionScore {
   /** 分区 ID → 该区题目得分合计 */
   byRegion: Record<BrainRegionId, number>;
-  /** 全表总分 */
+  /** 全表总分(仅供参考,不作判定依据) */
   total: number;
-  /** 总分占满分的百分比(0-100) */
+  /** 总分占满分的百分比(0-100,仅供参考) */
   percent: number;
-  /** 高负担分区(小计 ≥ 该分区满分 50%) */
-  highBurdenRegions: BrainRegionId[];
+  /** 有问题的分区(模块小计 ≥ 模块满分 1/4,即"轻度"及以上) */
+  affectedRegions: BrainRegionId[];
+  /** 每个分区的严重度 */
+  severityByRegion: Record<BrainRegionId, RegionSeverity>;
 }
 
 /** 题目全集(按 PDF 抄录,顺序与题号一致) */
@@ -257,12 +296,17 @@ export function findRegionForItem(index: number): BrainRegionDef | null {
  * 计算分数。
  * - 校验 0-4 整数
  * - 第 46 题不计入总分(单选偏好侧,独立展示)
- * - 高负担分区阈值:该分区满分 50%
+ * - 按模块(分区)判定问题,阈值 = 该模块满分 1/4
+ *   全表总分/百分比仅作参考,不作判定依据
  */
 export function scoreBrainRegion(responses: BrainRegionResponses): BrainRegionScore {
   const items = responses.items;
   const byRegion: Record<BrainRegionId, number> = {} as Record<BrainRegionId, number>;
-  for (const def of BRAIN_REGION_DEFS) byRegion[def.id] = 0;
+  const severityByRegion: Record<BrainRegionId, RegionSeverity> = {} as Record<BrainRegionId, RegionSeverity>;
+  for (const def of BRAIN_REGION_DEFS) {
+    byRegion[def.id] = 0;
+    severityByRegion[def.id] = "normal";
+  }
 
   for (const item of BRAIN_REGION_ITEMS) {
     const raw = items[item.index];
@@ -283,23 +327,32 @@ export function scoreBrainRegion(responses: BrainRegionResponses): BrainRegionSc
   const total = Object.values(byRegion).reduce((s, v) => s + v, 0);
   const percent = Math.round((total / BRAIN_REGION_MAX_TOTAL) * 1000) / 10;
 
-  const highBurdenRegions: BrainRegionId[] = [];
+  // 按模块判定:每个分区独立计算小计 / 满分,达 1/4 即"有问题"
+  const affectedRegions: BrainRegionId[] = [];
   for (const def of BRAIN_REGION_DEFS) {
-    const [start, end] = def.range;
-    // 第 46 题不计入满分
-    const itemCount = end - start + 1 - (def.id === "auditoryCortex" ? 1 : 0);
-    const maxForRegion = itemCount * BRAIN_REGION_MAX_ITEM;
-    if (maxForRegion > 0 && byRegion[def.id] / maxForRegion >= 0.5) {
-      highBurdenRegions.push(def.id);
+    const max = regionMaxScore(def);
+    if (max <= 0) continue;
+    const severity = classifyRegionSeverity(byRegion[def.id], max);
+    severityByRegion[def.id] = severity;
+    if (byRegion[def.id] / max >= AFFECTED_THRESHOLD) {
+      affectedRegions.push(def.id);
     }
   }
 
-  return { byRegion, total, percent, highBurdenRegions };
+  return { byRegion, total, percent, affectedRegions, severityByRegion };
 }
 
-/** 分区满分(题目数 × 4),用于 UI 进度条 */
+/** 给定区间,计算实际可评分题目数(排除第 46 题 + 区间内未列出的题号) */
+export function scorableItemCountForRange(range: readonly [number, number]): number {
+  let count = 0;
+  for (const item of BRAIN_REGION_ITEMS) {
+    if (item.index === 46) continue;
+    if (item.index >= range[0] && item.index <= range[1]) count++;
+  }
+  return count;
+}
+
+/** 分区满分(可评分题数 × 4),用于 UI 进度条 */
 export function regionMaxScore(def: BrainRegionDef): number {
-  const itemCount = def.range[1] - def.range[0] + 1;
-  // 听觉皮层含第 46 题(非 0-4),故 -1
-  return (itemCount - (def.id === "auditoryCortex" ? 1 : 0)) * BRAIN_REGION_MAX_ITEM;
+  return scorableItemCountForRange(def.range) * BRAIN_REGION_MAX_ITEM;
 }

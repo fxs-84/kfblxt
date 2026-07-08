@@ -3,9 +3,11 @@ import {
   scoreBrainRegion,
   findRegionForItem,
   regionMaxScore,
+  classifyRegionSeverity,
   BRAIN_REGION_DEFS,
   BRAIN_REGION_MAX_TOTAL,
   BRAIN_REGION_ITEMS,
+  AFFECTED_THRESHOLD,
   type BrainRegionResponses,
 } from "./brain-region";
 
@@ -13,7 +15,7 @@ import {
 function fullResponses(value: number, phoneEar: BrainRegionResponses["phoneEar"] = "no_preference"): BrainRegionResponses {
   const items: Record<number, number> = {};
   for (let i = 1; i <= 100; i++) {
-    if (i === 46) continue; // 第 46 题不进 0-4 答卷
+    if (i === 46) continue;
     items[i] = value;
   }
   return { items, phoneEar };
@@ -35,8 +37,7 @@ describe("findRegionForItem", () => {
   it("题号 100 收尾于交感神经", () => {
     expect(findRegionForItem(100)?.id).toBe("sympathetic");
   });
-  it("题号 65 虽未列出但属于枕叶区间(64-66 含 65 缺省)", () => {
-    // 原 PDF 在 64 与 66 之间缺 65,定位仍按区间归属枕叶
+  it("题号 65 虽未列出但属于枕叶区间", () => {
     expect(findRegionForItem(65)?.id).toBe("occipital");
   });
   it("题号 0 / 101 返回 null", () => {
@@ -56,53 +57,162 @@ describe("regionMaxScore", () => {
   });
 });
 
-describe("scoreBrainRegion", () => {
-  it("全 0:总分 0,无高负担分区", () => {
+describe("classifyRegionSeverity", () => {
+  it("0 分 → normal", () => {
+    expect(classifyRegionSeverity(0, 68)).toBe("normal");
+  });
+  it("小计 16 / 68 (ratio < 0.25) → normal", () => {
+    expect(classifyRegionSeverity(16, 68)).toBe("normal");
+  });
+  it("小计 17 / 68 (恰好 0.25) → mild(达阈值)", () => {
+    expect(classifyRegionSeverity(17, 68)).toBe("mild");
+  });
+  it("小计 33 / 68 (≈ 0.485) → mild", () => {
+    expect(classifyRegionSeverity(33, 68)).toBe("mild");
+  });
+  it("小计 34 / 68 (恰好 0.5) → moderate", () => {
+    expect(classifyRegionSeverity(34, 68)).toBe("moderate");
+  });
+  it("小计 50 / 68 (≈ 0.735) → moderate", () => {
+    expect(classifyRegionSeverity(50, 68)).toBe("moderate");
+  });
+  it("小计 51 / 68 (恰好 0.75) → severe", () => {
+    expect(classifyRegionSeverity(51, 68)).toBe("severe");
+  });
+  it("小计 68 / 68 → severe", () => {
+    expect(classifyRegionSeverity(68, 68)).toBe("severe");
+  });
+  it("满分 0 → normal(防御)", () => {
+    expect(classifyRegionSeverity(5, 0)).toBe("normal");
+  });
+});
+
+describe("scoreBrainRegion — 1/4 阈值核心规则", () => {
+  it("全 0:无问题分区", () => {
     const r = scoreBrainRegion(fullResponses(0));
-    expect(r.total).toBe(0);
-    expect(r.percent).toBe(0);
-    expect(r.highBurdenRegions).toEqual([]);
+    expect(r.affectedRegions).toEqual([]);
+    for (const def of BRAIN_REGION_DEFS) {
+      expect(r.severityByRegion[def.id]).toBe("normal");
+    }
   });
 
-  it("全 4:总分等于 BRAIN_REGION_MAX_TOTAL - 第46题贡献(0)", () => {
-    // 全 4 但第 46 题不进总分,所以总分仍是 400
-    const r = scoreBrainRegion(fullResponses(4));
-    expect(r.total).toBe(BRAIN_REGION_MAX_TOTAL);
-    expect(r.percent).toBe(100);
-    // 16 个分区全部达到 50%
-    expect(r.highBurdenRegions.length).toBe(BRAIN_REGION_DEFS.length);
-  });
-
-  it("前额叶全 4,其他全 0:前额叶进入高负担,其他不进入", () => {
+  it("用户规则示例:前额叶 17 题全打 1,小计 = 17(25%),达阈值 → mild", () => {
+    // 前额叶 17 题,每题 1 分 = 17 分,17/68 = 25%
     const items: Record<number, number> = {};
     for (let i = 1; i <= 100; i++) {
       if (i === 46) continue;
-      items[i] = i >= 1 && i <= 17 ? 4 : 0;
+      items[i] = i >= 1 && i <= 17 ? 1 : 0;
     }
     const r = scoreBrainRegion({ items, phoneEar: null });
-    expect(r.byRegion.prefrontal).toBe(17 * 4);
-    expect(r.highBurdenRegions).toEqual(["prefrontal"]);
+    expect(r.byRegion.prefrontal).toBe(17);
+    expect(r.severityByRegion.prefrontal).toBe("mild");
+    expect(r.affectedRegions).toContain("prefrontal");
   });
 
-  it("听觉皮层:第 39-45 + 46(不进分) 部分计分", () => {
+  it("前额叶 16 题 × 1 = 16(< 25%),不到阈值 → normal", () => {
+    const items: Record<number, number> = {};
+    // 让前额叶只有 16 题打 1,第 17 题打 0
+    for (let i = 1; i <= 16; i++) items[i] = 1;
+    items[17] = 0;
+    for (let i = 18; i <= 100; i++) {
+      if (i !== 46) items[i] = 0;
+    }
+    const r = scoreBrainRegion({ items, phoneEar: null });
+    expect(r.byRegion.prefrontal).toBe(16);
+    expect(r.severityByRegion.prefrontal).toBe("normal");
+    expect(r.affectedRegions).not.toContain("prefrontal");
+  });
+
+  it("用户规则示例:前额叶 17 题全 1 → 有问题;其他全 0 → 没问题", () => {
+    const items: Record<number, number> = {};
+    for (let i = 1; i <= 100; i++) {
+      if (i === 46) continue;
+      items[i] = i >= 1 && i <= 17 ? 1 : 0;
+    }
+    const r = scoreBrainRegion({ items, phoneEar: null });
+    // 只有前额叶
+    expect(r.affectedRegions).toEqual(["prefrontal"]);
+  });
+
+  it("全 1:每个分区小计都 ≥ 25%,全部判定为轻度(每个分区满分不同)", () => {
+    const r = scoreBrainRegion(fullResponses(1));
+    // 全 1:每个分区小计 = 题数,ratio = 题数/(题数*4) = 0.25 恰好达阈值
+    expect(r.affectedRegions.length).toBe(BRAIN_REGION_DEFS.length);
+    for (const def of BRAIN_REGION_DEFS) {
+      expect(r.severityByRegion[def.id]).toBe("mild");
+    }
+  });
+
+  it("全 4:全部进入重度", () => {
+    const r = scoreBrainRegion(fullResponses(4));
+    expect(r.total).toBe(BRAIN_REGION_MAX_TOTAL);
+    expect(r.percent).toBe(100);
+    for (const def of BRAIN_REGION_DEFS) {
+      expect(r.severityByRegion[def.id]).toBe("severe");
+    }
+  });
+
+  it("全 2:每个分区小计 = 2 × 题数,ratio = 50% → 全部中度", () => {
+    const r = scoreBrainRegion(fullResponses(2));
+    expect(r.affectedRegions.length).toBe(BRAIN_REGION_DEFS.length);
+    for (const def of BRAIN_REGION_DEFS) {
+      expect(r.severityByRegion[def.id]).toBe("moderate");
+    }
+  });
+
+  it("全 3:每个分区 ratio = 75% → 全部重度", () => {
+    const r = scoreBrainRegion(fullResponses(3));
+    for (const def of BRAIN_REGION_DEFS) {
+      expect(r.severityByRegion[def.id]).toBe("severe");
+    }
+  });
+
+  it("听觉皮层:第 39-45 全 4(7 × 4 = 28 = 100%) + 第 46 题独立 → severe", () => {
     const items: Record<number, number> = {};
     for (let i = 39; i <= 45; i++) items[i] = 4;
-    // 第 46 题刻意放进 items 也不应计入总分
-    items[46] = 2;
+    items[46] = 2; // 第 46 题单独存储,不影响评分
     const r = scoreBrainRegion({ items, phoneEar: "right" });
-    // 听觉皮层满分 28,7 × 4 = 28 → 100%
     expect(r.byRegion.auditoryCortex).toBe(28);
-    expect(r.highBurdenRegions).toContain("auditoryCortex");
-    // 总分不应包含第 46 题贡献
-    expect(r.total).toBe(28);
+    expect(r.severityByRegion.auditoryCortex).toBe("severe");
   });
 
-  it("第 46 题偏好侧字段不影响总分", () => {
+  it("听觉皮层:39-45 全 1(7 分 = 25% 满分 28)→ 恰好 mild,达阈值", () => {
+    const items: Record<number, number> = {};
+    for (let i = 39; i <= 45; i++) items[i] = 1;
+    const r = scoreBrainRegion({ items, phoneEar: null });
+    expect(r.byRegion.auditoryCortex).toBe(7);
+    expect(r.severityByRegion.auditoryCortex).toBe("mild");
+    expect(r.affectedRegions).toContain("auditoryCortex");
+  });
+
+  it("第 46 题偏好侧字段不影响总分与分区判定", () => {
     const r1 = scoreBrainRegion(fullResponses(0, "right"));
     const r2 = scoreBrainRegion(fullResponses(0, "left"));
     const r3 = scoreBrainRegion(fullResponses(0, "no_preference"));
     expect(r1.total).toBe(r2.total);
     expect(r2.total).toBe(r3.total);
+    expect(r1.affectedRegions).toEqual(r2.affectedRegions);
+  });
+
+  it("混合:前额叶 mild + 中央前区 severe + 布罗卡 normal", () => {
+    const items: Record<number, number> = {};
+    // 前额叶 17 题全 1 → 17/68 = 25% → mild
+    for (let i = 1; i <= 17; i++) items[i] = 1;
+    // 中央前区 18-23 全 4 → 6 题 × 4 = 24 / 24 = 100% → severe
+    for (let i = 18; i <= 23; i++) items[i] = 4;
+    // 布罗卡 24-26 全 0 → 0 → normal
+    for (let i = 24; i <= 26; i++) items[i] = 0;
+    // 其余全 0
+    for (let i = 27; i <= 100; i++) {
+      if (i !== 46) items[i] = 0;
+    }
+    const r = scoreBrainRegion({ items, phoneEar: null });
+    expect(r.severityByRegion.prefrontal).toBe("mild");
+    expect(r.severityByRegion.premotor).toBe("severe");
+    expect(r.severityByRegion.broca).toBe("normal");
+    expect(r.affectedRegions).toContain("prefrontal");
+    expect(r.affectedRegions).toContain("premotor");
+    expect(r.affectedRegions).not.toContain("broca");
   });
 
   it("单项超出 0-4 抛出错误", () => {
@@ -122,16 +232,21 @@ describe("scoreBrainRegion", () => {
     const r = scoreBrainRegion({ items, phoneEar: null });
     expect(r.total).toBe(0);
     expect(r.byRegion.prefrontal).toBe(0);
+    expect(r.affectedRegions).toEqual([]);
+  });
+});
+
+describe("阈值常量", () => {
+  it("AFFECTED_THRESHOLD 等于 1/4", () => {
+    expect(AFFECTED_THRESHOLD).toBe(0.25);
   });
 });
 
 describe("BRAIN_REGION_ITEMS 完整性", () => {
-  it("100 道题都有题号 1-100", () => {
+  it("100 道题都有题号 1-100(缺 65)", () => {
     const indexes = BRAIN_REGION_ITEMS.map((i) => i.index).sort((a, b) => a - b);
-    // 原 PDF 在枕叶段 64 后直接到 66,缺 65;故全集实际是 99 道
     expect(indexes[0]).toBe(1);
     expect(indexes.at(-1)).toBe(100);
-    // 不重复
     expect(new Set(indexes).size).toBe(indexes.length);
     expect(indexes.length).toBeGreaterThanOrEqual(99);
     expect(indexes.length).toBeLessThanOrEqual(100);

@@ -787,14 +787,33 @@ body {
 .brain-burden--mid { background: var(--color-caution-weak); color: #a3681a; }
 .brain-burden--high { background: var(--color-abnormal-weak); color: var(--color-abnormal); }
 
+/* 严重度分级(模块小计 vs 模块满分) */
+.brain-severity {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.brain-severity--normal { background: var(--color-surface-sunken); color: var(--color-text-muted); }
+.brain-severity--mild { background: #fff3e0; color: #d68a1a; }
+.brain-severity--moderate { background: #ffe0b2; color: #c45a00; }
+.brain-severity--severe { background: var(--color-abnormal-weak); color: var(--color-abnormal); }
+
 .brain-region-bar {
   background: var(--color-surface-sunken, #f9fafb);
   border-radius: var(--radius-sm);
   padding: 6px 8px;
   font-size: var(--text-xs);
+  border-left: 3px solid transparent;
 }
 
-.brain-region-bar--high { box-shadow: inset 3px 0 0 var(--color-abnormal); }
+.brain-region-bar--mild { border-left-color: #d68a1a; background: #fffaf0; }
+.brain-region-bar--moderate { border-left-color: #c45a00; background: #fff3e0; }
+.brain-region-bar--severe { border-left-color: var(--color-abnormal); background: var(--color-abnormal-weak); }
 
 .brain-region-bar__track {
   height: 4px;
@@ -805,8 +824,13 @@ body {
 
 .brain-region-bar__fill {
   height: 100%;
+  background: var(--color-accent);
   transition: width var(--duration-normal);
 }
+
+.brain-region-bar--mild .brain-region-bar__fill { background: #d68a1a; }
+.brain-region-bar--moderate .brain-region-bar__fill { background: #c45a00; }
+.brain-region-bar--severe .brain-region-bar__fill { background: var(--color-abnormal); }
 
 /* ===== 治疗计划 ===== */
 .treatment-panel .panel__title { margin: 0; }
