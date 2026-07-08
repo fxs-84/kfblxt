@@ -787,6 +787,112 @@ body {
 .brain-burden--mid { background: var(--color-caution-weak); color: #a3681a; }
 .brain-burden--high { background: var(--color-abnormal-weak); color: var(--color-abnormal); }
 
+/* ===== 大脑区域定位表 — 弹窗加大版 ===== */
+.brain-form-progress {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.brain-form-progress__track {
+  flex: 1;
+  height: 8px;
+  background: var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.brain-form-progress__fill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--duration-normal);
+}
+
+.brain-form-progress__fill--complete { background: var(--color-normal); }
+
+.brain-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.brain-form__hint {
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-accent-weak, #e4f0f7);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  line-height: 1.7;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.brain-form__hint b { color: var(--color-accent); }
+
+.brain-form__body {
+  padding: var(--space-2) var(--space-6) var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.brain-form__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+  background: #fafbfc;
+  flex-shrink: 0;
+}
+
+.brain-form__foot-status {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.brain-form__foot-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* 弹窗内放大的单选 chip */
+.brain-chip--lg {
+  min-width: 48px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+.brain-item--lg {
+  padding: var(--space-3) 0;
+  gap: var(--space-4);
+  min-height: 56px;
+  font-size: var(--text-base);
+}
+
+.brain-item--lg .exam-item__label {
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.brain-cat--lg .exam-cat__toggle {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+}
+
 /* 严重度分级(模块小计 vs 模块满分) */
 .brain-severity {
   display: inline-block;
@@ -1412,10 +1518,23 @@ body {
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 420px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   animation: modal-pop 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 宽屏弹窗(用于问卷/表单) */
+.modal-card--wide {
+  max-width: 880px;
+  width: 95vw;
+}
+
+.modal-card--scroll .modal-card__body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 @keyframes modal-pop {
