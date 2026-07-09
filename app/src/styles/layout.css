@@ -1779,6 +1779,31 @@ body {
 .my-work-stats__big-num { font-size: var(--text-2xl); font-weight: 800; line-height: 1; }
 .my-work-stats__big-label { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
 
+/* 业绩核心指标 */
+.my-work-stats__perf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface-sunken, #e9eef3);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+.my-work-perf-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-border);
+}
+.my-work-perf-item--accent { border-left-color: var(--color-accent); }
+.my-work-perf-item--money { border-left-color: var(--color-normal); }
+.my-work-perf-item__label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.my-work-perf-item__value { font-size: var(--text-2xl); font-weight: 800; color: var(--color-text); line-height: 1.1; }
+.my-work-perf-item__hint { font-size: 10px; color: var(--color-text-muted); }
+
 .my-work-stats__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
