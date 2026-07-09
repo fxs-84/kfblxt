@@ -7,11 +7,12 @@ interface EncounterTableProps {
   encounters: readonly EncounterRecord[];
   onExam?: (encounterId: string) => void;
   activeExamId?: string;
+  activeDiagnosisId?: string;
   onCloseEncounter?: (encounterId: string) => void;
   onOpenDiagnosis?: (encounterId: string) => void;
 }
 
-export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncounter, onOpenDiagnosis }: EncounterTableProps) {
+export function EncounterTable({ encounters, onExam, activeExamId, activeDiagnosisId, onCloseEncounter, onOpenDiagnosis }: EncounterTableProps) {
   const hasActions = Boolean(onExam || onCloseEncounter || onOpenDiagnosis);
   const diagnosisMap = useDiagnosisByEncounterMap();
 
@@ -36,8 +37,18 @@ export function EncounterTable({ encounters, onExam, activeExamId, onCloseEncoun
         ) : (
           encounters.map((e) => {
             const dx = diagnosisMap.get(e.id);
+            const isActiveExam = activeExamId === e.id;
+            const isActiveDiagnosis = activeDiagnosisId === e.id;
+            const rowStyle: React.CSSProperties = {};
+            if (isActiveExam) {
+              rowStyle.borderLeft = "4px solid var(--color-accent)";
+              rowStyle.background = "var(--color-accent-weak, #e4f0f7)";
+            } else if (isActiveDiagnosis) {
+              rowStyle.borderLeft = "4px solid var(--color-caution, #f59e0b)";
+              rowStyle.background = "var(--color-caution-weak, #fef8ed)";
+            }
             return (
-              <tr key={e.id}>
+              <tr key={e.id} style={rowStyle}>
                 <td>{formatDate(e.encounterDate)}</td>
                 <td>{e.visitType}</td>
                 <td>

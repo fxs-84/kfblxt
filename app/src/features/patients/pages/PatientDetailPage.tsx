@@ -216,6 +216,7 @@ export function PatientDetailPage() {
                 encounters={list}
                 onExam={openExam}
                 activeExamId={examEncounterId ?? undefined}
+                activeDiagnosisId={diagnosisEid ?? undefined}
                 onCloseEncounter={handleCloseEncounter}
                 onOpenDiagnosis={openDiagnosis}
               />

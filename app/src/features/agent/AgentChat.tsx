@@ -258,19 +258,23 @@ export function AgentChat({ onClose }: AgentChatProps) {
       boxShadow: "-4px 0 16px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
-      {/* 顶栏 */}
-      <header style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 18 }}>🤖</span>
-        <strong>AI 临床助手</strong>
-        <span style={{ marginLeft: "auto", fontSize: 11, color: configured ? "var(--color-normal)" : "var(--color-abnormal)" }}>
-          {configured ? "● 已连接 LLM" : "● 未配置"}
-        </span>
-        <button type="button" onClick={openSettings} title="LLM 配置" style={btnGhost}>🔑</button>
-        <button type="button" onClick={() => { setShowMCP(true); setShowHistory(false); setShowSkills(false); }} title="MCP 插件" style={btnGhost}>🔌</button>
-        <button type="button" onClick={() => { setShowSkills(true); setShowMCP(false); setShowHistory(false); }} title="技能管理" style={btnGhost}>🧩</button>
-        <button type="button" onClick={() => { setShowHistory((v) => !v); setShowMCP(false); setShowSkills(false); }} title="历史对话" style={btnGhost}>📚</button>
-        <button type="button" onClick={startNew} title="新对话" style={btnGhost}>➕</button>
-        <button type="button" onClick={onClose} title="关闭" style={btnGhost}>✕</button>
+      {/* 顶栏 — 标题独立行,工具按钮在下 */}
+      <header style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🤖</span>
+          <strong>AI 临床助手 — 实时推理</strong>
+          <span style={{ marginLeft: "auto", fontSize: 11, color: configured ? "var(--color-normal)" : "var(--color-abnormal)" }}>
+            {configured ? "● 已连接 LLM" : "● 未配置"}
+          </span>
+          <button type="button" onClick={onClose} title="关闭" style={btnGhost}>✕</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={openSettings} title="LLM 配置" style={btnGhost}>🔑 配置</button>
+          <button type="button" onClick={() => { setShowMCP(true); setShowHistory(false); setShowSkills(false); }} title="MCP 插件" style={btnGhost}>🔌 插件</button>
+          <button type="button" onClick={() => { setShowSkills(true); setShowMCP(false); setShowHistory(false); }} title="技能管理" style={btnGhost}>🧩 技能</button>
+          <button type="button" onClick={() => { setShowHistory((v) => !v); setShowMCP(false); setShowSkills(false); }} title="历史对话" style={btnGhost}>📚 历史</button>
+          <button type="button" onClick={startNew} title="新对话" style={btnGhost}>➕ 新对话</button>
+        </div>
       </header>
 
       {/* 历史侧栏 */}

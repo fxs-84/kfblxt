@@ -37,13 +37,13 @@ export function CollapseCard({ title, defaultOpen = false, children, extra }: Co
         aria-expanded={open}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(!open); } }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flex: 1 }}>
           <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>{title}</span>
           {extra}
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+            {open ? "⏶ 收起" : "⏷ 展开"}
+          </span>
         </div>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
-          {open ? "⏶ 收起" : "⏷ 展开"}
-        </span>
       </div>
       {open && <>{children}</>}
     </div>

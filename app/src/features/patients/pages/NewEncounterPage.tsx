@@ -167,8 +167,8 @@ function FoldSection({ title, open, children, onToggle }: { title: string; open:
           borderBottom: open ? "none" : undefined,
         }}>
         <span style={{ fontSize: "var(--text-xs)", width: 16, flexShrink: 0 }}>{open ? "▾" : "▸"}</span>
-        <span style={{ flex: 1 }}>{title}</span>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>{open ? "收起" : "展开"}</span>
+        <span>{title}</span>
+        <span style={{ marginLeft: "var(--space-2)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>{open ? "收起" : "展开"}</span>
       </button>
       {open && children}
     </div>
