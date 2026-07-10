@@ -24,6 +24,18 @@ export const ANONYMOUS_SESSION: Session = {
 /** 向后兼容:seed 数据仍在引用 MOCK_SESSION,等同演示机构常量 */
 export const MOCK_SESSION = ANONYMOUS_SESSION;
 
+/** 从 localStorage 读取已登录会话,无则返回匿名会话 */
 export function getSession(): Session {
+  try {
+    const raw = localStorage.getItem("anrm_session");
+    if (raw) {
+      const parsed = JSON.parse(raw) as Session;
+      if (parsed && typeof parsed.userId === "string" && parsed.userId !== "anonymous" && typeof parsed.role === "string") {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
   return ANONYMOUS_SESSION;
 }
