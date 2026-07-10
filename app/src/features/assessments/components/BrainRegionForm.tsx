@@ -13,6 +13,7 @@ import {
   type RegionSeverity,
 } from "../scales/brain-region";
 import { useCreateAssessment } from "../useAssessments";
+import { useDraftAutosave } from "../../exam/useDraftAutosave";
 
 interface BrainRegionFormProps {
   patientId: string;
@@ -38,9 +39,13 @@ const SCORABLE_INDEXES: readonly number[] = BRAIN_REGION_ITEMS
 export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionFormProps) {
   const createAssessment = useCreateAssessment();
 
-  const [items, setItems] = useState<Record<number, number>>({});
-  const [phoneEar, setPhoneEar] = useState<PhoneEarPreference | null>(null);
-  const [note, setNote] = useState("");
+  const draft = useDraftAutosave<{ items: Record<number, number>; phoneEar: PhoneEarPreference | null; note: string }>(
+    `brain:${encounterId}`,
+    { items: {}, phoneEar: null, note: "" },
+  );
+  const [items, setItems] = useState<Record<number, number>>(draft.value.items);
+  const [phoneEar, setPhoneEar] = useState<PhoneEarPreference | null>(draft.value.phoneEar);
+  const [note, setNote] = useState(draft.value.note);
   const [expanded, setExpanded] = useState<Set<string>>(
     new Set(BRAIN_REGION_DEFS.map((d) => d.id)),
   );
@@ -66,6 +71,8 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
     setItems((prev) => ({ ...prev, [index]: value }));
     setLastAnswered(index);
   }, []);
+
+  useEffect(() => { draft.setValue({ items, phoneEar, note }); }, [items, phoneEar, note]);
 
   const toggleRegion = (id: string) => {
     setExpanded((prev) => {
@@ -147,6 +154,7 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
 
     setSaving(true);
     try {
+      draft.clearDraft();
       await createAssessment.mutateAsync({
         patientId,
         encounterId,

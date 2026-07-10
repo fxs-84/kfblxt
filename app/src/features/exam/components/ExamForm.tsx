@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PainAssessmentForm } from "../../assessments/components/PainAssessmentForm";
+import { useDraftAutosave } from "../useDraftAutosave";
 import { useCreateExamSession } from "../useExam";
 import { EXAM_CATALOG } from "../exam-catalog";
 import { EXAM_CATEGORIES, CATEGORY_LABELS, type ExamCategory, type ExamResult, type ExamDataType } from "../exam.types";
@@ -152,9 +153,20 @@ function ExamField({
 
 export function ExamForm({ encounterId, onDone }: ExamFormProps) {
   const createExam = useCreateExamSession();
-  const [results, setResults] = useState<Record<string, ExamResult>>({});
+  // 草稿自动保存 — 跨页面/刷新不丢数据
+  const draft = useDraftAutosave<{ results: Record<string, ExamResult> }>(
+    `exam:${encounterId}`,
+    { results: {} }
+  );
+  const [results, setResults] = useState<Record<string, ExamResult>>(draft.value.results);
   const [expanded, setExpanded] = useState<Set<ExamCategory>>(new Set(["原始反射", "反射"]));
   const [saving, setSaving] = useState(false);
+
+  // 同步 results → draft(每次 setResults 后 600ms 写 localStorage)
+  useEffect(() => {
+    draft.setValue({ results });
+  }, [results]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const toggleCat = (cat: ExamCategory) => {
     const next = new Set(expanded);
@@ -193,6 +205,7 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
   const handleSave = async () => {
     setSaving(true);
     await createExam.mutateAsync({ encounterId, results });
+    draft.clearDraft();
     // P2: 记录查体频率(供下次智能排序)
     const usedIds = Object.keys(results);
     if (usedIds.length > 0) {
@@ -209,6 +222,12 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
       <div className="exam-panel__header">
         <h3 className="panel__title">ANRM 神经科学查体</h3>
         <span className="panel__hint">{countFilled} 项已记录</span>
+      {draft.hasDraft && (
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--color-caution, #d48c2c)", fontWeight: 500 }}>
+          💾 草稿已自动保存 {draft.lastSavedAt ? new Date(draft.lastSavedAt).toLocaleTimeString() : ""}
+          <button className="btn btn--ghost" style={{ fontSize: 10, marginLeft: 4 }} onClick={() => { draft.clearDraft(); setResults({}); }}>清空</button>
+        </span>
+      )}
       </div>
 
       <div className="exam-body">

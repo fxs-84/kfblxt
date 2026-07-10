@@ -1,8 +1,11 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useDraftAutosave } from "../../exam/useDraftAutosave";
 import { CSI_ITEMS, CSI_SCORE_DESCRIPTORS, scoreCsi, CSI_SEVERITY_LABELS } from "../scales/csi";
 import { SLANSS_ITEMS, scoreSlanss, SLANSS_THRESHOLD } from "../scales/slanss";
 
 interface PainAssessmentFormProps {
+  /** 用于草稿 key,传了才有自动恢复 */
+  draftKey?: string;
   onResult?: (result: { csiTotal: number; csiSeverity: string; slanssTotal: number; slanssPositive: boolean }) => void;
 }
 
@@ -10,12 +13,29 @@ interface PainAssessmentFormProps {
  * 疼痛评估量表(患者自评)— 仿大脑区域定位表模式:
  *  顶部 sticky 进度条 · 答题自动滚到下一题 · 严重度色码 · 实时计分
  *  CSI 25 题(0-4) + S-LANSS 7 题(二选一,各题分值不同)
+ *  支持草稿自动保存(draftKey 传 encounterId)
  */
-export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
-  const [csi, setCsi] = useState<Record<number, number>>({});
-  const [slanss, setSlanss] = useState<Record<number, number>>({});
+export function PainAssessmentForm({ draftKey, onResult }: PainAssessmentFormProps = {}) {
+  const draftId = draftKey ? `pain:${draftKey}` : undefined;
+  const draft = useDraftAutosave<{ csi: Record<number, number>; slanss: Record<number, number>; done: boolean }>(
+    draftId ?? "",
+    { csi: {}, slanss: {}, done: false },
+  );
+
+  const [csi, setCsiState] = useState<Record<number, number>>(draft.value.csi);
+  const [slanss, setSlanssState] = useState<Record<number, number>>(draft.value.slanss);
+  const [done, setDoneState] = useState(draft.value.done);
   const [lastAnswered, setLastAnswered] = useState<{ type: "csi" | "slanss"; index: number } | null>(null);
-  const [done, setDone] = useState(false);
+
+  // 同步状态到 draft
+  useEffect(() => { if (draftId) draft.setValue({ csi, slanss, done }); }, [csi, slanss, done, draftId]);
+
+  const setCsi = (fn: (prev: Record<number, number>) => Record<number, number>) => {
+    setCsiState((p) => fn(p));
+  };
+  const setSlanss = (fn: (prev: Record<number, number>) => Record<number, number>) => {
+    setSlanssState((p) => fn(p));
+  };
 
   // 题号 → DOM 元素
   const csiRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -37,8 +57,6 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
   const grandTotal = csiTotal + slanssTotal;
   const grandAnswered = csiAnswered + slanssAnswered;
   const progressPct = Math.round((grandAnswered / grandTotal) * 100);
-  const csiComplete = csiAnswered === csiTotal;
-  const slanssComplete = slanssAnswered === slanssTotal;
 
   // 计分
   const csiScore = useMemo(() => {
@@ -67,27 +85,16 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
     const prev = prevCountRef.current;
     prevCountRef.current = grandAnswered;
     if (grandAnswered <= prev) return;
-
     requestAnimationFrame(() => {
-      // 先找 CSI 下一未答,再找 S-LANSS
       const nextCsi = CSI_ITEMS.find((it) => csi[it.index] === undefined);
       if (nextCsi) {
         const el = csiRefs.current.get(nextCsi.index);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.classList.add("brain-item--pulse");
-          setTimeout(() => el.classList.remove("brain-item--pulse"), 1200);
-          return;
-        }
+        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("brain-item--pulse"); setTimeout(() => el.classList.remove("brain-item--pulse"), 1200); return; }
       }
       const nextSlanss = SLANSS_ITEMS.find((it) => slanss[it.index] === undefined);
       if (nextSlanss) {
         const el = slanssRefs.current.get(nextSlanss.index);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.classList.add("brain-item--pulse");
-          setTimeout(() => el.classList.remove("brain-item--pulse"), 1200);
-        }
+        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("brain-item--pulse"); setTimeout(() => el.classList.remove("brain-item--pulse"), 1200); }
       }
     });
   }, [grandAnswered, csi, slanss]);
@@ -101,6 +108,11 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
     setLastAnswered({ type: "slanss", index: i });
   };
 
+  const handleSubmit = () => {
+    setDoneState(true);
+    if (draftId) draft.clearDraft();
+  };
+
   if (done) {
     return (
       <div className="brain-form">
@@ -112,7 +124,7 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
           </span>
         </div>
         <div className="form-actions" style={{ justifyContent: "center" }}>
-          <button className="btn btn--ghost" onClick={() => setDone(false)}>返回</button>
+          <button className="btn btn--ghost" onClick={() => { setDoneState(false); }}>返回</button>
         </div>
       </div>
     );
@@ -124,16 +136,18 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
       <div className="brain-form-progress">
         <span>📝 已作答</span>
         <div className="brain-form-progress__track">
-          <div
-            className={`brain-form-progress__fill ${grandAnswered === grandTotal ? "brain-form-progress__fill--complete" : ""}`}
-            style={{ width: `${progressPct}%` }}
-          />
+          <div className={`brain-form-progress__fill ${grandAnswered === grandTotal ? "brain-form-progress__fill--complete" : ""}`} style={{ width: `${progressPct}%` }} />
         </div>
         <span style={{ minWidth: 120, textAlign: "right" }}>
           <b style={{ color: grandAnswered === grandTotal ? "var(--color-normal)" : "var(--color-accent)", fontSize: "var(--text-lg)" }}>{grandAnswered}</b>
           <span style={{ color: "var(--color-text-muted)" }}> / {grandTotal}</span>
           <span style={{ marginLeft: 6, color: "var(--color-text-muted)" }}>({progressPct}%)</span>
         </span>
+        {draftId && draft.hasDraft && (
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--color-caution, #d48c2c)" }}>
+            💾 草稿 {draft.lastSavedAt ? new Date(draft.lastSavedAt).toLocaleTimeString() : ""}
+          </span>
+        )}
       </div>
 
       {/* CSI 部分 */}
@@ -150,7 +164,7 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
             ))}
           </div>
           <div style={{ marginTop: 8, display: "flex", gap: 12, alignItems: "center", fontSize: "var(--text-sm)" }}>
-            <span>当前 <b>{csiAnswered}</b>/25 · 小计 <b style={{ color: csiScore.severity === "normal" ? "var(--color-normal)" : csiScore.severity === "moderate" ? "#c45a00" : csiScore.severity === "severe" ? "var(--color-abnormal)" : "var(--color-abnormal)" }}>{csiScore.total}</b>/100</span>
+            <span>当前 <b>{csiAnswered}</b>/25 · 小计 <b style={{ color: csiScore.severity === "normal" ? "var(--color-normal)" : "#c45a00" }}>{csiScore.total}</b>/100</span>
             <span className={`brain-severity brain-severity--${csiScore.severity === "extreme" ? "severe" : csiScore.severity}`}>{CSI_SEVERITY_LABELS[csiScore.severity]}</span>
           </div>
         </div>
@@ -160,12 +174,9 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
         const v = csi[item.index];
         const isJust = lastAnswered?.type === "csi" && lastAnswered.index === item.index;
         return (
-          <div
-            key={`csi-${item.index}`}
-            ref={setCsiRef(item.index)}
+          <div key={`csi-${item.index}`} ref={setCsiRef(item.index)}
             className={`brain-item brain-item--lg ${v !== undefined ? "brain-item--answered" : ""} ${isJust ? "brain-item--just-answered" : ""}`}
-            style={{ paddingLeft: "var(--space-6)", paddingRight: "var(--space-6)" }}
-          >
+            style={{ paddingLeft: "var(--space-6)", paddingRight: "var(--space-6)" }}>
             <div className="brain-item__label" style={{ fontSize: "var(--text-base)" }}>
               <span style={{ minWidth: 40, fontWeight: 700, color: v !== undefined ? "var(--color-normal)" : "var(--color-text-muted)" }}>{item.index}.</span>
               <span>{item.text}</span>
@@ -173,19 +184,8 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
             </div>
             <div className="brain-radio-group">
               {CSI_SCORE_DESCRIPTORS.map((d) => (
-                <label
-                  key={d.value}
-                  className={`brain-chip brain-chip--lg ${v === d.value ? "brain-chip--on" : ""}`}
-                  title={d.full}
-                >
-                  <input
-                    type="radio"
-                    name={`csi-${item.index}`}
-                    checked={v === d.value}
-                    onChange={() => setCsiItem(item.index, d.value)}
-                  />
-                  {d.value}
-                </label>
+                <label key={d.value} className={`brain-chip brain-chip--lg ${v === d.value ? "brain-chip--on" : ""}`} title={d.full}>
+                  <input type="radio" name={`csi-${item.index}`} checked={v === d.value} onChange={() => setCsiItem(item.index, d.value)} />{d.value}</label>
               ))}
             </div>
           </div>
@@ -195,11 +195,9 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
       {/* S-LANSS 部分 */}
       <div className="exam-cat__body" style={{ padding: "var(--space-4) var(--space-6) var(--space-3)", borderTop: "2px solid var(--color-border)", marginTop: "var(--space-3)" }}>
         <div className="brain-form__hint">
-          <div style={{ fontWeight: 700, marginBottom: 6, fontSize: "var(--text-lg)" }}>📋 S-LANSS 神经病理性疼痛自评 · 7 题 · 0-24 分</div>
-          <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", marginBottom: 6 }}>
-            请根据过去一周的真实感受回答以下 7 个问题,选择"是"或"否"。
-          </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: "var(--text-sm)" }}>
+          <h3 style={{ margin: 0, fontSize: "var(--text-lg)" }}>📋 S-LANSS · 7 题 · 总分 0-24</h3>
+          <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", marginTop: 4 }}>请根据过去一周的真实感受回答。</div>
+          <div style={{ marginTop: 6, display: "flex", gap: 12, alignItems: "center", fontSize: "var(--text-sm)" }}>
             <span>当前 <b>{slanssAnswered}</b>/7 · 总分 <b style={{ color: slanssScore.total >= SLANSS_THRESHOLD ? "var(--color-abnormal)" : "var(--color-normal)" }}>{slanssScore.total}</b>/24</span>
             <span className={`brain-severity ${slanssScore.total >= SLANSS_THRESHOLD ? "brain-severity--severe" : "brain-severity--normal"}`}>
               {slanssScore.total >= SLANSS_THRESHOLD ? `⚠ ≥${SLANSS_THRESHOLD} 阳性` : `阴性(<${SLANSS_THRESHOLD})`}
@@ -211,41 +209,25 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
       {SLANSS_ITEMS.map((item) => {
         const v = slanss[item.index];
         const isJust = lastAnswered?.type === "slanss" && lastAnswered.index === item.index;
-        const isPositive = v === item.scores[1];
         return (
-          <div
-            key={`slanss-${item.index}`}
-            ref={setSlanssRef(item.index)}
+          <div key={`slanss-${item.index}`} ref={setSlanssRef(item.index)}
             className={`brain-item brain-item--lg ${v !== undefined ? "brain-item--answered" : ""} ${isJust ? "brain-item--just-answered" : ""}`}
-            style={{ paddingLeft: "var(--space-6)", paddingRight: "var(--space-6)", flexDirection: "column", alignItems: "stretch", padding: "var(--space-3) var(--space-6)" }}
-          >
+            style={{ paddingLeft: "var(--space-6)", paddingRight: "var(--space-6)", flexDirection: "column", alignItems: "stretch", padding: "var(--space-3) var(--space-6)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div className="brain-item__label" style={{ fontSize: "var(--text-base)", flex: 1 }}>
-                <span style={{ minWidth: 40, fontWeight: 700, color: v !== undefined ? (isPositive ? "var(--color-abnormal)" : "var(--color-normal)") : "var(--color-text-muted)" }}>{item.index}.</span>
+                <span style={{ minWidth: 40, fontWeight: 700, color: v !== undefined ? "var(--color-abnormal)" : "var(--color-text-muted)" }}>{item.index}.</span>
                 <span>{item.question}</span>
               </div>
-              {v !== undefined && (
-                <span style={{ fontSize: "var(--text-sm)", color: isPositive ? "var(--color-abnormal)" : "var(--color-normal)", fontWeight: 600 }}>
-                  {isPositive ? `✓ 是 (+${v}分)` : "✓ 否"}
-                </span>
-              )}
+              {v !== undefined && <span style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: v === item.scores[1] ? "var(--color-abnormal)" : "var(--color-normal)" }}>{v === item.scores[1] ? `✓ 是 (+${v}分)` : "✓ 否"}</span>}
             </div>
             <div className="brain-radio-group" style={{ marginTop: "var(--space-2)" }}>
               {item.options.map((opt, oi) => {
                 const pts = item.scores[oi];
                 const on = v === pts;
                 return (
-                  <label
-                    key={oi}
-                    className={`brain-chip brain-chip--lg ${on && oi === 1 ? "brain-chip--on" : ""}`}
-                    style={{
-                      cursor: "pointer",
-                      opacity: on && oi === 0 ? 0.6 : 1,
-                      background: on && oi === 0 ? "var(--color-surface-sunken)" : undefined,
-                    }}
-                  >
-                    <input type="radio" name={`slanss-${item.index}`} checked={on}
-                      onChange={() => setSlanssItem(item.index, pts)} />
+                  <label key={oi} className={`brain-chip brain-chip--lg ${on && oi === 1 ? "brain-chip--on" : ""}`}
+                    style={{ cursor: "pointer", opacity: on && oi === 0 ? 0.6 : 1, background: on && oi === 0 ? "var(--color-surface-sunken)" : undefined }}>
+                    <input type="radio" name={`slanss-${item.index}`} checked={on} onChange={() => setSlanssItem(item.index, pts)} />
                     {opt}({pts}分)
                   </label>
                 );
@@ -261,7 +243,7 @@ export function PainAssessmentForm({ onResult }: PainAssessmentFormProps = {}) {
           {grandAnswered === grandTotal ? "✅ 已完成全部题目" : `⏳ 还需作答 ${grandTotal - grandAnswered} 题`}
         </span>
         <div className="brain-form__foot-actions">
-          <button className="btn btn--primary" onClick={() => setDone(true)} disabled={grandAnswered !== grandTotal}
+          <button className="btn btn--primary" onClick={handleSubmit} disabled={grandAnswered !== grandTotal}
             style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
             💾 提交疼痛评估
           </button>
