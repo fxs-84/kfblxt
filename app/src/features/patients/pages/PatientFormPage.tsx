@@ -23,9 +23,16 @@ export function PatientFormPage() {
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    const parsed = formSchema.parse(values);
-    const created = await createPatient.mutateAsync({ ...parsed, orgId: getSession().orgId });
-    navigate(`/patients/${created.id}`);
+    try {
+      const parsed = formSchema.parse(values);
+      const created = await createPatient.mutateAsync({ ...parsed, orgId: getSession().orgId });
+      navigate(`/patients/${created.id}`);
+    } catch (e: unknown) {
+      console.error("[新建患者] 校验或保存失败:", e);
+      if (e instanceof Error && e.name === "ZodError") {
+        alert("表单数据不合法:\n" + e.message);
+      }
+    }
   });
 
   return (

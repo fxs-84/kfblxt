@@ -25,7 +25,7 @@ export const patientSchema = z.object({
     .regex(/^[0-9+\-() ]{5,20}$/u, "联系电话格式不正确")
     .optional()
     .or(z.literal("")),
-  dominantHand: z.enum(["left", "right", "ambidextrous"]).optional(),
+  dominantHand: z.enum(["left", "right", "ambidextrous"]).optional().or(z.literal("")),
   createdAt: z.coerce.date().optional(),
 });
 
