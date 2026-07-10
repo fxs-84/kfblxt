@@ -657,11 +657,11 @@ export const EXAM_CATALOG: readonly ExamItemDef[] = [
     unit: "分",
     normalRef: "0无痛,10最剧烈",
   },
-  /* ============ 疼痛评估量表(嵌入) ============ */
+  /* ============ 疼痛评估量表(患者自评) ============ */
   {
     id: "scale-csi",
     category: "量表",
-    name: "CSI 中枢敏感性量表(25项)",
+    name: "CSI 中枢敏感性量表(患者自评·25项)",
     dataType: "number",
     side: "none",
     unit: "分",
@@ -697,7 +697,7 @@ export const EXAM_CATALOG: readonly ExamItemDef[] = [
   {
     id: "scale-slanss",
     category: "量表",
-    name: "S-LANSS 神经病理性疼痛自评(7项)",
+    name: "S-LANSS 神经病理性疼痛自评(患者自评·7项)",
     dataType: "number",
     side: "none",
     unit: "分",
