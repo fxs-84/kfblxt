@@ -67,6 +67,14 @@ export async function findBillingByPatient(patientId: string): Promise<BillingRe
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
+/** 按 encounterId 查找关联的计费记录 */
+export async function findBillingByEncounter(encounterId: string): Promise<BillingRecordEntity[]> {
+  const all = await billingRepository.findAll();
+  return all
+    .filter((b) => b.encounterId === encounterId)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
 /** 计算余额:充值总额 - 消费/退费总额 */
 export function calcBalance(records: readonly BillingRecordEntity[]): {
   balance: number;

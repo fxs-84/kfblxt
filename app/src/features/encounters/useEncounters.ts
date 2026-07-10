@@ -26,9 +26,19 @@ export function useCloseEncounter() {
       const existing = await encounterRepository.findById(id);
       if (!existing || existing.status === "已结束") return existing!;
       const e = await encounterRepository.update(id, { status: "已结束" });
-      // 触发积分引擎:encounter.closed + 自动升级等级(根据就诊金额)
+      // 计算实际就诊金额:取 billing 中该就诊的 sum(消费金额),否则 fallback encounter.amount
+      let realAmount = e.amount ?? 0;
+      try {
+        const { findBillingByEncounter } = await import("../billing/billing.repository");
+        const bills = await findBillingByEncounter(id);
+        const consumed = bills.filter((b) => b.type === "消费");
+        if (consumed.length > 0) {
+          realAmount = consumed.reduce((s, b) => s + b.amount, 0);
+        }
+      } catch { /* 静默,fallback 到 encounter.amount */ }
+      // 触发积分引擎
       const { onEncounterClosed } = await import("../membership/integration");
-      await onEncounterClosed(e.patientId, e.id, e.amount ?? 0);
+      await onEncounterClosed(e.patientId, e.id, realAmount);
       return e;
     },
     onSuccess: () => {
