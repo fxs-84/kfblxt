@@ -63,7 +63,8 @@ export function MyWorkStats() {
       { label: "诊断",      today: countMine(diagnoses).today,   month: countMine(diagnoses).month,   total: countMine(diagnoses).total,   to: "/",         icon: "🧠" },
       { label: "治疗计划",  today: countMine(plans).today,       month: countMine(plans).month,       total: countMine(plans).total,       to: "/",         icon: "💊" },
       { label: "复诊安排",  today: countMine(followups).today,   month: countMine(followups).month,   total: countMine(followups).total,   to: "/",         icon: "📅" },
-      { label: "计费笔数",  today: countMine(billing).today,     month: countMine(billing).month,     total: countMine(billing).total,     to: "/",         icon: "💰" },
+      { label: "消费笔数",  today: billing.filter((b)=>b.createdBy===me&&b.type==="消费"&&isToday(b.createdAt)).length, month: billing.filter((b)=>b.createdBy===me&&b.type==="消费"&&isThisMonth(b.createdAt)).length, total: billing.filter((b)=>b.createdBy===me&&b.type==="消费").length, to: "/", icon: "💳" },
+      { label: "充值笔数",  today: billing.filter((b)=>b.createdBy===me&&b.type==="充值"&&isToday(b.createdAt)).length, month: billing.filter((b)=>b.createdBy===me&&b.type==="充值"&&isThisMonth(b.createdAt)).length, total: billing.filter((b)=>b.createdBy===me&&b.type==="充值").length, to: "/", icon: "💰" },
     ];
   }, [patients, encounters, examSessions, diagnoses, plans, followups, billing, me]);
 
@@ -80,6 +81,8 @@ export function MyWorkStats() {
     const isOnOrAfter = (d: Date, ref: Date) => d.getTime() >= ref.getTime();
 
     const sumAmount = (list: typeof myBilling) => list.reduce((s, b) => s + (b.amount ?? 0), 0);
+    const sumConsumption = (list: typeof myBilling) => list.filter((b) => b.type === "消费").reduce((s, b) => s + (b.amount ?? 0), 0);
+    const sumRecharge = (list: typeof myBilling) => list.filter((b) => b.type === "充值").reduce((s, b) => s + (b.amount ?? 0), 0);
 
     return {
       // 接诊人次(就诊疗程数)
@@ -94,11 +97,17 @@ export function MyWorkStats() {
         month: new Set(myEncounters.filter((e) => isOnOrAfter(new Date(e.encounterDate), startOfMonth)).map((e) => e.patientId)).size,
         total: new Set(myEncounters.map((e) => e.patientId)).size,
       },
-      // 业绩收入(元)
+      // 业绩收入(仅消费,不含充值)
       revenue: {
-        today: sumAmount(myBilling.filter((b) => isOnOrAfter(new Date(b.createdAt), startOfDay))),
-        month: sumAmount(myBilling.filter((b) => isOnOrAfter(new Date(b.createdAt), startOfMonth))),
-        total: sumAmount(myBilling),
+        today: sumConsumption(myBilling.filter((b) => isOnOrAfter(new Date(b.createdAt), startOfDay))),
+        month: sumConsumption(myBilling.filter((b) => isOnOrAfter(new Date(b.createdAt), startOfMonth))),
+        total: sumConsumption(myBilling),
+      },
+      // 充值金额(单独展示)
+      recharge: {
+        today: sumRecharge(myBilling.filter((b) => isOnOrAfter(new Date(b.createdAt), startOfDay))),
+        month: sumRecharge(myBilling.filter((b) => isOnOrAfter(new Date(b.createdAt), startOfMonth))),
+        total: sumRecharge(myBilling),
       },
       // 复诊完成率(已结束 / 全部)
       completion: (() => {
@@ -150,7 +159,7 @@ export function MyWorkStats() {
         <div className="my-work-perf-item my-work-perf-item--money">
           <span className="my-work-perf-item__label">业绩收入</span>
           <span className="my-work-perf-item__value">{fmtMoney(performance.revenue.today)}</span>
-          <span className="my-work-perf-item__hint">本月 {fmtMoney(performance.revenue.month)} · 累计 {fmtMoney(performance.revenue.total)}</span>
+          <span className="my-work-perf-item__hint">消费收入 · 本月 {fmtMoney(performance.revenue.month)} · 累计 {fmtMoney(performance.revenue.total)} · 充值累计 {fmtMoney(performance.recharge.total)}</span>
         </div>
         <div className="my-work-perf-item">
           <span className="my-work-perf-item__label">接诊完成率</span>
