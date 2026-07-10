@@ -1,24 +1,18 @@
 import { useState, useMemo } from "react";
-import { CSI_ITEMS, CSI_SCORE_LABELS, scoreCsi, CSI_SEVERITY_LABELS, type CsiSeverity } from "../scales/csi";
-
-interface CsiFormProps {
-  onResult: (result: { items: Record<number, number>; total: number; severity: CsiSeverity }) => void;
-}
+import { CSI_ITEMS, CSI_SCORE_LABELS, scoreCsi, CSI_SEVERITY_LABELS } from "../scales/csi";
 
 /**
  * CSI 中枢敏感性量表 — 患者自评表。
  * 25 题,每题 0-4 单选,自动计算总分与分级。
  */
-export function CsiForm({ onResult }: CsiFormProps) {
+export function CsiForm() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [expanded, setExpanded] = useState(true);
 
   const total = useMemo(() => {
     const values = CSI_ITEMS.map((it) => answers[it.index] ?? 0);
-    const r = scoreCsi(values);
-    onResult({ items: answers, total: r.total, severity: r.severity });
-    return r;
-  }, [answers, onResult]);
+    return scoreCsi(values);
+  }, [answers]);
 
   const answered = Object.keys(answers).length;
 

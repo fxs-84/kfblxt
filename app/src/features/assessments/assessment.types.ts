@@ -7,9 +7,11 @@ import type {
 } from "./scales/brain-region";
 
 /**
- * 量表评估持久化记录(目前仅承载大脑区域定位表)。
- * 后续可扩展 Berg、Fugl-Meyer、MoCA 等通用结构。
+ * 量表评估持久化记录(目前承载大脑区域定位表)。
  * mock 阶段用 localStorage,接 DB 时拆为多张表。
+ *
+ * 注:CSS / S-LANSS 疼痛评估量表走独立流程,不在此仓储中
+ * (避免改 brain_region 表结构;后续可拆为 pain-assessments 表)。
  */
 export interface AssessmentRecord extends Entity {
   /** 患者 ID */

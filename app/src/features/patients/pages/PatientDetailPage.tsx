@@ -24,6 +24,7 @@ import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
 import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
+import { PainAssessmentPanel } from "../../assessments/components/PainAssessmentPanel";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
 import { NewEncounterPage } from "./NewEncounterPage";
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";

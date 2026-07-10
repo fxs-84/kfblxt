@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { CsiForm } from "../../assessments/components/CsiForm";
+import { SlanssForm } from "../../assessments/components/SlanssForm";
 import { useCreateExamSession } from "../useExam";
 import { EXAM_CATALOG } from "../exam-catalog";
 import { EXAM_CATEGORIES, CATEGORY_LABELS, type ExamCategory, type ExamResult, type ExamDataType } from "../exam.types";
@@ -227,6 +229,18 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
                   {items.map((item) => {
                     const val = results[item.id] ?? {};
                     const hasSubItems = !!item.subItems && item.subItems.length > 0;
+                    const isSpecialScale = item.id === "scale-csi" || item.id === "scale-slanss";
+                    if (isSpecialScale) {
+                      return (
+                        <div key={item.id} style={{ padding: "var(--space-3) var(--space-5)", borderBottom: "1px solid var(--color-border)" }}>
+                          <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.name}</div>
+                          {item.normalRef && <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginBottom: 8 }}>{item.normalRef}</div>}
+                          {item.id === "scale-csi"
+                            ? <CsiForm />
+                            : <SlanssForm />}
+                        </div>
+                      );
+                    }
                     return (
                       <div key={item.id} className={`exam-item${hasSubItems ? " exam-item--staged" : ""}`}>
                         <div className="exam-item__label">
