@@ -63,6 +63,21 @@ export const CSI_ITEMS: readonly CsiItem[] = [
 
 export const CSI_SCORE_LABELS = ["从不(0)", "罕见(1)", "有时(2)", "经常(3)", "总是(4)"];
 
+export interface CsiScoreDescriptor {
+  value: number;
+  label: string;
+  percent: string;
+  full: string;
+}
+
+export const CSI_SCORE_DESCRIPTORS: readonly CsiScoreDescriptor[] = [
+  { value: 0, label: "从不", percent: "0% 的时间",  full: "从不 (0% 的时间)" },
+  { value: 1, label: "罕见", percent: "<25% 的时间", full: "罕见 (<25% 的时间)" },
+  { value: 2, label: "有时", percent: "50% 的时间",  full: "有时 (50% 的时间)" },
+  { value: 3, label: "经常", percent: "75% 的时间",  full: "经常 (75% 的时间)" },
+  { value: 4, label: "总是", percent: "100% 的时间", full: "总是 (100% 的时间)" },
+];
+
 export function scoreCsi(items: readonly number[]): { total: number; severity: CsiSeverity } {
   if (items.length !== CSI_ITEM_COUNT) {
     throw new Error(`CSI 需要 ${CSI_ITEM_COUNT} 项,收到 ${items.length} 项`);
