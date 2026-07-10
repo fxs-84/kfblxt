@@ -22,7 +22,7 @@ export const BUILTIN_RULES: PointsRule[] = [
   {
     id: "builtin_encounter_amount_ratio",
     name: "消费积分(就诊)",
-    enabled: true,
+    enabled: false,
     builtin: true,
     trigger: "encounter.closed",
     conditions: [],
