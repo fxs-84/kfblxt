@@ -23,6 +23,8 @@ export function useCloseEncounter() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      const existing = await encounterRepository.findById(id);
+      if (!existing || existing.status === "已结束") return existing!;
       const e = await encounterRepository.update(id, { status: "已结束" });
       // 触发积分引擎:encounter.closed + 自动升级等级(根据就诊金额)
       const { onEncounterClosed } = await import("../membership/integration");

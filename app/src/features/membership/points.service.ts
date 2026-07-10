@@ -51,6 +51,17 @@ export async function adjustPoints(p: AwardParams): Promise<ReturnType<typeof aw
   return awardPoints(p);
 }
 
+export async function hasAwardedForRef(
+  ruleId: string,
+  event: { type: string; patientId: string; refId?: string | null; encounterId?: string; billingId?: string },
+): Promise<boolean> {
+  const refId = event.refId ?? (event as any).encounterId ?? (event as any).billingId ?? null;
+  if (!refId) return false;
+  const { getLogsForRule } = await import("./rule.repository");
+  const logs = await getLogsForRule(ruleId, event.patientId);
+  return logs.some(l => l.refId === refId);
+}
+
 export async function isInCooldown(
   ruleId: string,
   patientId: string,
