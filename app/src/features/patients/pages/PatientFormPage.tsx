@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +14,7 @@ type FormValues = z.input<typeof formSchema>;
 export function PatientFormPage() {
   const navigate = useNavigate();
   const createPatient = useCreatePatient();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -22,16 +24,25 @@ export function PatientFormPage() {
     defaultValues: { sex: "male" },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
+  const onSubmit = handleSubmit((values) => {
+    setSubmitError(null);
     try {
       const parsed = formSchema.parse(values);
-      const created = await createPatient.mutateAsync({ ...parsed, orgId: getSession().orgId });
-      navigate(`/patients/${created.id}`);
+      createPatient.mutate(
+        { ...parsed, orgId: getSession().orgId },
+        {
+          onSuccess: (created) => navigate(`/patients/${created.id}`),
+          onError: (e) => {
+            console.error("[新建患者] 校验或保存失败:", e);
+            const msg = e instanceof Error ? (e.name === "ZodError" ? `数据校验失败: ${e.message}` : e.message) : String(e);
+            setSubmitError(msg);
+          },
+        },
+      );
     } catch (e: unknown) {
-      console.error("[新建患者] 校验或保存失败:", e);
-      if (e instanceof Error && e.name === "ZodError") {
-        alert("表单数据不合法:\n" + e.message);
-      }
+      console.error("[新建患者] zod 校验失败:", e);
+      const msg = e instanceof Error ? `数据校验失败: ${e.message}` : String(e);
+      setSubmitError(msg);
     }
   });
 
@@ -94,6 +105,11 @@ export function PatientFormPage() {
             取消
           </button>
         </div>
+        {submitError && (
+          <div className="field__error" style={{ marginTop: "var(--space-3)", padding: "var(--space-3)", background: "var(--color-abnormal-weak, #fef0ed)", borderRadius: "var(--radius-sm)", whiteSpace: "pre-wrap" }}>
+            ❌ {submitError}
+          </div>
+        )}
       </form>
     </>
   );
