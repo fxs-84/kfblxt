@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { PainAssessmentForm } from "../../assessments/components/PainAssessmentForm";
 import { useDraftAutosave } from "../useDraftAutosave";
 import { useCreateExamSession } from "../useExam";
 import { EXAM_CATALOG } from "../exam-catalog";
@@ -247,16 +246,6 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
                   {items.map((item) => {
                     const val = results[item.id] ?? {};
                     const hasSubItems = !!item.subItems && item.subItems.length > 0;
-                    const isSpecialScale = item.id === "scale-csi" || item.id === "scale-slanss";
-                    if (isSpecialScale) {
-                      return (
-                        <div key={item.id} style={{ padding: "var(--space-2) 0", borderBottom: "1px solid var(--color-border)" }}>
-                          <div style={{ fontWeight: 700, marginBottom: 4, padding: "0 var(--space-5)" }}>{item.name}</div>
-                          {item.normalRef && <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", padding: "0 var(--space-5)", marginBottom: 6 }}>{item.normalRef}</div>}
-                          <PainAssessmentForm encounterId={encounterId} draftKey={encounterId} />
-                        </div>
-                      );
-                    }
                     return (
                       <div key={item.id} className={`exam-item${hasSubItems ? " exam-item--staged" : ""}`}>
                         <div className="exam-item__label">

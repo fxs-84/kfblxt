@@ -46,6 +46,8 @@ export const router = createBrowserRouter(
         { path: "patients", element: <PatientListPage /> },
         { path: "patients/new", element: <PatientFormPage /> },
         { path: "patients/:id", element: <PatientDetailPage /> },
+        { path: "patients/:id/edit", element: <PatientFormPage /> },
+        { path: "patients/:id/edit", element: <PatientFormPage /> },
         { path: "patients/:id/membership", element: <PatientMembershipRoutePage /> },
         { path: "membership/rules", element: <RulesListPage /> },
         { path: "membership/rules/new", element: <RuleEditPage /> },

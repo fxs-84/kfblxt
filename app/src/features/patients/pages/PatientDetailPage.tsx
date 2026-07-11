@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { usePatient, useDeletePatient } from "../usePatients";
+import { getSession } from "../../../lib/session";
 import { usePatientEncounters, useCloseEncounter, useUpdateEncounter } from "../../encounters/useEncounters";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { EncounterForm } from "../../encounters/components/EncounterForm";
@@ -91,8 +92,15 @@ export function PatientDetailPage() {
   };
 
   const handleConfirmDelete = async () => {
-    await deletePatient.mutateAsync(id!);
-    navigate("/patients");
+    try {
+      await deletePatient.mutateAsync(id!);
+      navigate("/patients");
+    } catch (e: unknown) {
+      console.error("[删除患者] 失败:", e);
+      const msg = e instanceof Error ? e.message : "删除失败";
+      alert(msg + "\n\n当前会话角色: " + getSession().role);
+      setConfirmDelete(false);
+    }
   };
 
   const activeDiagnosisEncounterId = examEncounterId ?? (encounters && encounters.length > 0 ? encounters[0].id : undefined);
@@ -141,6 +149,9 @@ export function PatientDetailPage() {
           >
             删除
           </button>
+          <Link to={`/patients/${patient.id}/edit`} className="btn btn--ghost" style={{ textDecoration: "none" }}>
+            ✏️ 编辑
+          </Link>
           <button className="btn btn--primary" onClick={() => setTab("new")}>+ 新建就诊</button>
         </div>
       </header>
@@ -250,7 +261,7 @@ export function PatientDetailPage() {
                 })()}
               </div>
               <BrainRegionPanel patientId={patient.id} encounterId={examEncounterId} />
-              <PainAssessmentForm patientId={patient.id} encounterId={examEncounterId} draftKey={examEncounterId} />
+              <PainAssessmentForm key={examEncounterId} patientId={patient.id} encounterId={examEncounterId} draftKey={examEncounterId} />
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}

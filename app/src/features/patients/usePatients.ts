@@ -35,6 +35,22 @@ export function useCreatePatient() {
   });
 }
 
+export function useUpdatePatient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<PatientInput> }) => {
+      if (!can(getSession().role, "patient:write")) {
+        throw new Error("当前角色无权修改患者信息");
+      }
+      return patientRepository.update(id, patch);
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: [...KEY, vars.id] });
+    },
+  });
+}
+
 export function useDeletePatient() {
   const qc = useQueryClient();
   return useMutation({
