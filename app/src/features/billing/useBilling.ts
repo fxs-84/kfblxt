@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { billingRepository, findBillingByPatient, calcBalance, type BillingInput } from "./billing.repository";
 import { getSession } from "../../lib/session";
+import { onBillingConsumed, onBillingRecharged } from "../membership/integration";
 
 export function useBilling(patientId: string | undefined) {
   const { data: records = [], ...rest } = useQuery({
