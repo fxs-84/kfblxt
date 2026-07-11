@@ -41,11 +41,13 @@ function evalCondition(c: RuleCondition, ctx: EvalContext): boolean {
 }
 
 export async function processEvent(event: TriggerEvent, operatorId = "system"): Promise<void> {
+  console.log("[processEvent] entered, type=", event.type, "amount=", (event as any).amount);
   const rules = await findAllRules();
   const active = rules.filter(r => r.enabled).sort((a, b) => b.priority - a.priority);
 
   for (const rule of active) {
     if (!matchesTrigger(rule, event)) continue;
+    console.log("[processEvent] matched rule:", rule.name);
     if (!isInDateRange(rule)) continue;
     if (await isInCooldown(rule.id, event.patientId, rule.cooldownDays)) continue;
     if (await exceedsMaxPerPatient(rule.id, event.patientId, rule.maxPerPatient)) continue;
