@@ -48,7 +48,7 @@ export function PatientMembershipPage({ patientId }: Props) {
           </div>
           <div>
             <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>累计消费</div>
-            <div style={{ fontSize: 18 }}>¥{(m.totalSpent / 100).toFixed(2)}</div>
+            <div style={{ fontSize: 18 }}>¥{m.totalSpent.toLocaleString("zh-CN", {minimumFractionDigits: 2})}</div>
           </div>
         </div>
       </div>

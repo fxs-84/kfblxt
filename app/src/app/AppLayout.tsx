@@ -26,6 +26,12 @@ const NAV: NavItem[] = [
     icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21v-1a6 6 0 0112 0v1",
   },
   {
+    to: "/cashier",
+    label: "充值/消费",
+    end: false,
+    icon: "M17 9V7a2 2 0 00-2-2H9a2 2 0 00-2 2v2m0 0a2 2 0 100 4m0-4V7m0 4h6m0-4v4m0 0a2 2 0 100 4m0-4v4",
+  },
+  {
     to: "/membership/dashboard",
     label: "会员中心",
     end: false,

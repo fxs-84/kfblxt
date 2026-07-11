@@ -102,7 +102,7 @@ export function PointsHistoryPage() {
             </div>
             <div>
               <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>累计消费</div>
-              <div style={{ fontSize: 18 }}>¥{(membership.totalSpent / 100).toFixed(0)}</div>
+              <div style={{ fontSize: 18 }}>¥{membership.totalSpent.toLocaleString("zh-CN")}</div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <button

@@ -50,7 +50,7 @@ export function MembershipPanelCard({ patientId }: Props) {
           <span className="stat__label">累计获得</span>
         </div>
         <div className="stat">
-          <span className="stat__value">¥{(m.totalSpent / 100).toFixed(0)}</span>
+          <span className="stat__value">¥{m.totalSpent.toLocaleString()}</span>
           <span className="stat__label">累计消费</span>
         </div>
       </div>

@@ -18,7 +18,6 @@ import { useAllExamSessions } from "../../exam/useExam";
 import { TreatmentPanel } from "../../treatment/components/TreatmentPanel";
 import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
-import { BillingPanel } from "../../billing/BillingPanel";
 import { MembershipPanelCard } from "../../membership/MembershipPanelCard";
 import { CollapseCard } from "../../../components/ui/CollapseCard";
 import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
@@ -203,7 +202,6 @@ export function PatientDetailPage() {
               </div>
             </div>
           </div>
-          <CollapseCard title="卡次 / 消费记录"><BillingPanel patientId={patient.id} /></CollapseCard>
           <MembershipPanelCard patientId={patient.id} />
           <CollapseCard title="复诊提醒"><FollowupPanel patientId={patient.id} /></CollapseCard>
         </>
