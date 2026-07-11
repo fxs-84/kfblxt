@@ -43,6 +43,7 @@ function evalCondition(c: RuleCondition, ctx: EvalContext): boolean {
 export async function processEvent(event: TriggerEvent, operatorId = "system"): Promise<void> {
   console.log("[processEvent] entered, type=", event.type, "amount=", (event as any).amount);
   const rules = await findAllRules();
+  console.log("[processEvent] rules count:", rules.length);
   const active = rules.filter(r => r.enabled).sort((a, b) => b.priority - a.priority);
 
   for (const rule of active) {
