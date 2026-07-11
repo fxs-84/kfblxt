@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useDraftAutosave } from "../../exam/useDraftAutosave";
 import { useDiagnosis, useCreateDiagnosis } from "../useDiagnosis";
 import {
   NEURO_LEVELS, MECHANISMS, SPINAL_SEGMENTS, NERVE_TRUNKS, CUTANEOUS_NERVES,
@@ -13,6 +14,10 @@ interface DiagnosisPanelProps { encounterId: string }
 export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
   const { data: diagnosis, isLoading } = useDiagnosis(encounterId);
   const createDiagnosis = useCreateDiagnosis();
+  const dxDraft = useDraftAutosave(
+    `dx:${encounterId}`,
+    { levels: [], mechanisms: [], segments: [], nerves: [], cutaneousIds: [], side: "left", reasoning: "", clinical: [] },
+  );
   const [showForm, setShowForm] = useState(false);
   const [levels, setLevels] = useState<Set<NeuroLevel>>(new Set());
   const [mechanisms, setMechanisms] = useState<Set<Mechanism>>(new Set());
@@ -22,7 +27,8 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
   const [side, setSide] = useState<LocalizationDiagnosis["side"]>("left");
   const [reasoning, setReasoning] = useState("");
   const [clinicalDiagnoses, setClinicalDiagnoses] = useState<ClinicalDx[]>([]);
-  const [saving, setSaving] = useState(false);
+const [saving, setSaving] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cutaneousOpen, setCutaneousOpen] = useState<Set<string>>(new Set(["颈枕部", "前臂"]));
 
@@ -43,7 +49,7 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
     setClinicalDiagnoses(diagnosis.clinicalDiagnoses ?? []);
   }, [diagnosis, isLoading]);
 
-  const handleSave = async () => {
+const handleSave = async () => {
     if (levels.size === 0 || mechanisms.size === 0) {
       setError("请至少选择一个神经水平和一种致病机制");
       return;
@@ -55,6 +61,7 @@ export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
     setError(null);
     setSaving(true);
     try {
+      dxDraft.clearDraft();
       await createDiagnosis.mutateAsync({
         encounterId, levels: [...levels], mechanisms: [...mechanisms],
         segments: segments.size ? [...segments] : undefined,

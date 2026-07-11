@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDraftAutosave } from "../../exam/useDraftAutosave";
 import { useCreateEncounter } from "../../encounters/useEncounters";
 import { useCreateExamSession } from "../../exam/useExam";
 import { getSession } from "../../../lib/session";

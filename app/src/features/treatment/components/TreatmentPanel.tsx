@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useDraftAutosave } from "../../exam/useDraftAutosave";
 import { useTreatmentPlans, useCreateTreatmentPlan, useProgressNotes, useCreateProgressNote } from "../useTreatment";
 import { INTERVENTIONS_CATALOG } from "../interventions-catalog";
 import { INTERVENTION_CATEGORIES, TREATMENT_PHASES, OUTCOME_RATINGS, GOAL_TEMPLATES, GOAL_DOMAINS, type TreatmentPhase, type TreatmentGoal, type OutcomeRating } from "../treatment.types";
@@ -23,6 +24,26 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notePlanId, setNotePlanId] = useState<string | null>(null);
+  const tpDraft = useDraftAutosave(
+    "tp:" + encounterId,
+    { phase: "急性期" as TreatmentPhase, frequency: "", duration: "", selectedIds: [] as string[], goals: [] as TreatmentGoal[], goalText: { term: "short" as "short" | "long", desc: "", metric: "" }, boundaries: "" },
+  );
+  const tpInit = useRef(false);
+  // hydrate from draft
+  if (tpDraft.value.frequency && !tpInit.current) {
+    tpInit.current = true;
+    setPhase(tpDraft.value.phase);
+    setFrequency(tpDraft.value.frequency);
+    setDuration(tpDraft.value.duration);
+    setSelectedIds(new Set(tpDraft.value.selectedIds));
+    setGoals(tpDraft.value.goals);
+    setGoalText(tpDraft.value.goalText);
+    setBoundaries(tpDraft.value.boundaries);
+  }
+  // 草稿自动同步
+  useEffect(() => {
+    tpDraft.setValue({ phase, frequency, duration, selectedIds: [...selectedIds], goals, goalText, boundaries });
+  }, [phase, frequency, duration, JSON.stringify([...selectedIds]), JSON.stringify(goals), JSON.stringify(goalText), boundaries]);
 
   const handleSave = async () => {
     if (!frequency.trim()) { setError("请输入治疗频率"); return; }
