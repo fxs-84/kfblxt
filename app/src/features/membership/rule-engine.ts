@@ -7,7 +7,7 @@ import {
   updateMembership,
   getOrCreateMembership,
 } from "./rule.repository";
-import { awardPoints, isInCooldown, exceedsMaxPerPatient, hasAwardedForRef } from "./points.service";
+import { awardPoints, isInCooldown, exceedsMaxPerPatient } from "./points.service";
 import type { PointsRule, RuleCondition, TriggerEvent, MemberTier, PointsLog } from "./models";
 
 interface EvalContext {
@@ -49,7 +49,6 @@ export async function processEvent(event: TriggerEvent, operatorId = "system"): 
     if (!isInDateRange(rule)) continue;
     if (await isInCooldown(rule.id, event.patientId, rule.cooldownDays)) continue;
     if (await exceedsMaxPerPatient(rule.id, event.patientId, rule.maxPerPatient)) continue;
-    if (await hasAwardedForRef(rule.id, event)) continue;
 
     const ctx = await buildContext(event);
     if (!evalConditions(rule.conditions, ctx)) continue;
