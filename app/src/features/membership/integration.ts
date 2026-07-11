@@ -88,7 +88,8 @@ async function checkEncounterNthVisit(patientId: string, encounterId: string): P
     const { encounterRepository } = await import("../encounters/encounter.repository");
     const all = await encounterRepository.findAll();
     const count = all.filter(e => e.patientId === patientId && e.status === "已结束").length;
-    if (count > 0 && count % 5 === 0) {
+    console.log("[membership] checkEncounterNthVisit: patient=", patientId, "count=", count);
+    if (count >= 5 && count % 5 === 0) {
       await emit({ type: "encounter.nth", patientId, encounterId, nth: count, createdAt: new Date() });
     }
   } catch { /* 静默 */ }
