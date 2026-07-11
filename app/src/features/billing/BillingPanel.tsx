@@ -90,7 +90,7 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
           </div>
         </div>
         {!showForm && (
-          <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>
+          <button className="btn btn--primary" style={{ fontSize: "var(--text-base)", padding: "var(--space-2) var(--space-5)", fontWeight: 700 }} onClick={() => setShowForm(true)}>
             + 新增记录
           </button>
         )}
@@ -100,7 +100,7 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
         <div style={{ padding: "0 var(--space-5) var(--space-4)", borderBottom: "1px solid var(--color-border)" }}>
           {/* P1: 智能关联 — 显示上次消费/充值,一键填充 */}
           <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap", marginBottom: "var(--space-2)", alignItems: "center" }}>
-            <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", fontWeight: 500 }}>🧠 快速填写:</span>
+            <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", fontWeight: 500 }}>🧠 快速填写:</span>
             {lastConsumption && (
               <button className="goal-tpl-chip" type="button" onClick={() => {
                 setType("消费");
@@ -128,7 +128,7 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
             )}
           </div>
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
-            <select className="exam-grade" value={type} onChange={(e) => setType(e.target.value as BillingType)}>
+            <select style={{ padding: "var(--space-2)", fontSize: "var(--text-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)" }} value={type} onChange={(e) => setType(e.target.value as BillingType)}>
               {BILLING_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
             <input className="exam-number" style={{ width: 100 }} type="number" step="0.01" min="0"
