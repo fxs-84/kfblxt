@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { billingRepository, findBillingByPatient, calcBalance, type BillingInput } from "./billing.repository";
 import { getSession } from "../../lib/session";
+import { processEvent } from "../membership/rule-engine";
 
 export function useBilling(patientId: string | undefined) {
   const { data: records = [], ...rest } = useQuery({
@@ -25,21 +26,17 @@ export function useCreateBilling() {
     mutationFn: async (input: Omit<BillingInput, "orgId">) => {
       const created = await billingRepository.create({ ...input, orgId: getSession().orgId });
       console.log("[billing] created, type=", input.type, "amount=", input.amount);
-      // 直接调 processEvent,绕过事件总线
+      // 调 processEvent(与生日扫描器相同,静态 import,不走事件总线)
       if (input.amount > 0) {
-        try {
-          const { processEvent } = await import("../membership/rule-engine");
-          const event: { type: string; patientId: string; amount: number; createdAt: Date; billingId: string; encounterId?: string } = {
-            type: input.type === "消费" ? "billing.consumed" : "billing.recharged",
-            patientId: input.patientId,
-            billingId: created.id,
-            amount: input.sessions && input.sessions > 0 ? input.amount * input.sessions : input.amount,
-            createdAt: new Date(),
-          };
-          if (input.encounterId) event.encounterId = input.encounterId;
-          await processEvent(event as any);
-          console.log("[billing] processEvent done");
-        } catch (e: unknown) { console.warn("[billing] processEvent failed:", e); }
+        const ev: { type: string; patientId: string; amount: number; createdAt: Date; billingId: string; encounterId?: string } = {
+          type: input.type === "消费" ? "billing.consumed" : "billing.recharged",
+          patientId: input.patientId,
+          billingId: created.id,
+          amount: input.sessions && input.sessions > 0 ? input.amount * input.sessions : input.amount,
+          createdAt: new Date(),
+        };
+        if (input.encounterId) ev.encounterId = input.encounterId;
+        processEvent(ev as any).catch(() => {});
       }
       return created;
     },
