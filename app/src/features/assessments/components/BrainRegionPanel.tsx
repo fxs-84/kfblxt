@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useEncounterAssessments, usePatientAssessments } from "../useAssessments";
 import { BrainRegionForm } from "./BrainRegionForm";
 import { BrainRegionResult } from "./BrainRegionResult";
+import type { BrainAssessmentRecordRow } from "../assessment.repository";
 
 interface BrainRegionPanelProps {
   patientId: string;
@@ -21,7 +22,7 @@ export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelPro
   const [showForm, setShowForm] = useState(false);
 
   // 仅显示 brain_region 记录(pain_assessment 是另一个组件)
-  const list = (encounterId ? encounterList : patientList)?.filter((r) => r.type === "brain_region") ?? [];
+  const list = (encounterId ? encounterList : patientList)?.filter((r): r is BrainAssessmentRecordRow => r.type === "brain_region" && (!encounterId || r.encounterId === encounterId)) ?? [];
   const latest = list.length > 0 ? list[0] : null;
 
   // ESC 关闭弹窗

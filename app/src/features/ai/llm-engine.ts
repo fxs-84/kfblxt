@@ -218,8 +218,11 @@ export type AnalyzeResult = Awaited<ReturnType<typeof import("./reasoning-engine
   _source: "llm" | "rules";
 };
 
+/** 防止未配置 LLM 时反复重试 */
+let _lastLLMFailed = false;
+
 export async function analyzeAsync(ctx: ClinicalContext): Promise<AnalyzeResult> {
-  if (isLLMConfigured()) {
+  if (isLLMConfigured() && !_lastLLMFailed) {
     try {
       const cfg = await getLLMConfig();
       if (cfg) {
@@ -244,6 +247,7 @@ export async function analyzeAsync(ctx: ClinicalContext): Promise<AnalyzeResult>
         };
       }
     } catch (e) {
+      _lastLLMFailed = true;
       console.warn("[llm-engine] LLM 调用失败,回退规则引擎:", e instanceof Error ? e.message : e);
     }
   }
