@@ -43,7 +43,15 @@ function save<T>(name: string, data: T[]): void {
 }
 
 function ensureSeeded(name: string, seed: unknown[]): void {
-  if (load(name).length === 0) save(name, seed);
+  if (load(name).length === 0) { save(name, seed); return; }
+  if (name === "rules" && seed.length > load<any>("rules").length) {
+    const existing = load<any>("rules");
+    const existingIds = new Set(existing.map(r => r.id));
+    for (const s of seed) {
+      if (!existingIds.has((s as any).id)) existing.push(s);
+    }
+    save("rules", existing);
+  }
 }
 
 /** ===== 规则 ===== */
