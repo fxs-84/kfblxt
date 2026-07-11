@@ -4,7 +4,7 @@
 export type UserRole = "admin" | "physician" | "therapist";
 
 const PERMISSIONS = {
-  admin: ["patient:read", "patient:write", "patient:delete", "encounter:read", "encounter:write"],
+  admin: ["patient:read", "patient:write", "patient:delete", "encounter:read", "encounter:write", "membership:delete"],
   physician: ["patient:read", "patient:write", "encounter:read", "encounter:write"],
   therapist: ["patient:read", "patient:write", "encounter:read", "encounter:write"],
 } as const satisfies Record<UserRole, readonly string[]>;

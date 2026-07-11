@@ -13,8 +13,13 @@ import {
   findAllRedemptions,
   findAllTiers,
   findAllRewards,
+  markMembershipsOrphanedByPatient,
+  markLogsOrphanedByPatient,
+  markRedemptionsOrphanedByPatient,
 } from "../rule.repository";
 import { usePatients } from "../../patients/usePatients";
+import { useSession } from "../../../components/auth/useSession";
+import { can } from "../../../lib/rbac";
 import type {
   PatientMembership,
   PointsLog,
@@ -36,11 +41,14 @@ export function MembershipCenterPage() {
   const [tiers, setTiers] = useState<TierConfig[]>([]);
   const [rewards, setRewards] = useState<RewardProduct[]>([]);
   const { data: patients = [] } = usePatients();
+  const session = useSession();
+  const canDeleteMembership = session ? can(session.role, "membership:delete") : false;
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deletingPatientId, setDeletingPatientId] = useState<string | null>(null);
 
-  useEffect(() => {
-    void (async () => {
+  const reload = useMemo(
+    () => async () => {
       setLoading(true);
       const [m, l, r, t, rw] = await Promise.all([
         findAllMemberships(),
@@ -55,8 +63,39 @@ export function MembershipCenterPage() {
       setTiers(t);
       setRewards(rw);
       setLoading(false);
-    })();
-  }, []);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  /**
+   * 删除某患者的会员资格 — 软删 membership + 软删该 patient 的流水/兑换;
+   * localStorage 数据保留(deletedAt 时间戳)作审计/计费证据。
+   * 仅 admin 可见入口;点击 → window.confirm → cascade。
+   */
+  const handleDeleteMembership = async (patientId: string, patientName: string) => {
+    if (deletingPatientId) return;
+    const ok = window.confirm(
+      `确定删除会员 ${patientName}?\n该患者的会员档案、积分流水与兑换订单将不再显示,但后台数据保留以备审计。`,
+    );
+    if (!ok) return;
+    setDeletingPatientId(patientId);
+    try {
+      const [mCount, lCount, rCount] = await Promise.all([
+        markMembershipsOrphanedByPatient(patientId),
+        markLogsOrphanedByPatient(patientId),
+        markRedemptionsOrphanedByPatient(patientId),
+      ]);
+      // eslint-disable-next-line no-console
+      console.log(`[deleteMembership] ${patientId} cascade: memberships=${mCount}, logs=${lCount}, redemptions=${rCount}`);
+      await reload();
+    } finally {
+      setDeletingPatientId(null);
+    }
+  };
 
   const patientMap = useMemo(
     () => new Map(patients.map(p => [p.id, p.name] as const)),
@@ -212,6 +251,19 @@ export function MembershipCenterPage() {
                     >
                       🎁 发起兑换
                     </Link>
+                    {canDeleteMembership && (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteMembership(m.patientId, patientName)}
+                        disabled={deletingPatientId === m.patientId}
+                        className="btn btn--danger"
+                        style={{ fontSize: 11, padding: "4px 8px", marginLeft: 4 }}
+                        data-testid="delete-membership"
+                        aria-label={`删除会员 ${patientName}`}
+                      >
+                        {deletingPatientId === m.patientId ? "删除中…" : "🗑 删除"}
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
