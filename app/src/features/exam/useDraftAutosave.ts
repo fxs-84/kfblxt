@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 /**
  * 通用草稿自动保存 hook:
  *  - state 变化时延迟 600ms 写入 localStorage(key 带 encounterId)
  *  - 切换页面/刷新后回到同 encounter 时,自动 hydrate 草稿
+ *  - key 变化时自动重新 hydrate(跨记录切换时数据隔离)
  *  - 支持显式 saveDraft() / clearDraft() 手动覆盖
  *  - 空 key = 不启用
  */
@@ -21,14 +22,17 @@ export function useDraftAutosave<T extends object>(
   const storageKey = key ? `draft:${key}` : "";
   const enabled = Boolean(storageKey);
 
-  const [value, setValueState] = useState<T>(() => {
+  // 从 localStorage 读取,无草稿则返回 initial
+  const hydrate = useCallback(() => {
     if (!storageKey) return initial;
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) return { ...initial, ...JSON.parse(raw) } as T;
     } catch { /* 静默 */ }
     return initial;
-  });
+  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [value, setValueState] = useState<T>(hydrate);
   const [hasDraft, setHasDraft] = useState<boolean>(Boolean(storageKey && localStorage.getItem(storageKey)));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
     if (!storageKey) return null;
@@ -39,7 +43,16 @@ export function useDraftAutosave<T extends object>(
   const valueRef = useRef(value);
   valueRef.current = value;
 
-  // 卸载时 flush — 放在所有 hooks 顶部,确保每轮都注册
+  // key 变化时重新 hydrate
+  useEffect(() => {
+    const fresh = hydrate();
+    setValueState(fresh);
+    setHasDraft(Boolean(storageKey && localStorage.getItem(storageKey)));
+    const ts = localStorage.getItem(storageKey + ":ts");
+    setLastSavedAt(ts ? new Date(ts) : null);
+  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 卸载时 flush
   useEffect(() => {
     if (!enabled) return;
     return () => {

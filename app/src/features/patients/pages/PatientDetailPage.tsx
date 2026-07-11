@@ -227,7 +227,7 @@ export function PatientDetailPage() {
           {/* 定位诊断(任意就诊) */}
           {diagnosisEid && (
             <div ref={diagnosisSectionRef} style={{ marginTop: "1.5rem" }}>
-              <DiagnosisPanel encounterId={diagnosisEid} />
+              <DiagnosisPanel key={diagnosisEid ?? "no-dx"} encounterId={diagnosisEid} />
               <div style={{ textAlign: "right", marginTop: "var(--space-3)" }}>
                 <button className="btn btn--ghost" onClick={() => setDiagnosisEid(null)}>收起</button>
               </div>
@@ -254,7 +254,7 @@ export function PatientDetailPage() {
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}
-              <DiagnosisPanel encounterId={examEncounterId} />
+              <DiagnosisPanel key={examEncounterId} encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
 
@@ -298,7 +298,7 @@ export function PatientDetailPage() {
 
       {tab === "treatment" && list.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-          <TreatmentPanel encounterId={list[0].id} />
+          <TreatmentPanel key={list[0].id} encounterId={list[0].id} />
           {list.length > 1 && (
             <CollapseCard title="更多就诊治疗计划" extra={<span className="panel__hint">{list.length - 1} 条</span>}>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
