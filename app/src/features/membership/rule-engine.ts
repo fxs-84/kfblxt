@@ -58,7 +58,7 @@ export async function processEvent(event: TriggerEvent, operatorId = "system"): 
 }
 
 function matchesTrigger(rule: PointsRule, event: TriggerEvent): boolean {
-  if (rule.trigger === "encounter.nth") return event.type === "encounter.nth" || event.type === "encounter.created";
+  if (rule.trigger === "encounter.nth") return event.type === "encounter.nth";
   if (rule.trigger === "patient.birthday") return event.type === "patient.birthday";
   return rule.trigger === event.type;
 }
