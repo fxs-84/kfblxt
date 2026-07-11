@@ -27,9 +27,9 @@ export function useCreateBilling() {
       const created = await billingRepository.create({ ...input, orgId: getSession().orgId });
       // 触发积分引擎:billing.consumed (独立触发器,避免与 encounter.closed 双计)
       try {
-        const { onBillingConsumed, onBillingRecharged } = await import("../membership/integration");
         if (input.type === "消费" && input.amount > 0) {
-          await onBillingConsumed(input.patientId, created.id, input.amount, input.encounterId);
+          const realAmt = input.sessions && input.sessions > 0 ? input.amount * input.sessions : input.amount;
+          await onBillingConsumed(input.patientId, created.id, realAmt, input.encounterId);
         } else if (input.type === "充值" && input.amount > 0) {
           await onBillingRecharged(input.patientId, created.id, input.amount);
         }
