@@ -20,8 +20,9 @@ export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelPro
   const { data: patientList } = usePatientAssessments(encounterId ? undefined : patientId);
   const [showForm, setShowForm] = useState(false);
 
-  const list = encounterId ? encounterList : patientList;
-  const latest = list && list.length > 0 ? list[0] : null;
+  // 仅显示 brain_region 记录(pain_assessment 是另一个组件)
+  const list = (encounterId ? encounterList : patientList)?.filter((r) => r.type === "brain_region") ?? [];
+  const latest = list.length > 0 ? list[0] : null;
 
   // ESC 关闭弹窗
   useEffect(() => {

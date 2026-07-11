@@ -10,12 +10,12 @@ import {
   type RegionSeverity,
 } from "../scales/brain-region";
 import type { AssessmentRecord } from "../assessment.types";
-import type { AssessmentRecordRow } from "../assessment.repository";
+import type { BrainAssessmentRecordRow } from "../assessment.repository";
 import { formatDate } from "../../../lib/format";
 import { useDeleteAssessment } from "../useAssessments";
 
 interface BrainRegionResultProps {
-  record: AssessmentRecordRow;
+  record: BrainAssessmentRecordRow;
   onDeleted?: () => void;
 }
 

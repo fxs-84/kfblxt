@@ -3,10 +3,13 @@ import {
   assessmentRepository,
   findAssessmentsByEncounter,
   findAssessmentsByPatient,
-  type AssessmentRecordRow,
+  type BrainAssessmentRecordRow,
+  type PainAssessmentRecordRow,
 } from "./assessment.repository";
-import type { AssessmentInput } from "./assessment.types";
+import type { BrainAssessmentInput, PainAssessmentInput } from "./assessment.types";
 import { getSession } from "../../lib/session";
+
+export type AssessmentRecordRow = BrainAssessmentRecordRow | PainAssessmentRecordRow;
 
 export function usePatientAssessments(patientId: string | undefined) {
   return useQuery({
@@ -31,11 +34,12 @@ export function useAllAssessments() {
   });
 }
 
+/** 通用创建 — 自动判定 brain_region / pain_assessment 路由 */
 export function useCreateAssessment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<AssessmentInput, "orgId">) =>
-      assessmentRepository.create({ ...input, orgId: getSession().orgId }),
+    mutationFn: (input: Omit<BrainAssessmentInput, "orgId"> | Omit<PainAssessmentInput, "orgId">) =>
+      assessmentRepository.create({ ...input, orgId: getSession().orgId } as any),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["assessments", "patient", vars.patientId] });
       if (vars.encounterId) {
@@ -63,4 +67,4 @@ export function useDeleteAssessment() {
   });
 }
 
-export type { AssessmentRecordRow };
+export type { BrainAssessmentRecordRow, PainAssessmentRecordRow };

@@ -1,9 +1,13 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useDraftAutosave } from "../../exam/useDraftAutosave";
+import { useCreateAssessment } from "../useAssessments";
 import { CSI_ITEMS, CSI_SCORE_DESCRIPTORS, scoreCsi, CSI_SEVERITY_LABELS } from "../scales/csi";
 import { SLANSS_ITEMS, scoreSlanss, SLANSS_THRESHOLD } from "../scales/slanss";
 
 interface PainAssessmentFormProps {
+  /** patientId + encounterId 都传才会真正持久化到 assessments 表 */
+  patientId?: string;
+  encounterId?: string;
   /** 用于草稿 key,传了才有自动恢复 */
   draftKey?: string;
   onResult?: (result: { csiTotal: number; csiSeverity: string; slanssTotal: number; slanssPositive: boolean }) => void;
@@ -15,12 +19,15 @@ interface PainAssessmentFormProps {
  *  CSI 25 题(0-4) + S-LANSS 7 题(二选一,各题分值不同)
  *  支持草稿自动保存(draftKey 传 encounterId)
  */
-export function PainAssessmentForm({ draftKey, onResult }: PainAssessmentFormProps = {}) {
+export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult }: PainAssessmentFormProps = {}) {
   const draftId = draftKey ? `pain:${draftKey}` : undefined;
   const draft = useDraftAutosave<{ csi: Record<number, number>; slanss: Record<number, number>; done: boolean }>(
     draftId ?? "",
     { csi: {}, slanss: {}, done: false },
   );
+  const createAssessment = useCreateAssessment();
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [csi, setCsiState] = useState<Record<number, number>>(draft.value.csi);
   const [slanss, setSlanssState] = useState<Record<number, number>>(draft.value.slanss);
@@ -108,9 +115,39 @@ export function PainAssessmentForm({ draftKey, onResult }: PainAssessmentFormPro
     setLastAnswered({ type: "slanss", index: i });
   };
 
-  const handleSubmit = () => {
-    setDoneState(true);
-    if (draftId) draft.clearDraft();
+  const handleSubmit = async () => {
+    setSubmitError(null);
+    if (grandAnswered !== grandTotal) {
+      setSubmitError("请完成全部题目再提交");
+      return;
+    }
+    setSaving(true);
+    try {
+      // 真实持久化:pain_assessment 写 assessments 仓储(独立表)
+      if (patientId) {
+        await createAssessment.mutateAsync({
+          patientId,
+          encounterId,
+          type: "pain_assessment",
+          csi: {
+            items: csi,
+            total: csiScore.total,
+            severity: csiScore.severity,
+          },
+          slanss: {
+            items: slanss,
+            total: slanssScore.total,
+            positive: slanssScore.result === "positive",
+          },
+        } as any);
+      }
+      setDoneState(true);
+      if (draftId) draft.clearDraft();
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "提交失败,请重试");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (done) {

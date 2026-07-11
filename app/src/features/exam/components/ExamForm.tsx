@@ -253,7 +253,7 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
                         <div key={item.id} style={{ padding: "var(--space-2) 0", borderBottom: "1px solid var(--color-border)" }}>
                           <div style={{ fontWeight: 700, marginBottom: 4, padding: "0 var(--space-5)" }}>{item.name}</div>
                           {item.normalRef && <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", padding: "0 var(--space-5)", marginBottom: 6 }}>{item.normalRef}</div>}
-                          <PainAssessmentForm />
+                          <PainAssessmentForm encounterId={encounterId} draftKey={encounterId} />
                         </div>
                       );
                     }

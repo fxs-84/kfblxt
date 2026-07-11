@@ -110,7 +110,7 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
       {/* 疼痛评估量表(患者自评) */}
       <FoldSection title="📋 疼痛评估量表(患者自评)" open={!!expanded.pain} onToggle={() => toggle("pain")}>
         <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
-          <PainAssessmentForm />
+          <PainAssessmentForm patientId={patientId} encounterId="new" draftKey="new-{patientId}" />
         </div>
       </FoldSection>
 
