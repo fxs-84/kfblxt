@@ -10,7 +10,7 @@
  * 建议生日规则的 cooldownDays 设为 365(每年一次)。
  */
 import { patientRepository } from "../patients/patient.repository";
-import { membershipBus } from "./trigger-events";
+import { processEvent } from "./rule-engine";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -33,7 +33,7 @@ export async function scanAndEmitBirthdays(now: Date = new Date()): Promise<numb
   const patients = await patientRepository.findAll();
   const birthdayPatients = patients.filter((p) => isBirthdayToday(p.birthDate, now));
   for (const p of birthdayPatients) {
-    membershipBus.emit({ type: "patient.birthday", patientId: p.id, createdAt: now });
+    processEvent({ type: "patient.birthday", patientId: p.id, createdAt: now }).catch(() => {});
   }
   return birthdayPatients.length;
 }

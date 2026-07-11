@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { billingRepository, findBillingByPatient, calcBalance, type BillingInput } from "./billing.repository";
 import { getSession } from "../../lib/session";
-import { onBillingConsumed, onBillingRecharged } from "../membership/integration";
 
 export function useBilling(patientId: string | undefined) {
   const { data: records = [], ...rest } = useQuery({
@@ -26,15 +25,22 @@ export function useCreateBilling() {
     mutationFn: async (input: Omit<BillingInput, "orgId">) => {
       const created = await billingRepository.create({ ...input, orgId: getSession().orgId });
       console.log("[billing] created, type=", input.type, "amount=", input.amount);
-      // 触发积分引擎:billing.consumed (独立触发器,避免与 encounter.closed 双计)
-      try {
-        if (input.type === "消费" && input.amount > 0) {
-          const realAmt = input.sessions && input.sessions > 0 ? input.amount * input.sessions : input.amount;
-          await onBillingConsumed(input.patientId, created.id, realAmt, input.encounterId);
-        } else if (input.type === "充值" && input.amount > 0) {
-          await onBillingRecharged(input.patientId, created.id, input.amount);
-        }
-      } catch (e) { console.warn("[billing] 积分触发失败:", e); }
+      // 直接调 processEvent,绕过事件总线
+      if (input.amount > 0) {
+        try {
+          const { processEvent } = await import("../membership/rule-engine");
+          const event: { type: string; patientId: string; amount: number; createdAt: Date; billingId: string; encounterId?: string } = {
+            type: input.type === "消费" ? "billing.consumed" : "billing.recharged",
+            patientId: input.patientId,
+            billingId: created.id,
+            amount: input.sessions && input.sessions > 0 ? input.amount * input.sessions : input.amount,
+            createdAt: new Date(),
+          };
+          if (input.encounterId) event.encounterId = input.encounterId;
+          await processEvent(event as any);
+          console.log("[billing] processEvent done");
+        } catch (e: unknown) { console.warn("[billing] processEvent failed:", e); }
+      }
       return created;
     },
     onSuccess: (_, vars) => {
