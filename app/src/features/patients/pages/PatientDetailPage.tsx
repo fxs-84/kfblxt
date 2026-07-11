@@ -250,6 +250,7 @@ export function PatientDetailPage() {
                 })()}
               </div>
               <BrainRegionPanel patientId={patient.id} encounterId={examEncounterId} />
+              <PainAssessmentForm patientId={patient.id} encounterId={examEncounterId} draftKey={examEncounterId} />
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}

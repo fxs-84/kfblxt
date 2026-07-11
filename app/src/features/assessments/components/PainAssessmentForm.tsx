@@ -34,8 +34,11 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
   const [done, setDoneState] = useState(draft.value.done);
   const [lastAnswered, setLastAnswered] = useState<{ type: "csi" | "slanss"; index: number } | null>(null);
 
-  // 同步状态到 draft
-  useEffect(() => { if (draftId) draft.setValue({ csi, slanss, done }); }, [csi, slanss, done, draftId]);
+  // 同步状态到 draft — 防抖 600ms 自动写 localStorage
+  useEffect(() => {
+    if (!draftId) return;
+    draft.setValue({ csi, slanss, done });
+  }, [csi, slanss, done, draftId]);
 
   const setCsi = (fn: (prev: Record<number, number>) => Record<number, number>) => {
     setCsiState((p) => fn(p));
