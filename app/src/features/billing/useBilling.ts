@@ -25,6 +25,7 @@ export function useCreateBilling() {
   return useMutation({
     mutationFn: async (input: Omit<BillingInput, "orgId">) => {
       const created = await billingRepository.create({ ...input, orgId: getSession().orgId });
+      console.log("[billing] created, type=", input.type, "amount=", input.amount);
       // 触发积分引擎:billing.consumed (独立触发器,避免与 encounter.closed 双计)
       try {
         if (input.type === "消费" && input.amount > 0) {
