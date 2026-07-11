@@ -69,7 +69,8 @@ export async function onBillingConsumed(
   amount: number,
   encounterId?: string,
 ): Promise<void> {
-  await emit({ type: "billing.consumed", patientId, billingId, amount, encounterId, createdAt: new Date() });
+  const { processEvent } = await import("./rule-engine");
+  await processEvent({ type: "billing.consumed", patientId, billingId, amount, encounterId, createdAt: new Date() });
   if (amount > 0) await checkTierUpgrade(patientId, amount);
 }
 
@@ -79,7 +80,8 @@ export async function onBillingRecharged(
   billingId: string,
   amount: number,
 ): Promise<void> {
-  await emit({ type: "billing.recharged", patientId, billingId, amount, createdAt: new Date() });
+  const { processEvent } = await import("./rule-engine");
+  await processEvent({ type: "billing.recharged", patientId, billingId, amount, createdAt: new Date() });
 }
 
 /** 检查是否达到第 N 次就诊里程碑 */
