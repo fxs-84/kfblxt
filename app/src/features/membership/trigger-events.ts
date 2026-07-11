@@ -25,4 +25,10 @@ class EventBus {
   }
 }
 
-export const membershipBus = new EventBus();
+/** 挂 window 上防止生产 build 多 chunk 复制出多个实例 */
+const KEY = "__anrm_membership_bus";
+const g = globalThis as Record<string, unknown>;
+const membershipBus: EventBus = (g[KEY] as EventBus) ?? new EventBus();
+if (!g[KEY]) g[KEY] = membershipBus;
+
+export { membershipBus };
