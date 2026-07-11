@@ -32,6 +32,7 @@ export function useDraftAutosave<T extends object>(
     return initial;
   }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const prevKeyRef = useRef(storageKey);
   const [value, setValueState] = useState<T>(hydrate);
   const [hasDraft, setHasDraft] = useState<boolean>(Boolean(storageKey && localStorage.getItem(storageKey)));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
@@ -43,8 +44,13 @@ export function useDraftAutosave<T extends object>(
   const valueRef = useRef(value);
   valueRef.current = value;
 
-  // key 变化时重新 hydrate
+  // key 变化时重新 hydrate + 清理旧 key 的 timer
   useEffect(() => {
+    const prev = prevKeyRef.current;
+    if (prev !== storageKey) {
+      prevKeyRef.current = storageKey;
+      if (timer.current) clearTimeout(timer.current);
+    }
     const fresh = hydrate();
     setValueState(fresh);
     setHasDraft(Boolean(storageKey && localStorage.getItem(storageKey)));
