@@ -61,6 +61,7 @@ export async function findRuleById(id: string): Promise<PointsRule | null> {
 export async function createRule(rule: PointsRule): Promise<PointsRule> {
   ruleSchema.parse(rule);
   const all = load<PointsRule>("rules");
+  console.log("[findAllRules] count=", all.length, "rules:", all.map(r => r.name + "(" + r.enabled + ")").join(", "));
   all.push(rule);
   save("rules", all);
   return rule;
