@@ -10,6 +10,7 @@ export type NeuroLevel =
   | "基底节"
   | "小脑"
   | "脑干/中脑"
+  | "前庭"
   | "脊髓"
   | "神经根"
   | "周围神经"
@@ -18,6 +19,7 @@ export type NeuroLevel =
 
 export const NEURO_LEVELS: readonly NeuroLevel[] = [
   "皮质", "基底节", "小脑", "脑干/中脑",
+  "前庭",
   "脊髓", "神经根", "周围神经", "神经肌肉接头", "肌肉",
 ];
 
