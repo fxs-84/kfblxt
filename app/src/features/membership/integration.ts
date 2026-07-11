@@ -18,7 +18,6 @@ export async function onEncounterCreated(
   encounterId: string,
 ): Promise<void> {
   await emit({ type: "encounter.created", patientId, encounterId, createdAt: new Date() });
-  await checkEncounterNthVisit(patientId, encounterId);
 }
 
 /** 就诊关闭 — 自动触发奖励积分 + 消费积分 + 等级升级 */

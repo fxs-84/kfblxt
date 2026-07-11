@@ -32,7 +32,7 @@ export function useCreateBilling() {
         } else if (input.type === "充值" && input.amount > 0) {
           await onBillingRecharged(input.patientId, created.id, input.amount);
         }
-      } catch { /* 静默 */ }
+      } catch (e) { console.warn("[billing] 积分触发失败:", e); }
       return created;
     },
     onSuccess: (_, vars) => {
