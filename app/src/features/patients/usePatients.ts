@@ -60,11 +60,25 @@ export function useDeletePatient() {
         throw new Error("仅管理员可删除患者档案");
       }
       await patientRepository.remove(id);
+      // 级联软删:把指向该 patient 的会员档案/积分流水/兑换订单标 deletedAt,
+      // 仓储 findAll* 已统一过滤,展示侧自动消失;数据保留作审计/计费证据。
+      const { markMembershipsOrphanedByPatient, markLogsOrphanedByPatient, markRedemptionsOrphanedByPatient } =
+        await import("../membership/rule.repository");
+      const [mCount, lCount, rCount] = await Promise.all([
+        markMembershipsOrphanedByPatient(id),
+        markLogsOrphanedByPatient(id),
+        markRedemptionsOrphanedByPatient(id),
+      ]);
+      // eslint-disable-next-line no-console
+      console.log(`[deletePatient] ${id} cascade: memberships=${mCount}, logs=${lCount}, redemptions=${rCount}`);
       return id;
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: [...KEY, id] });
+      // 让会员中心/兑换审核等全量视图也刷新
+      qc.invalidateQueries({ queryKey: ["memberships"] });
+      qc.invalidateQueries({ queryKey: ["redemptions"] });
     },
   });
 }

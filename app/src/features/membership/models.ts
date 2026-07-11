@@ -96,6 +96,8 @@ export const patientMembershipSchema = z.object({
   totalSpent: z.number().min(0),
   registeredAt: z.string(),
   note: z.string().nullable().default(null),
+  /** 软删标记 — 患者被删除后由 useDeletePatient 级联置位,findAll* 自动过滤 */
+  deletedAt: z.string().nullable().default(null),
 });
 export type PatientMembership = z.infer<typeof patientMembershipSchema>;
 
@@ -111,6 +113,8 @@ export const pointsLogSchema = z.object({
   refId: z.string().nullable().default(null),
   operatorId: z.string(),
   createdAt: z.string(),
+  /** 软删标记 — 审计/计费证据保留,仅前台不显示 */
+  deletedAt: z.string().nullable().default(null),
 });
 export type PointsLog = z.infer<typeof pointsLogSchema>;
 
@@ -162,6 +166,8 @@ export const redemptionSchema = z.object({
   createdAt: z.string(),
   fulfilledAt: z.string().nullable().default(null),
   cancelledAt: z.string().nullable().default(null),
+  /** 软删标记 — 患者被删除后由 useDeletePatient 级联置位 */
+  deletedAt: z.string().nullable().default(null),
 });
 export type Redemption = z.infer<typeof redemptionSchema>;
 

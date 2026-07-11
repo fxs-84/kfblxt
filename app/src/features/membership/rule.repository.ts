@@ -104,12 +104,12 @@ export async function updateTier(tier: MemberTier, patch: Partial<TierConfig>): 
 
 /** ===== 患者会员档案 ===== */
 export async function findAllMemberships(): Promise<PatientMembership[]> {
-  return load<PatientMembership>("memberships");
+  return load<PatientMembership>("memberships").filter(m => !m.deletedAt);
 }
 
 export async function getOrCreateMembership(patientId: string): Promise<PatientMembership> {
   const all = load<PatientMembership>("memberships");
-  const existing = all.find(m => m.patientId === patientId);
+  const existing = all.find(m => m.patientId === patientId && !m.deletedAt);
   if (existing) return existing;
   const fresh: PatientMembership = {
     patientId,
@@ -140,7 +140,7 @@ export async function updateMembership(
 
 /** ===== 积分流水 ===== */
 export async function findAllLogs(): Promise<PointsLog[]> {
-  return load<PointsLog>("logs");
+  return load<PointsLog>("logs").filter(l => !l.deletedAt);
 }
 
 export async function appendLog(log: PointsLog): Promise<PointsLog> {
@@ -153,13 +153,49 @@ export async function appendLog(log: PointsLog): Promise<PointsLog> {
 
 export async function getRecentLogs(patientId: string, limit = 20): Promise<PointsLog[]> {
   return load<PointsLog>("logs")
-    .filter(l => l.patientId === patientId)
+    .filter(l => l.patientId === patientId && !l.deletedAt)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, limit);
 }
 
 export async function getLogsForRule(ruleId: string, patientId?: string): Promise<PointsLog[]> {
-  return load<PointsLog>("logs").filter(l => l.ruleId === ruleId && (!patientId || l.patientId === patientId));
+  return load<PointsLog>("logs").filter(
+    l => l.ruleId === ruleId && !l.deletedAt && (!patientId || l.patientId === patientId),
+  );
+}
+
+/**
+ * 级联软删:患者被删除时,把指向该 patientId 的记录打 deletedAt 标记。
+ * findAll* 已统一过滤 deletedAt,所以展示侧自动消失;
+ * localStorage 仍保留原始数据(作为审计/计费证据)。
+ * 返回标记条数,便于诊断与测试断言。
+ */
+export async function markMembershipsOrphanedByPatient(patientId: string): Promise<number> {
+  const all = load<PatientMembership>("memberships");
+  const ts = new Date().toISOString();
+  let n = 0;
+  for (const m of all) {
+    if (m.patientId === patientId && !m.deletedAt) {
+      m.deletedAt = ts;
+      n++;
+    }
+  }
+  if (n > 0) save("memberships", all);
+  return n;
+}
+
+export async function markLogsOrphanedByPatient(patientId: string): Promise<number> {
+  const all = load<PointsLog>("logs");
+  const ts = new Date().toISOString();
+  let n = 0;
+  for (const l of all) {
+    if (l.patientId === patientId && !l.deletedAt) {
+      l.deletedAt = ts;
+      n++;
+    }
+  }
+  if (n > 0) save("logs", all);
+  return n;
 }
 
 /** 兼容旧调用 — 提供对象风格的仓储 */
@@ -230,10 +266,24 @@ export async function deleteReward(id: string): Promise<void> {
 
 /** ===== 兑换订单 ===== */
 export async function findAllRedemptions(): Promise<Redemption[]> {
-  return load<Redemption>("redemptions");
+  return load<Redemption>("redemptions").filter(r => !r.deletedAt);
 }
 export async function findRedemptionsByPatient(patientId: string): Promise<Redemption[]> {
-  return load<Redemption>("redemptions").filter(r => r.patientId === patientId);
+  return load<Redemption>("redemptions").filter(r => r.patientId === patientId && !r.deletedAt);
+}
+
+export async function markRedemptionsOrphanedByPatient(patientId: string): Promise<number> {
+  const all = load<Redemption>("redemptions");
+  const ts = new Date().toISOString();
+  let n = 0;
+  for (const r of all) {
+    if (r.patientId === patientId && !r.deletedAt) {
+      r.deletedAt = ts;
+      n++;
+    }
+  }
+  if (n > 0) save("redemptions", all);
+  return n;
 }
 export async function createRedemption(r: Redemption): Promise<Redemption> {
   redemptionSchema.parse(r);
