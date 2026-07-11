@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePatients } from "../usePatients";
+import { sortPatientsByCreatedDesc } from "../patient-sort";
 import { calcAge, formatDate, SEX_LABELS } from "../../../lib/format";
 import { useSession } from "../../../components/auth/useSession";
 import { MyFilterToggle, applyMyFilter } from "../../../components/auth/MyFilterToggle";
@@ -16,13 +17,16 @@ export function PatientListPage() {
     if (!patients) return [];
     let list = applyMyFilter(patients, onlyMine, session.userId);
     const q = query.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.phone ?? "").includes(q) ||
-        (p.medicalRecordNo ?? "").toLowerCase().includes(q),
-    );
+    if (q) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.phone ?? "").includes(q) ||
+          (p.medicalRecordNo ?? "").toLowerCase().includes(q),
+      );
+    }
+    // 按建档日期由近到远(desc)— 最近建档的档案优先展示
+    return sortPatientsByCreatedDesc(list);
   }, [patients, query, onlyMine, session.userId]);
 
   return (
