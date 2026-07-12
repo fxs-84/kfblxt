@@ -131,7 +131,7 @@ export const BUILTIN_RULES: PointsRule[] = [
     builtin: true,
     trigger: "patient.recommend",
     conditions: [],
-    action: { kind: "award_fixed", points: 100, reason: "推荐新患者" },
+    action: { kind: "award_fixed", points: 100, reason: "推荐新客户" },
     cooldownDays: 0,
     maxPerPatient: 0,
     priority: 10,
@@ -158,7 +158,7 @@ export const BUILTIN_RULES: PointsRule[] = [
 
 export const DEFAULT_TIERS: TierConfig[] = [
   { tier: "regular", name: "普通会员", color: "#9CA3AF", icon: "👤", minTotalSpent: 0, pointMultiplier: 1, discountOnRedeem: 1 },
-  { tier: "silver", name: "银卡", color: "#C0C0C0", icon: "🥈", minTotalSpent: 2000, pointMultiplier: 1.2, discountOnRedeem: 0.95 },
-  { tier: "gold", name: "金卡", color: "#FFD700", icon: "🥇", minTotalSpent: 8000, pointMultiplier: 1.5, discountOnRedeem: 0.9 },
-  { tier: "diamond", name: "钻石", color: "#B9F2FF", icon: "💎", minTotalSpent: 20000, pointMultiplier: 2, discountOnRedeem: 0.8 },
+  { tier: "silver", name: "银卡", color: "#C0C0C0", icon: "🥈", minTotalSpent: 2000, pointMultiplier: 1.2, discountOnRedeem: 1 },
+  { tier: "gold", name: "金卡", color: "#FFD700", icon: "🥇", minTotalSpent: 8000, pointMultiplier: 1.5, discountOnRedeem: 1 },
+  { tier: "diamond", name: "钻石", color: "#B9F2FF", icon: "💎", minTotalSpent: 20000, pointMultiplier: 2, discountOnRedeem: 1 },
 ];

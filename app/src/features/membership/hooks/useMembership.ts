@@ -51,10 +51,22 @@ export function usePointsLogs(patientId: string | undefined | null, limit = 20):
 export function useAdjustPoints() {
   const session = useSession();
   return async (patientId: string, delta: number, reason: string) => {
+    let finalDelta = delta;
+    let suffix = "";
+    if (delta > 0) {
+      const membership = await getOrCreateMembership(patientId);
+      const tiers = await findAllTiers();
+      const tier = tiers.find(t => t.tier === membership.tier);
+      const multiplier = tier?.pointMultiplier ?? 1;
+      if (multiplier !== 1) {
+        finalDelta = Math.round(delta * multiplier);
+        suffix = ` (${tier?.name ?? membership.tier} ×${multiplier})`;
+      }
+    }
     return awardPoints({
       patientId,
-      delta,
-      reason,
+      delta: finalDelta,
+      reason: reason + suffix,
       triggerType: "manual",
       refType: "manual",
       operatorId: session?.userId ?? "system",
