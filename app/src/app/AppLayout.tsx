@@ -61,7 +61,7 @@ export function AppLayout() {
         <nav className="nav" aria-label="主导航">
           {NAV.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end}>
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={item.icon} />
               </svg>
               {item.label}

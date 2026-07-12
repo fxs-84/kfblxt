@@ -81,7 +81,7 @@ body {
   border-radius: var(--radius-md);
   color: var(--color-sidebar-text);
   text-decoration: none;
-  font-size: var(--text-sm);
+  font-size: 16px;       /* 加大:原 var(--text-sm) = 14px,工作台长期翻看更舒展 */
   font-weight: 500;
   transition: all var(--duration-fast);
 }
@@ -138,10 +138,10 @@ body {
 }
 
 .sidebar__user-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.sidebar__user-name { font-size: var(--text-sm); font-weight: 600; color: #ffffff; }
-.sidebar__user-role { font-size: var(--text-xs); color: #5a718a; }
+.sidebar__user-name { font-size: 15px; font-weight: 600; color: #ffffff; }   /* 加大:原 var(--text-sm) = 14px */
+.sidebar__user-role { font-size: 13px; color: #5a718a; }                          /* 加大:原 var(--text-xs) = 12px */
 .sidebar__user-action {
-  font-size: var(--text-sm);
+  font-size: 15px;       /* 加大:原 var(--text-sm) = 14px */
   color: #5a718a;
   flex-shrink: 0;
   transition: color var(--duration-fast), transform var(--duration-fast);
