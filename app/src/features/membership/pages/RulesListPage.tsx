@@ -83,7 +83,7 @@ export function RulesListPage() {
                 触发: <strong>{TRIGGER_LABEL[r.trigger]}</strong>
                 {r.conditions.length > 0 && <> · 条件: {r.conditions.length} 条</>}
                 {r.cooldownDays > 0 && <> · 冷却 {r.cooldownDays} 天</>}
-                {r.maxPerPatient > 0 && <> · 每患者最多 {r.maxPerPatient} 次</>}
+                {r.maxPerPatient > 0 && <> · 每客户最多 {r.maxPerPatient} 次</>}
               </div>
               <div style={{ fontSize: 12, marginTop: 2 }}>
                 动作: <strong>{describeAction(r)}</strong>

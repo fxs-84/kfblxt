@@ -46,11 +46,11 @@ export function DashboardPage() {
     .sort((a, b) => b.encounterDate.getTime() - a.encounterDate.getTime())
     .slice(0, 8);
 
-  // 为每条就诊找患者名
+  // 为每条就诊找客户名
   const patientMap = new Map(patients.map((p) => [p.id, p]));
 
   const tiles = [
-    { label: "在册患者", value: patients.length, accent: "accent" },
+    { label: "在册客户", value: patients.length, accent: "accent" },
     { label: "今日就诊", value: todayEncounters.length, accent: "normal" },
     { label: "当月就诊", value: monthEncounters.length, accent: "caution" },
     { label: "高痛就诊(VAS≥7)", value: highRisk, accent: "abnormal" },
@@ -63,7 +63,7 @@ export function DashboardPage() {
           <h1 className="page-title">工作台</h1>
           <p className="page-subtitle">ANRM 神经科学康复 · 临床概览</p>
         </div>
-        <Link to="/patients/new" className="btn btn--primary">+ 新建患者</Link>
+        <Link to="/patients/new" className="btn btn--primary">+ 新建客户</Link>
       </header>
 
       <section className="tile-row">

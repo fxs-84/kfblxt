@@ -52,7 +52,7 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
 
   /* 用 ?share=<token>#<snapshot> 形态:
      - ?share=<token> 触发 PatientViewPage 路由
-     - #<base64> 编码全部临床数据,患者设备直接解码渲染,无需 Supabase
+     - #<base64> 编码全部临床数据,客户设备直接解码渲染,无需 Supabase
      - GitHub Pages 对未知路径返回 404,querystring 形态走主站 200 */
   const shareUrl = (token: string, hash?: string) => {
     const base = `${window.location.origin}${import.meta.env.BASE_URL}?share=${token}`;
@@ -62,8 +62,8 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
   return (
     <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>
       <div className="panel__head">
-        <h3 className="panel__title">📤 分享给患者</h3>
-        <span className="panel__hint">患者扫码或点链接查看诊治摘要</span>
+        <h3 className="panel__title">📤 分享给客户</h3>
+        <span className="panel__hint">客户扫码或点链接查看诊治摘要</span>
       </div>
 
       {!showForm && shares.length === 0 && (
@@ -88,7 +88,7 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
             </div>
             <div style={{ display: "flex", gap: "var(--space-3)" }}>
               <div className="field" style={{ flex: 1 }}>
-                <label>给患者的留言</label>
+                <label>给客户的留言</label>
                 <input value={message} onChange={(e) => setMessage(e.target.value)}
                   placeholder="如:坚持训练,下周复诊时我们评估进展"
                   style={{ padding: "var(--space-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", font: "inherit" }} />

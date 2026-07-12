@@ -1,5 +1,5 @@
 /**
- * Supabase 分享仓储 — 分享链接走云端(患者端需跨设备访问)。
+ * Supabase 分享仓储 — 分享链接走云端(客户端需跨设备访问)。
  * 当 Supabase 环境变量未配时,自动回退到 localStorage 仓储。
  *
  * 用法:替换 share.repository.ts 中的 lazyPersistent 为 supabaseShareRepo,
@@ -43,12 +43,12 @@ export async function createSupabaseShare(input: {
   const supabase = getSupabase()!;
   const token = generateToken();
 
-  // 快照当前临床数据,使患者跨设备可查看
+  // 快照当前临床数据,使客户跨设备可查看
   let snapshot: ShareSnapshot | null = null;
   try {
     snapshot = await buildShareSnapshot(input.encounterId, input.patientId);
   } catch {
-    // 快照失败不退避,仍可创建分享但患者端可能缺数据
+    // 快照失败不退避,仍可创建分享但客户端可能缺数据
   }
 
   const row: Record<string, unknown> = {
@@ -98,7 +98,7 @@ export async function createSupabaseShare(input: {
   } as ShareRecord;
 }
 
-/** 患者端按 token 查询分享(匿名,无需登录) */
+/** 客户端按 token 查询分享(匿名,无需登录) */
 export async function findShareByTokenSupabase(token: string): Promise<ShareRecord | null> {
   if (!isSupabaseReady()) {
     const { findShareByToken } = await import("./share.repository");

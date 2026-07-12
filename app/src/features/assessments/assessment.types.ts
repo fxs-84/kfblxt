@@ -54,7 +54,7 @@ export interface SlanssResponses {
 }
 
 /**
- * 疼痛评估记录(患者自评)— 组合 CSI + S-LANSS
+ * 疼痛评估记录(客户自评)— 组合 CSI + S-LANSS
  */
 export interface PainAssessmentRecord extends Entity {
   patientId: string;

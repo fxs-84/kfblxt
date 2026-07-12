@@ -55,7 +55,7 @@ export function PatientFormPage() {
           {
             onSuccess: () => navigate(`/patients/${id}`),
             onError: (e: unknown) => {
-              console.error("[编辑患者] 保存失败:", e);
+              console.error("[编辑客户] 保存失败:", e);
               setSubmitError(e instanceof Error ? e.message : String(e));
             },
           },
@@ -66,27 +66,27 @@ export function PatientFormPage() {
           {
             onSuccess: (created) => navigate(`/patients/${created.id}`),
             onError: (e) => {
-              console.error("[新建患者] 保存失败:", e);
+              console.error("[新建客户] 保存失败:", e);
               setSubmitError(e instanceof Error ? e.message : String(e));
             },
           },
         );
       }
     } catch (e: unknown) {
-      console.error("[患者表单] 校验失败:", e);
+      console.error("[客户表单] 校验失败:", e);
       setSubmitError(e instanceof Error ? `数据校验失败: ${e.message}` : String(e));
     }
   });
 
   if (isEdit && loadingPatient) return <div className="empty">加载中…</div>;
-  if (isEdit && !existing) return <div className="empty">患者不存在。</div>;
+  if (isEdit && !existing) return <div className="empty">客户不存在。</div>;
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1 className="page-title">{isEdit ? "编辑患者信息" : "新建患者"}</h1>
-          <p className="page-subtitle">{isEdit ? `修改 ${existing?.name} 的基本信息` : "建立患者档案"}</p>
+          <h1 className="page-title">{isEdit ? "编辑客户信息" : "新建客户"}</h1>
+          <p className="page-subtitle">{isEdit ? `修改 ${existing?.name} 的基本信息` : "建立客户档案"}</p>
         </div>
       </header>
 

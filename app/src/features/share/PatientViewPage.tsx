@@ -1,5 +1,5 @@
 /**
- * 患者端视图 — 通过分享链接打开,展示本次就诊摘要、家庭作业、复查/对比照片和复诊时间。
+ * 客户端视图 — 通过分享链接打开,展示本次就诊摘要、家庭作业、复查/对比照片和复诊时间。
  * 只读,无需登录,纯展示。
  *
  * 数据来源优先级:
@@ -178,7 +178,7 @@ export function PatientViewPage() {
         </div>
       )}
 
-      {/* 家庭作业(核心患者价值) */}
+      {/* 家庭作业(核心客户价值) */}
       {displayHomework && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)", border: "2px solid var(--color-accent-light)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)", color: "var(--color-accent)" }}>🏠 居家训练作业</h2>
@@ -216,7 +216,7 @@ export function PatientViewPage() {
       {/* 尾部 */}
       <div style={{ textAlign: "center", marginTop: "var(--space-8)", paddingTop: "var(--space-6)", borderTop: "1px solid var(--color-border)" }}>
         <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", margin: 0 }}>
-          本摘要由治疗师通过病历系统生成,仅供患者本人查看。
+          本摘要由治疗师通过病历系统生成,仅供客户本人查看。
         </p>
       </div>
     </div>

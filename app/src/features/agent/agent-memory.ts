@@ -314,7 +314,7 @@ export function getExamFrequency(): Record<string, number> {
   } catch { return {}; }
 }
 
-/** P3: 记录患者体重/VAS 趋势 */
+/** P3: 记录客户体重/VAS 趋势 */
 export function recordVasHistory(patientId: string, vas: number) {
   try {
     const key = "anrm_vas_history";

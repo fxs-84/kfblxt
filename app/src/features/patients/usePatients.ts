@@ -23,7 +23,7 @@ export function useCreatePatient() {
   return useMutation({
     mutationFn: async (input: PatientInput) => {
       if (!can(getSession().role, "patient:write")) {
-        throw new Error("当前角色无权新建患者");
+        throw new Error("当前角色无权新建客户");
       }
       const created = await patientRepository.create(input);
       // 触发积分引擎:patient.created (赠送注册积分)
@@ -40,7 +40,7 @@ export function useUpdatePatient() {
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<PatientInput> }) => {
       if (!can(getSession().role, "patient:write")) {
-        throw new Error("当前角色无权修改患者信息");
+        throw new Error("当前角色无权修改客户信息");
       }
       return patientRepository.update(id, patch);
     },
@@ -55,9 +55,9 @@ export function useDeletePatient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // RBAC:只有 admin 可软删除患者
+      // RBAC:只有 admin 可软删除客户
       if (!can(getSession().role, "patient:delete")) {
-        throw new Error("仅管理员可删除患者档案");
+        throw new Error("仅管理员可删除客户档案");
       }
       await patientRepository.remove(id);
       // 级联软删:把指向该 patient 的会员档案/积分流水/兑换订单标 deletedAt,

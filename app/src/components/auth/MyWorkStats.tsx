@@ -57,7 +57,7 @@ export function MyWorkStats() {
     };
 
     return [
-      { label: "患者建档",  today: countMine(patients).today,   month: countMine(patients).month,   total: countMine(patients).total,   to: "/patients", icon: "👤" },
+      { label: "客户建档",  today: countMine(patients).today,   month: countMine(patients).month,   total: countMine(patients).total,   to: "/patients", icon: "👤" },
       { label: "就诊记录",  today: countMine(encounters).today,  month: countMine(encounters).month,  total: countMine(encounters).total,  to: "/",         icon: "📋" },
       { label: "查体会话",  today: countMine(examSessions).today, month: countMine(examSessions).month, total: countMine(examSessions).total, to: "/", icon: "🔍" },
       { label: "诊断",      today: countMine(diagnoses).today,   month: countMine(diagnoses).month,   total: countMine(diagnoses).total,   to: "/",         icon: "🧠" },
@@ -91,7 +91,7 @@ export function MyWorkStats() {
         month: myEncounters.filter((e) => isOnOrAfter(new Date(e.encounterDate), startOfMonth)).length,
         total: myEncounters.length,
       },
-      // 接诊人数(独立患者)
+      // 接诊人数(独立客户)
       patientsSeen: {
         today: new Set(myEncounters.filter((e) => isOnOrAfter(new Date(e.encounterDate), startOfDay)).map((e) => e.patientId)).size,
         month: new Set(myEncounters.filter((e) => isOnOrAfter(new Date(e.encounterDate), startOfMonth)).map((e) => e.patientId)).size,
@@ -154,7 +154,7 @@ export function MyWorkStats() {
         <div className="my-work-perf-item">
           <span className="my-work-perf-item__label">接诊人数</span>
           <span className="my-work-perf-item__value">{performance.patientsSeen.today}</span>
-          <span className="my-work-perf-item__hint">独立患者 · 本月 {performance.patientsSeen.month} · 累计 {performance.patientsSeen.total}</span>
+          <span className="my-work-perf-item__hint">独立客户 · 本月 {performance.patientsSeen.month} · 累计 {performance.patientsSeen.total}</span>
         </div>
         <div className="my-work-perf-item my-work-perf-item--money">
           <span className="my-work-perf-item__label">业绩收入</span>

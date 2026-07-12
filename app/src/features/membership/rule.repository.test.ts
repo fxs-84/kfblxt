@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe("patient 删除级联软删 — display 侧自动消失", () => {
   it("markMembershipsOrphanedByPatient:findAllMemberships 不再返回该 patient 行,但 localStorage 仍保留", async () => {
-    // Arrange — 给两个患者各建一条会员档案
+    // Arrange — 给两个客户各建一条会员档案
     await getOrCreateMembership(PATIENT_KEEP);
     await getOrCreateMembership(PATIENT_DELETE);
 

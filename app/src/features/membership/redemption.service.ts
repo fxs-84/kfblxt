@@ -1,5 +1,5 @@
 /**
- * 兑换服务 — 患者申请兑换,治疗师审核
+ * 兑换服务 — 客户申请兑换,治疗师审核
  */
 import { useSession } from "../../components/auth/useSession";
 import { awardPoints } from "./points.service";
@@ -25,7 +25,7 @@ export interface RedeemResult {
   error?: string;
 }
 
-/** 患者申请兑换 — 创建订单,扣减积分(挂账,审核通过后真正落地) */
+/** 客户申请兑换 — 创建订单,扣减积分(挂账,审核通过后真正落地) */
 export async function requestRedemption(p: RedeemParams, operatorId = "system"): Promise<RedeemResult> {
   const reward = await findRewardById(p.rewardId);
   if (!reward) return { ok: false, error: "商品不存在" };

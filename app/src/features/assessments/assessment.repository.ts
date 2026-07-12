@@ -14,7 +14,7 @@ import type { BrainRegionResponses, BrainRegionScore, PhoneEarPreference } from 
 type StoredAssessmentRow = (BrainAssessmentRecordRow | PainAssessmentRecordRow) & Entity;
 
 function validate(input: AssessmentInput): AssessmentInput {
-  if (!input.patientId) throw new Error("患者 ID 不能为空");
+  if (!input.patientId) throw new Error("客户 ID 不能为空");
   if (!["brain_region", "pain_assessment"].includes(input.type)) {
     throw new Error(`暂不支持量表类型: ${input.type}`);
   }
@@ -92,7 +92,7 @@ export const assessmentRepository = {
   remove: removeAcross,
 };
 
-/** 查找某患者的所有量表记录(按创建时间倒序) */
+/** 查找某客户的所有量表记录(按创建时间倒序) */
 export async function findAssessmentsByPatient(patientId: string): Promise<StoredAssessmentRow[]> {
   const all = await assessmentRepository.findAll();
   return all.filter((a) => a.patientId === patientId);

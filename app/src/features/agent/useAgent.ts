@@ -115,10 +115,10 @@ export function useAgent() {
     [sess.userId],
   );
 
-  /** 创建患者 */
+  /** 创建客户 */
   const onPatientCreated = useCallback(
     (patientId: string, name: string) => {
-      recordPersonalAction("create_patient", `新建患者: ${name}`, {
+      recordPersonalAction("create_patient", `新建客户: ${name}`, {
         entityId: patientId,
         patientId,
         therapistId: sess.userId,

@@ -10,7 +10,7 @@ interface Props {
 }
 
 /**
- * 疼痛评估历史列表 — 展示某患者/某次就诊已保存的 CSI + S-LANSS 记录。
+ * 疼痛评估历史列表 — 展示某客户/某次就诊已保存的 CSI + S-LANSS 记录。
  * 治疗师完成评估后,可在此查阅历史打分。
  */
 export function PainAssessmentList({ patientId, encounterId }: Props) {

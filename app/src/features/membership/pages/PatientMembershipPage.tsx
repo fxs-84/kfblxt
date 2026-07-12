@@ -1,5 +1,5 @@
 /**
- * 患者会员卡页 — 治疗师查看 + 手动调整积分
+ * 客户会员卡页 — 治疗师查看 + 手动调整积分
  */
 import { useState } from "react";
 import { usePatientMembership, usePointsLogs, useTiers, useAdjustPoints } from "../hooks/useMembership";

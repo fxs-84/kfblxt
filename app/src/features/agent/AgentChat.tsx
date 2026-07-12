@@ -307,7 +307,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
             </p>
             <ul style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "8px 0", paddingLeft: 18 }}>
               <li>文件内容会离开你的浏览器</li>
-              <li>请勿上传含患者隐私信息(PHI)的文件</li>
+              <li>请勿上传含客户隐私信息(PHI)的文件</li>
               <li>纯文本文件(.txt/.md/.csv/.json)同样会发送</li>
             </ul>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
@@ -833,7 +833,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
             <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>开始与临床助手对话</p>
             <p style={{ fontSize: 12, lineHeight: 1.6 }}>
               你可以问:<br />
-              • "上周有哪些腰椎间盘突出患者复诊?"<br />
+              • "上周有哪些腰椎间盘突出客户复诊?"<br />
               • "总结 patient-uuid 的完整病史"<br />
               • "我最近诊断 S1 神经根的病例干预效果如何?"
             </p>

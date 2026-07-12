@@ -30,7 +30,7 @@ export function RewardReviewPage() {
     await reload();
   };
   const handleCancel = async (id: string) => {
-    if (!confirm("确定取消此兑换?积分将退还给患者。")) return;
+    if (!confirm("确定取消此兑换?积分将退还给客户。")) return;
     await cancelRedemption(id, session?.userId ?? "system");
     await reload();
   };
@@ -66,7 +66,7 @@ export function RewardReviewPage() {
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{o.rewardName}</div>
                 <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                  患者: {m?.patientId.slice(0, 8) ?? o.patientId} · {o.pointsCost} 积分
+                  客户: {m?.patientId.slice(0, 8) ?? o.patientId} · {o.pointsCost} 积分
                 </div>
                 <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>
                   {new Date(o.createdAt).toLocaleString("zh-CN")}

@@ -2,7 +2,7 @@
  * 会员中心 — 治疗师操作台
  * 3 块:
  *   1. 顶部 4 个统计卡片(会员数/总积分/待审核订单/本月兑换)
- *   2. 会员列表(可按患者名/ID 搜,每行"查积分""发起兑换"快捷按钮)
+ *   2. 会员列表(可按客户名/ID 搜,每行"查积分""发起兑换"快捷按钮)
  *   3. 最近兑换订单(状态 + 快捷审核入口)
  */
 import { useEffect, useMemo, useState } from "react";
@@ -72,14 +72,14 @@ export function MembershipCenterPage() {
   }, [reload]);
 
   /**
-   * 删除某患者的会员资格 — 软删 membership + 软删该 patient 的流水/兑换;
+   * 删除某客户的会员资格 — 软删 membership + 软删该 patient 的流水/兑换;
    * localStorage 数据保留(deletedAt 时间戳)作审计/计费证据。
    * 仅 admin 可见入口;点击 → window.confirm → cascade。
    */
   const handleDeleteMembership = async (patientId: string, patientName: string) => {
     if (deletingPatientId) return;
     const ok = window.confirm(
-      `确定删除会员 ${patientName}?\n该患者的会员档案、积分流水与兑换订单将不再显示,但后台数据保留以备审计。`,
+      `确定删除会员 ${patientName}?\n该客户的会员档案、积分流水与兑换订单将不再显示,但后台数据保留以备审计。`,
     );
     if (!ok) return;
     setDeletingPatientId(patientId);
@@ -202,7 +202,7 @@ export function MembershipCenterPage() {
           type="search"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="搜患者名或 ID…"
+          placeholder="搜客户名或 ID…"
           style={{
             width: "100%", padding: "8px 10px", fontSize: 13,
             border: "1px solid var(--color-border)", borderRadius: 4, marginBottom: 12,
@@ -214,7 +214,7 @@ export function MembershipCenterPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-              <th style={{ padding: "8px 6px" }}>患者</th>
+              <th style={{ padding: "8px 6px" }}>客户</th>
               <th style={{ padding: "8px 6px" }}>等级</th>
               <th style={{ padding: "8px 6px", textAlign: "right" }}>当前积分</th>
               <th style={{ padding: "8px 6px", textAlign: "right" }}>累计获得</th>
@@ -283,7 +283,7 @@ export function MembershipCenterPage() {
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
               <th style={{ padding: "6px" }}>时间</th>
-              <th style={{ padding: "6px" }}>患者</th>
+              <th style={{ padding: "6px" }}>客户</th>
               <th style={{ padding: "6px" }}>商品</th>
               <th style={{ padding: "6px", textAlign: "right" }}>积分</th>
               <th style={{ padding: "6px" }}>状态</th>

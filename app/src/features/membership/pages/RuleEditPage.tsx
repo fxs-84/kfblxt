@@ -14,6 +14,8 @@ import {
   TRIGGER_TYPES,
   CONDITION_FIELDS,
   CONDITION_OPS,
+  CONDITION_FIELD_LABEL,
+  CONDITION_OP_LABEL,
   MEMBER_TIERS,
   type PointsRule,
   type RuleCondition,
@@ -99,10 +101,10 @@ export function RuleEditPage() {
           {rule.conditions.map((c, i) => (
             <div key={i} style={{ display: "flex", gap: 4 }}>
               <select value={c.field} onChange={e => updateCondition(i, { ...c, field: e.target.value as typeof c.field })} style={selectStyle}>
-                {CONDITION_FIELDS.map(f => <option key={f} value={f}>{f}</option>)}
+                {CONDITION_FIELDS.map(f => <option key={f} value={f}>{CONDITION_FIELD_LABEL[f]}</option>)}
               </select>
               <select value={c.op} onChange={e => updateCondition(i, { ...c, op: e.target.value as typeof c.op })} style={selectStyle}>
-                {CONDITION_OPS.map(o => <option key={o} value={o}>{o}</option>)}
+                {CONDITION_OPS.map(o => <option key={o} value={o}>{CONDITION_OP_LABEL[o]}</option>)}
               </select>
               <input
                 value={String(c.value)}
@@ -165,7 +167,7 @@ export function RuleEditPage() {
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span>冷却期(天):</span>
           <input type="number" value={rule.cooldownDays} onChange={e => update("cooldownDays", parseInt(e.target.value, 10) || 0)} style={{ ...inputStyle, width: 80 }} />
-          <span>每患者最多(次):</span>
+          <span>每客户最多(次):</span>
           <input type="number" value={rule.maxPerPatient} onChange={e => update("maxPerPatient", parseInt(e.target.value, 10) || 0)} style={{ ...inputStyle, width: 80 }} />
         </div>
       </Field>

@@ -34,7 +34,7 @@ interface OperationTimelineProps {
 }
 
 /**
- * 患者操作时间线:聚合该患者相关的所有事件,按时间倒序。
+ * 客户操作时间线:聚合该客户相关的所有事件,按时间倒序。
  * 数据来源:encounters(直接),exam_sessions/diagnoses/plans(经 encounter 间接),
  * billing/followup(直接 patientId)。
  */
@@ -60,7 +60,7 @@ export function OperationTimeline({
         type: "建档",
         at: patientCreatedAt,
         authorId: patientCreatedBy,
-        summary: "创建患者档案",
+        summary: "创建客户档案",
         icon: "👤",
       });
     }

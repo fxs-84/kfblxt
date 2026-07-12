@@ -1,5 +1,5 @@
 /**
- * 患者查询工具集 — Agent 调用入口,封装 patient/encounter/diagnosis 仓储。
+ * 客户查询工具集 — Agent 调用入口,封装 patient/encounter/diagnosis 仓储。
  */
 import { z } from "zod";
 import type { AgentTool } from "./schemas";
@@ -20,7 +20,7 @@ const searchPatientsSchema = z.object({
 
 export const searchPatientsTool: AgentTool<typeof searchPatientsSchema> = {
   name: "search_patients",
-  description: "按关键词搜索患者(姓名/主诉/诊断),返回简要卡片列表。",
+  description: "按关键词搜索客户(姓名/主诉/诊断),返回简要卡片列表。",
   inputSchema: searchPatientsSchema,
   execute: async ({ query, limit }) => {
     const patients = await patientRepository.findAll();
@@ -69,16 +69,16 @@ export const searchPatientsTool: AgentTool<typeof searchPatientsSchema> = {
 
 /* ---------- get_patient ---------- */
 const getPatientSchema = z.object({
-  patientId: z.string().describe("患者 UUID"),
+  patientId: z.string().describe("客户 UUID"),
 });
 
 export const getPatientTool: AgentTool<typeof getPatientSchema> = {
   name: "get_patient",
-  description: "读取患者完整档案(基本信息 + 主诉 + 备注)。",
+  description: "读取客户完整档案(基本信息 + 主诉 + 备注)。",
   inputSchema: getPatientSchema,
   execute: async ({ patientId }) => {
     const p = await patientRepository.findById(patientId);
-    if (!p) return JSON.stringify({ error: "患者不存在" });
+    if (!p) return JSON.stringify({ error: "客户不存在" });
     const age = (b: Date) => new Date().getFullYear() - new Date(b).getFullYear();
     return JSON.stringify({
       id: p.id,
@@ -102,7 +102,7 @@ const getPatientTimelineSchema = z.object({
 
 export const getPatientTimelineTool: AgentTool<typeof getPatientTimelineSchema> = {
   name: "get_patient_timeline",
-  description: "拉取某患者的完整就诊时间线:就诊 → 查体 → 诊断 → 治疗计划 → 备注。",
+  description: "拉取某客户的完整就诊时间线:就诊 → 查体 → 诊断 → 治疗计划 → 备注。",
   inputSchema: getPatientTimelineSchema,
   execute: async ({ patientId, includeAttachments }) => {
     const encounters = (await encounterRepository.findAll())

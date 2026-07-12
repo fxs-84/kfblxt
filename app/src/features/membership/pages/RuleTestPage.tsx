@@ -27,8 +27,8 @@ export function RuleTestPage() {
   }, []);
 
   const runTest = async (event: TriggerEvent) => {
-    if (!patientId.trim()) { alert("请输入患者 ID"); return; }
-    // 临时设置患者 tier
+    if (!patientId.trim()) { alert("请输入客户 ID"); return; }
+    // 临时设置客户 tier
     const m = await getOrCreateMembership(patientId.trim());
     const { updateMembership } = await import("../rule.repository");
     await updateMembership(patientId.trim(), { tier });
@@ -45,12 +45,12 @@ export function RuleTestPage() {
     <div style={{ padding: 24, maxWidth: 720 }}>
       <h2 style={{ marginTop: 0 }}>规则测试沙盒</h2>
       <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
-        输入患者 ID 和事件参数,查看所有规则会触发哪些。不修改真实积分数据。
+        输入客户 ID 和事件参数,查看所有规则会触发哪些。不修改真实积分数据。
       </p>
 
       <div style={{ padding: 16, border: "1px solid var(--color-border)", borderRadius: 6, marginTop: 16 }}>
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
-          <Field label="患者 ID">
+          <Field label="客户 ID">
             <input value={patientId} onChange={e => setPatientId(e.target.value)} placeholder="patient-uuid" style={inputStyle} />
           </Field>
           <Field label="当前等级">
@@ -79,7 +79,7 @@ export function RuleTestPage() {
           <TestButton onClick={() => runTest({
             type: "patient.created", patientId: patientId.trim(),
             createdAt: new Date(),
-          })}>新建患者</TestButton>
+          })}>新建客户</TestButton>
           <TestButton onClick={() => runTest({
             type: "share.sent", patientId: patientId.trim(),
             shareToken: "test", createdAt: new Date(),
@@ -87,7 +87,7 @@ export function RuleTestPage() {
           <TestButton onClick={() => runTest({
             type: "patient.recommend", patientId: patientId.trim(),
             refPatientId: "test-ref", createdAt: new Date(),
-          })}>推荐患者</TestButton>
+          })}>推荐客户</TestButton>
           <TestButton onClick={() => runTest({
             type: "patient.birthday", patientId: patientId.trim(),
             createdAt: new Date(),

@@ -324,7 +324,7 @@ export function BrainRegionForm({ patientId, encounterId, onDone }: BrainRegionF
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="如:患者主诉最近 2 周记忆明显下降,已完成 MMSE 排除重度认知障碍"
+              placeholder="如:客户主诉最近 2 周记忆明显下降,已完成 MMSE 排除重度认知障碍"
               style={{ width: "100%", padding: "var(--space-3)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", font: "inherit", fontSize: "var(--text-base)", resize: "vertical", marginTop: 6 }}
             />
           </div>

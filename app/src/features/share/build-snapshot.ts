@@ -1,5 +1,5 @@
 /**
- * 创建分享时快照所有临床数据,使患者在任何设备都能查看完整内容。
+ * 创建分享时快照所有临床数据,使客户在任何设备都能查看完整内容。
  *
  * PatientViewPage 原本依赖 localStorage 仓储(encounter / exam / diagnosis /
  * treatment / attachments), 但这些只存在于医生设备上。

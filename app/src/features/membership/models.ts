@@ -25,10 +25,10 @@ export const TRIGGER_LABEL: Record<TriggerType, string> = {
   "encounter.closed": "完成就诊",
   "encounter.created": "创建就诊",
   "diagnosis.created": "完成诊断",
-  "patient.created": "新建患者档案",
+  "patient.created": "新建客户档案",
   "share.sent": "分享随访",
-  "patient.recommend": "推荐新患者",
-  "patient.birthday": "患者生日",
+  "patient.recommend": "推荐新客户",
+  "patient.birthday": "客户生日",
   "encounter.nth": "第 N 次就诊",
   "billing.consumed": "消费扣款",
   "billing.recharged": "充值入账",
@@ -45,6 +45,23 @@ export type ConditionField = (typeof CONDITION_FIELDS)[number];
 
 export const CONDITION_OPS = ["eq", "neq", "gt", "gte", "lt", "lte", "in"] as const;
 export type ConditionOp = (typeof CONDITION_OPS)[number];
+
+export const CONDITION_FIELD_LABEL: Record<ConditionField, string> = {
+  "patient.tier": "客户等级",
+  "encounter.amount": "消费/充值金额",
+  "patient.age": "客户年龄",
+  "patient.isFirstVisit": "是否首次就诊",
+};
+
+export const CONDITION_OP_LABEL: Record<ConditionOp, string> = {
+  eq: "等于",
+  neq: "不等于",
+  gt: "大于",
+  gte: "大于等于",
+  lt: "小于",
+  lte: "小于等于",
+  in: "属于",
+};
 
 export const conditionSchema = z.object({
   field: z.enum(CONDITION_FIELDS),
@@ -96,7 +113,7 @@ export const patientMembershipSchema = z.object({
   totalSpent: z.number().min(0),
   registeredAt: z.string(),
   note: z.string().nullable().default(null),
-  /** 软删标记 — 患者被删除后由 useDeletePatient 级联置位,findAll* 自动过滤 */
+  /** 软删标记 — 客户被删除后由 useDeletePatient 级联置位,findAll* 自动过滤 */
   deletedAt: z.string().nullable().default(null),
 });
 export type PatientMembership = z.infer<typeof patientMembershipSchema>;
@@ -166,7 +183,7 @@ export const redemptionSchema = z.object({
   createdAt: z.string(),
   fulfilledAt: z.string().nullable().default(null),
   cancelledAt: z.string().nullable().default(null),
-  /** 软删标记 — 患者被删除后由 useDeletePatient 级联置位 */
+  /** 软删标记 — 客户被删除后由 useDeletePatient 级联置位 */
   deletedAt: z.string().nullable().default(null),
 });
 export type Redemption = z.infer<typeof redemptionSchema>;

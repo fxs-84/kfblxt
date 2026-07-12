@@ -23,12 +23,12 @@ export function CashierPage() {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
       <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 800, marginBottom: 4 }}>充值 / 消费</h1>
-      <p style={{ color: "var(--color-text-muted)", marginBottom: 24 }}>查询患者 → 查看余额与历史 → 充值或扣费</p>
+      <p style={{ color: "var(--color-text-muted)", marginBottom: 24 }}>查询客户 → 查看余额与历史 → 充值或扣费</p>
 
-      {/* 患者搜索 */}
+      {/* 客户搜索 */}
       <div className="card" style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="field" style={{ margin: 0 }}>
-          <label style={{ fontWeight: 600 }}>搜索患者</label>
+          <label style={{ fontWeight: 600 }}>搜索客户</label>
           <input
             type="text"
             value={search}
@@ -55,11 +55,11 @@ export function CashierPage() {
           </div>
         )}
         {!selectedId && search.trim() && filtered.length === 0 && (
-          <div style={{ marginTop: 8, color: "var(--color-text-muted)", fontSize: "var(--text-sm)" }}>未找到匹配患者</div>
+          <div style={{ marginTop: 8, color: "var(--color-text-muted)", fontSize: "var(--text-sm)" }}>未找到匹配客户</div>
         )}
       </div>
 
-      {/* 选中患者 → 完整 BillingPanel(余额/消费记录/充值等) */}
+      {/* 选中客户 → 完整 BillingPanel(余额/消费记录/充值等) */}
       {selected && (
         <div>
           <div style={{ marginBottom: 8 }}>

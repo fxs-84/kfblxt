@@ -21,7 +21,7 @@ const NAV: NavItem[] = [
   },
   {
     to: "/patients",
-    label: "患者",
+    label: "客户",
     end: false,
     icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21v-1a6 6 0 0112 0v1",
   },

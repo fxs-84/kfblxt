@@ -1,5 +1,5 @@
 /**
- * P3-12: 患者概览趋势解读 — Agent 自动总结 VAS 变化趋势。
+ * P3-12: 客户概览趋势解读 — Agent 自动总结 VAS 变化趋势。
  */
 import { useMemo } from "react";
 import { generateTrendSummary } from "./agent-utils";

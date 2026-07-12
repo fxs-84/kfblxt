@@ -48,7 +48,7 @@ $INTERVENTIONS
     { "interventionId": "...", "priority": 10, "rationale": "..." }
   ],
   "narrative": {
-    "subjective": "患者主诉…",
+    "subjective": "客户主诉…",
     "objective": "查体发现…",
     "assessment": "神经定位:…节段/神经/机制分析…",
     "plan": "治疗计划:…(使用规范ANRM术语)…复评节点…"

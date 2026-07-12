@@ -6,7 +6,7 @@ import { getInterventionEffectiveness } from "./agent-memory";
 import { INTERVENTIONS_CATALOG } from "../treatment/interventions-catalog";
 import type { FollowupRecord } from "../followup/followup.repository";
 
-/** P3-2: 计算患者优先级分数(越高越靠前) */
+/** P3-2: 计算客户优先级分数(越高越靠前) */
 export function calcPatientPriority(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
 _calcPatientPriority_patientId: string,
@@ -114,7 +114,7 @@ export function suggestFollowupInterval(
   return { intervalDays: 3, rationale: "VAS反弹↑,建议3天内复诊评估" };
 }
 
-/** P3-12: 自动趋势总结(用于患者概览) */
+/** P3-12: 自动趋势总结(用于客户概览) */
 export function generateTrendSummary(
   vasHistory: Array<{ date: string; vas: number }>,
   _unused2: number,

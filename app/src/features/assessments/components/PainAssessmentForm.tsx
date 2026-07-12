@@ -14,7 +14,7 @@ interface PainAssessmentFormProps {
 }
 
 /**
- * 疼痛评估量表(患者自评)— 仿大脑区域定位表模式:
+ * 疼痛评估量表(客户自评)— 仿大脑区域定位表模式:
  *  顶部 sticky 进度条 · 答题自动滚到下一题 · 严重度色码 · 实时计分
  *  CSI 25 题(0-4) + S-LANSS 7 题(二选一,各题分值不同)
  *  支持草稿自动保存(draftKey 传 encounterId)

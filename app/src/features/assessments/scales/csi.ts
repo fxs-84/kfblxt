@@ -1,10 +1,10 @@
 /**
- * CSI 中枢敏感性量表(Central Sensitization Inventory) — 患者自评。
+ * CSI 中枢敏感性量表(Central Sensitization Inventory) — 客户自评。
  *
  * 来源:疼痛评估量表_嵌入病历系统_V2.xlsx
  * 评分:25 项,每项 0-4 分,总分 0-100
  * 分级:0-29轻度 / 30-39中度 / 40-49重度 / ≥50极度(中枢敏化可能性高)
- * 说明:由患者自行填写,反映中枢敏化程度,不是医师打分。
+ * 说明:由客户自行填写,反映中枢敏化程度,不是医师打分。
  */
 
 export const CSI_ITEM_COUNT = 25;

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { SLANSS_ITEMS, scoreSlanss, SLANSS_THRESHOLD } from "../scales/slanss";
 
 /**
- * S-LANSS 利兹神经病理性疼痛自评量表 — 患者自评。
+ * S-LANSS 利兹神经病理性疼痛自评量表 — 客户自评。
  * 7 题,每题二选一(否/是),自动计算总分与诊断阈值判定。
  */
 export function SlanssForm() {
@@ -19,7 +19,7 @@ export function SlanssForm() {
   return (
     <div className="card" style={{ margin: "var(--space-3) 0", border: "1px solid var(--color-border)" }}>
       <div className="exam-panel__header">
-        <h3 className="panel__title" style={{ fontSize: "var(--text-base)" }}>📋 S-LANSS 神经病理性疼痛自评（患者自评）</h3>
+        <h3 className="panel__title" style={{ fontSize: "var(--text-base)" }}>📋 S-LANSS 神经病理性疼痛自评（客户自评）</h3>
         <span className="panel__hint">{answered}/7 题 · 总分 {total.total}{total.total >= SLANSS_THRESHOLD ? " · ⚠ ≥12 提示神经病理性疼痛" : ""}</span>
       </div>
 

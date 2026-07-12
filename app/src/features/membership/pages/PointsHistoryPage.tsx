@@ -1,5 +1,5 @@
 /**
- * 会员积分流水页 — 显示某个患者的所有积分变化记录
+ * 会员积分流水页 — 显示某个客户的所有积分变化记录
  * 每条: 时间 / 事件类型 / 增减数 / 操作后余额 / 操作人 / 关联事件
  * 顶部有"手动调整积分"按钮(转介绍 / 补偿 / 活动奖励等诊疗流程外场景)
  */
@@ -28,9 +28,9 @@ const TRIGGER_LABEL: Record<string, string> = {
   "encounter.closed": "就诊结束奖励",
   "encounter.created": "新建就诊奖励",
   "diagnosis.created": "新建诊断奖励",
-  "patient.created": "新患者奖励",
+  "patient.created": "新客户奖励",
   "share.sent": "分享病历奖励",
-  "patient.recommend": "推荐患者奖励",
+  "patient.recommend": "推荐客户奖励",
   "manual": "手动调整",
 };
 

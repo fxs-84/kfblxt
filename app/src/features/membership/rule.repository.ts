@@ -1,5 +1,5 @@
 /**
- * 规则 + 等级 + 患者会员档案 + 积分流水 — localStorage 仓储
+ * 规则 + 等级 + 客户会员档案 + 积分流水 — localStorage 仓储
  * 跳过通用 Entity 约束,使用 patientId 作主键,时间戳用 ISO 字符串
  */
 import { BUILTIN_RULES, DEFAULT_TIERS } from "./builtin-rules";
@@ -102,7 +102,7 @@ export async function updateTier(tier: MemberTier, patch: Partial<TierConfig>): 
   return all[idx];
 }
 
-/** ===== 患者会员档案 ===== */
+/** ===== 客户会员档案 ===== */
 export async function findAllMemberships(): Promise<PatientMembership[]> {
   return load<PatientMembership>("memberships").filter(m => !m.deletedAt);
 }
@@ -165,7 +165,7 @@ export async function getLogsForRule(ruleId: string, patientId?: string): Promis
 }
 
 /**
- * 级联软删:患者被删除时,把指向该 patientId 的记录打 deletedAt 标记。
+ * 级联软删:客户被删除时,把指向该 patientId 的记录打 deletedAt 标记。
  * findAll* 已统一过滤 deletedAt,所以展示侧自动消失;
  * localStorage 仍保留原始数据(作为审计/计费证据)。
  * 返回标记条数,便于诊断与测试断言。

@@ -95,7 +95,7 @@ export function PatientDetailPage() {
       await deletePatient.mutateAsync(id!);
       navigate("/patients");
     } catch (e: unknown) {
-      console.error("[删除患者] 失败:", e);
+      console.error("[删除客户] 失败:", e);
       const msg = e instanceof Error ? e.message : "删除失败";
       alert(msg + "\n\n当前会话角色: " + getSession().role);
       setConfirmDelete(false);
@@ -106,7 +106,7 @@ export function PatientDetailPage() {
   const { data: activeDiagnosis } = useDiagnosis(activeDiagnosisEncounterId);
 
   if (isLoading) return <div className="empty">加载中…</div>;
-  if (!patient) return <div className="empty">未找到该患者。</div>;
+  if (!patient) return <div className="empty">未找到该客户。</div>;
 
   const list = encounters ?? [];
   const series = vasSeries(list);
@@ -136,7 +136,7 @@ export function PatientDetailPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="page-subtitle"><Link to="/patients">患者</Link> / {patient.medicalRecordNo}</p>
+          <p className="page-subtitle"><Link to="/patients">客户</Link> / {patient.medicalRecordNo}</p>
           <h1 className="page-title">{patient.name}</h1>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
@@ -144,7 +144,7 @@ export function PatientDetailPage() {
             className="btn btn--ghost"
             onClick={() => setConfirmDelete(true)}
             style={{ color: "var(--color-abnormal)" }}
-            title="软删除此患者(可在管理员视图恢复)"
+            title="软删除此客户(可在管理员视图恢复)"
           >
             删除
           </button>
@@ -371,8 +371,8 @@ export function PatientDetailPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="删除患者档案"
-        message={`将软删除「${patient.name}」(${patient.medicalRecordNo})。该操作标记 deletedAt,患者列表/详情自动隐藏,但 RLS 保留记录以便审计与恢复。仅管理员可执行。`}
+        title="删除客户档案"
+        message={`将软删除「${patient.name}」(${patient.medicalRecordNo})。该操作标记 deletedAt,客户列表/详情自动隐藏,但 RLS 保留记录以便审计与恢复。仅管理员可执行。`}
         confirmLabel="确认删除"
         cancelLabel="取消"
         danger

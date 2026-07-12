@@ -1,5 +1,5 @@
 /**
- * 聚合搜索工具 — 跨患者/就诊/诊断/计划全文检索。
+ * 聚合搜索工具 — 跨客户/就诊/诊断/计划全文检索。
  */
 import { z } from "zod";
 import type { AgentTool } from "./schemas";
@@ -18,7 +18,7 @@ const searchAllSchema = z.object({
 
 export const searchAcrossRecordsTool: AgentTool<typeof searchAllSchema> = {
   name: "search_across_records",
-  description: "跨所有记录全文检索:诊断节段/机制/干预名/症状区/患者姓名。",
+  description: "跨所有记录全文检索:诊断节段/机制/干预名/症状区/客户姓名。",
   inputSchema: searchAllSchema,
   execute: async ({ query, scope, limit }) => {
     const q = query.toLowerCase().trim();

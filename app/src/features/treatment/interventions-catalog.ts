@@ -279,7 +279,7 @@ export const INTERVENTIONS_CATALOG: readonly InterventionDef[] = [
     name: "助力主动关节活动度训练(AAROM)",
     neuroTargets: ["脊髓前角", "IA纤维"],
     indications: "肌力MMT 2-3级;主动ROM不足;术后中期",
-    parameters: "助力在末端;患者主动完成可完成范围;10-15次×2-3组",
+    parameters: "助力在末端;客户主动完成可完成范围;10-15次×2-3组",
     pendingConfirmation: true,
   },
   {

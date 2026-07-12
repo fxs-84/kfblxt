@@ -1,5 +1,5 @@
 /**
- * 兑换商城 — 患者视角(治疗师代为下单)
+ * 兑换商城 — 客户视角(治疗师代为下单)
  */
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";

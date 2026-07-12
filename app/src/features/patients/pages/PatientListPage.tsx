@@ -33,11 +33,11 @@ export function PatientListPage() {
     <>
       <header className="page-header">
         <div>
-          <h1 className="page-title">患者</h1>
-          <p className="page-subtitle">神经科学特色病历 · 患者档案</p>
+          <h1 className="page-title">客户</h1>
+          <p className="page-subtitle">神经科学特色病历 · 客户档案</p>
         </div>
         <Link to="/patients/new" className="btn btn--primary">
-          + 新建患者
+          + 新建客户
         </Link>
       </header>
 
@@ -73,12 +73,12 @@ export function PatientListPage() {
           <div className="empty">加载中…</div>
         ) : filtered.length === 0 ? (
           <div className="empty">
-            {query ? "没有匹配的患者。" : "暂无患者,点击「新建患者」开始建档。"}
+            {query ? "没有匹配的客户。" : "暂无客户,点击「新建客户」开始建档。"}
           </div>
         ) : (
           <>
             <div className="search-bar__count">
-              {query ? `找到 ${filtered.length} 条匹配` : `共 ${filtered.length} 名患者`}
+              {query ? `找到 ${filtered.length} 条匹配` : `共 ${filtered.length} 名客户`}
             </div>
             <table className="table">
               <thead>
@@ -97,7 +97,7 @@ export function PatientListPage() {
                     key={p.id}
                     tabIndex={0}
                     role="link"
-                    aria-label={`查看患者 ${p.name}`}
+                    aria-label={`查看客户 ${p.name}`}
                     onClick={() => navigate(`/patients/${p.id}`)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {

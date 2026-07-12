@@ -1,6 +1,6 @@
 /**
- * 发起兑换订单 — 治疗师帮患者(或患者自用)选择商品并创建兑换单
- * 流程: 选商品 → 显示所需积分 / 患者余额 → 校验 → 扣分 + 创建 pending 兑换单
+ * 发起兑换订单 — 治疗师帮客户(或客户自用)选择商品并创建兑换单
+ * 流程: 选商品 → 显示所需积分 / 客户余额 → 校验 → 扣分 + 创建 pending 兑换单
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
@@ -126,7 +126,7 @@ export function RedeemCreatePage() {
   };
 
   if (loading) return <div style={{ padding: 24 }}>加载中…</div>;
-  if (!membership) return <div style={{ padding: 24 }}>未找到该患者的会员信息</div>;
+  if (!membership) return <div style={{ padding: 24 }}>未找到该客户的会员信息</div>;
 
   return (
     <div style={{ padding: 24, maxWidth: 960 }}>

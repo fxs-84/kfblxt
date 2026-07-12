@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * 患者档案的系统边界校验。所有患者数据属于某一机构(org_id),
+ * 客户档案的系统边界校验。所有客户数据属于某一机构(org_id),
  * 与后端 RLS 的多租户隔离保持一致。sex 用生理性别以支持神经/发育评估参考值。
  */
 export const sexEnum = z.enum(["male", "female", "other"]);

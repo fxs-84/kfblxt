@@ -1,7 +1,7 @@
 import type { Patient } from "./patient.schema";
 
 /**
- * 患者列表按建档日期由近到远(降序)排序。
+ * 客户列表按建档日期由近到远(降序)排序。
  * - 不可变:返回新数组,不修改入参
  * - 健壮:createdAt 缺省时视为 epoch=0(沉底),不抛错
  *

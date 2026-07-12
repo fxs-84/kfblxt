@@ -238,7 +238,7 @@ export function generateNarrative(context: ClinicalContext): ClinicalNarrative {
   const natures = context.chiefComplaint.nature.join("、");
   const vas = context.chiefComplaint.vas;
 
-  let subjective = `患者主诉 ${regions} ${natures},VAS ${vas}/10。`;
+  let subjective = `客户主诉 ${regions} ${natures},VAS ${vas}/10。`;
   if (vas >= 7) subjective += "疼痛剧烈,显著影响日常生活。";
   else if (vas >= 4) subjective += "中度不适,部分影响睡眠及活动。";
   else subjective += "症状较轻,ADL 基本不受限。";

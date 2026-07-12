@@ -6,14 +6,14 @@ import type { BrainAssessmentRecordRow } from "../assessment.repository";
 
 interface BrainRegionPanelProps {
   patientId: string;
-  /** 优先显示该就诊关联的问卷;若无则展示该患者全部问卷 */
+  /** 优先显示该就诊关联的问卷;若无则展示该客户全部问卷 */
   encounterId?: string;
 }
 
 /**
  * 大脑区域定位表入口面板。
  * - 在 active encounter 上下文:默认展示该 encounter 的历史 + 新增按钮
- * - 单独传入 patientId 时:展示该患者的全部问卷
+ * - 单独传入 patientId 时:展示该客户的全部问卷
  * - 填写问卷在弹窗中进行(便于阅读、滚动、聚焦)
  */
 export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelProps) {
@@ -36,7 +36,7 @@ export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelPro
   }, [showForm]);
 
   if (!encounterId) {
-    // 仅患者维度:展示该患者全部问卷
+    // 仅客户维度:展示该客户全部问卷
     return (
       <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>
         <div className="panel__head">

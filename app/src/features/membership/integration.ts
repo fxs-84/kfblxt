@@ -7,7 +7,7 @@ import { checkTierUpgrade } from "./rule-engine";
 import type { TriggerEvent } from "./models";
 import { findBillingByPatient } from "../billing/billing.repository";
 
-/** 新建患者档案 */
+/** 新建客户档案 */
 export async function onPatientCreated(patientId: string): Promise<void> {
   await emit({ type: "patient.created", patientId, createdAt: new Date() });
 }
@@ -44,7 +44,7 @@ export async function onShareSent(patientId: string, shareToken: string): Promis
   await emit({ type: "share.sent", patientId, shareToken, createdAt: new Date() });
 }
 
-/** 推荐新患者 */
+/** 推荐新客户 */
 export async function onPatientRecommend(
   patientId: string,
   refPatientId: string,

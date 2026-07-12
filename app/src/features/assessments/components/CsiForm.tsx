@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { CSI_ITEMS, CSI_SCORE_LABELS, scoreCsi, CSI_SEVERITY_LABELS } from "../scales/csi";
 
 /**
- * CSI 中枢敏感性量表 — 患者自评表。
+ * CSI 中枢敏感性量表 — 客户自评表。
  * 25 题,每题 0-4 单选,自动计算总分与分级。
  */
 export function CsiForm() {
@@ -19,7 +19,7 @@ export function CsiForm() {
   return (
     <div className="card" style={{ margin: "var(--space-3) 0", border: "1px solid var(--color-border)" }}>
       <div className="exam-panel__header">
-        <h3 className="panel__title" style={{ fontSize: "var(--text-base)" }}>📋 CSI 中枢敏感性量表（患者自评）</h3>
+        <h3 className="panel__title" style={{ fontSize: "var(--text-base)" }}>📋 CSI 中枢敏感性量表（客户自评）</h3>
         <span className="panel__hint">{answered}/25 题 · 总分 {total.total} · {CSI_SEVERITY_LABELS[total.severity]}</span>
       </div>
 
