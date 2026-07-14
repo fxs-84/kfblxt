@@ -118,7 +118,7 @@ create table if not exists public.exam_sessions (
   encounter_id uuid not null references public.encounters (id) on delete restrict,
   patient_id uuid not null references public.patients (id) on delete restrict,
   -- 查体条目数组: {itemId, side, value, grade, numericValue, note}
-  items jsonb not null default '[]'::jsonb,
+  items jsonb not null default '[]',
   created_at timestamptz not null default now(),
   created_by uuid references public.profiles (id),
   updated_at timestamptz not null default now(),
@@ -177,7 +177,7 @@ create table if not exists public.treatment_plans (
   -- 选中的干预 ID 数组(对应前端 interventions_catalog)
   intervention_ids text[] not null default '{}',
   -- SMART 目标(每条:metric/baseline/target/timeframe)
-  goals jsonb not null default '[]'::jsonb,
+  goals jsonb not null default '[]',
   -- 康复边界(治疗师声明禁忌/注意)
   boundary text,
   notes text,
