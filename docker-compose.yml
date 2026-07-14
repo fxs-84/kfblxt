@@ -1,0 +1,47 @@
+# ANRM kfblxt — 单 docker compose 包(LAN 自托管入门套件)
+# --------------------------------------------------------------------------
+# 这个 compose 文件只编排**前端**。后端 Supabase 推荐用 Supabase 自家的
+# docker-compose(https://github.com/supabase/supabase/tree/master/docker)
+# 这样能拿到 GoTrue、Realtime、Storage 完整一套。
+#
+# 本 compose 主要面向"前端静态托管在诊所内网某个机器"的场景。
+# 用户填写 VITE_SUPABASE_URL 后端可以指向:
+#   - Supabase Cloud(https://xxxx.supabase.co)
+#   - 或自托管 Supabase(http://192.168.x.x:8000)
+#
+# 启动: docker compose up -d
+# 停止: docker compose down
+# --------------------------------------------------------------------------
+
+services:
+  frontend:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: kfblxt-frontend:latest
+    container_name: kfblxt-frontend
+    ports:
+      # 容器 80 → 主机 8080;需要 80 端口时改为 "80:80"
+      - "8080:80"
+    restart: unless-stopped
+    # 后端反代可选:同一个 docker network 里如果有 supabase-kong(跑官方 supabase/docker),
+    # 这里直接转发。这样前端代码里 VITE_SUPABASE_URL 可以填 /supabase,完全离线。
+    # networks:
+    #   - default
+    #   - supabase_default
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# networks:
+#   supabase_default:
+#     external: true
+#     name: supabase_default
