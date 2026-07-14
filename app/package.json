@@ -10,12 +10,14 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "setup:supabase": "node ../scripts/setup-supabase.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@supabase/supabase-js": "^2.110.0",
     "@tanstack/react-query": "^5.101.2",
+    "pg": "^8.13.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.7",
     "react-body-highlighter": "^2.0.5",
