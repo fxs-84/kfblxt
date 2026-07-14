@@ -57,7 +57,7 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
     });
   };
 
-  const updateDoseField = (id: string, field: keyof DoseDraft, value: number | string | undefined) => {
+  const updateDoseField = (id: string, field: keyof DoseDraft | "note", value: number | string | undefined) => {
     setDoses((prev) => {
       const current = prev[id] ?? {};
       const nextEntry: Record<string, unknown> = { ...current };
@@ -66,7 +66,12 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
       } else {
         nextEntry[field as string] = value;
       }
-      if (!("durationMin" in nextEntry) && !("sets" in nextEntry) && !("intensity" in nextEntry)) {
+      if (
+        !("durationMin" in nextEntry) &&
+        !("sets" in nextEntry) &&
+        !("intensity" in nextEntry) &&
+        !("note" in nextEntry)
+      ) {
         const { [id]: _drop, ...rest } = prev;
         return rest;
       }
@@ -197,6 +202,18 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
                                       {INTENSITY_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
                                     </select>
                                   </label>
+                                  <label className="int-dose__note">
+                                    <span>备注</span>
+                                    <input
+                                      type="text"
+                                      placeholder="如:颈椎术后避免过伸"
+                                      value={dose.note ?? ""}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        updateDoseField(item.id, "note", v);
+                                      }}
+                                    />
+                                  </label>
                                 </div>
                               )}
                             </div>
@@ -298,7 +315,7 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
     const def = INTERVENTIONS_CATALOG.find((d) => d.id === id);
     return { id, name: def?.name ?? id, dose: plan.interventionDoses?.[id] };
   });
-  const doseSummary = (d: { durationMin?: number; sets?: number; intensity?: string } | undefined) => {
+  const doseSummary = (d: { durationMin?: number; sets?: number; intensity?: string; note?: string } | undefined) => {
     if (!d) return null;
     const parts: string[] = [];
     if (d.durationMin !== undefined) parts.push(`${d.durationMin}min`);
@@ -318,10 +335,15 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
           {items.map((it, i) => {
             const summary = doseSummary(it.dose);
             return (
-              <span key={i} className="exam-summary__item" title={summary ?? undefined}>
-                {it.name}
-                {summary && <em style={{ fontStyle: "normal", color: "var(--color-text-muted)", marginLeft: 4, fontSize: "11px" }}>({summary})</em>}
-              </span>
+              <div key={i} className="plan-card__intervention-row">
+                <span className="exam-summary__item" title={summary ?? undefined}>
+                  {it.name}
+                  {summary && <em style={{ fontStyle: "normal", color: "var(--color-text-muted)", marginLeft: 4, fontSize: "11px" }}>({summary})</em>}
+                </span>
+                {it.dose?.note && (
+                  <div className="plan-card__intervention-note">📝 {it.dose.note}</div>
+                )}
+              </div>
             );
           })}
         </div>

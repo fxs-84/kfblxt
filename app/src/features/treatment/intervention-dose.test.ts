@@ -93,4 +93,42 @@ describe("normalizeInterventionDoses", () => {
   it("空 id 抛错", () => {
     expect(() => normalizeInterventionDoses({ "": { sets: 1 } })).toThrow(/id/);
   });
+
+  /* ----- note(整条训练备注)----- */
+  it("note 非空字符串被保留", () => {
+    const out = normalizeInterventionDoses({ a: { note: "颈椎术后避免过伸" } });
+    expect(out["a"]?.note).toBe("颈椎术后避免过伸");
+  });
+
+  it("note 自动 trim 首尾空白", () => {
+    const out = normalizeInterventionDoses({ a: { note: "  禁忌旋转  " } });
+    expect(out["a"]?.note).toBe("禁忌旋转");
+  });
+
+  it("note 仅空白视为空,与三字段皆空等价 → 条目丢弃", () => {
+    const out = normalizeInterventionDoses({ a: { note: "    " } });
+    expect(out).toEqual({});
+  });
+
+  it("note 为空字符串视为空,与其他字段共存时仍保留条目", () => {
+    const out = normalizeInterventionDoses({ a: { sets: 3, note: "" } });
+    expect(out["a"]?.sets).toBe(3);
+    expect(out["a"]?.note).toBeUndefined();
+  });
+
+  it("note 可与剂量字段全部共存并独立保留", () => {
+    const out = normalizeInterventionDoses({
+      a: { durationMin: 10, sets: 3, intensity: "中度", note: "急性期避免诱发眩晕" },
+    });
+    expect(out["a"]).toEqual({
+      durationMin: 10,
+      sets: 3,
+      intensity: "中度",
+      note: "急性期避免诱发眩晕",
+    });
+  });
+
+  it("note 非字符串抛错", () => {
+    expect(() => normalizeInterventionDoses({ a: { note: 123 as never } })).toThrow(/note/);
+  });
 });

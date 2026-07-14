@@ -50,4 +50,42 @@ describe("TreatmentPlan interventionDoses", () => {
     expect(doses?.["vor-training"]?.sets).toBe(2);
     expect(doses?.["neural-desensitization"]).toBeUndefined();
   });
+
+  it("note(整条训练备注)随 plan 持久化", async () => {
+    const input: TreatmentPlanInput = {
+      ...BASE,
+      encounterId: "enc-dose-note",
+      interventionDoses: {
+        "vor-training": {
+          durationMin: 8,
+          sets: 3,
+          intensity: "中度",
+          note: "颈椎术后避免过伸;备 VOR 替代动作",
+        },
+      },
+    };
+    const created = await treatmentPlanRepository.create(input);
+    const found = await findPlansByEncounter("enc-dose-note");
+    expect(found[0].id).toBe(created.id);
+    expect(found[0].interventionDoses?.["vor-training"]?.note).toBe(
+      "颈椎术后避免过伸;备 VOR 替代动作",
+    );
+  });
+
+  it("仅 note 即可让条目保留(无需剂量字段)", async () => {
+    const input: TreatmentPlanInput = {
+      ...BASE,
+      encounterId: "enc-note-only",
+      interventionDoses: {
+        "vor-training": { note: "仅记录注意事项,无具体剂量" },
+      },
+    };
+    const created = await treatmentPlanRepository.create(input);
+    const found = await findPlansByEncounter("enc-note-only");
+    expect(found[0].interventionDoses?.["vor-training"]?.note).toBe(
+      "仅记录注意事项,无具体剂量",
+    );
+    expect(found[0].interventionDoses?.["vor-training"]?.durationMin).toBeUndefined();
+    expect(found[0].interventionDoses?.["vor-training"]?.sets).toBeUndefined();
+  });
 });
