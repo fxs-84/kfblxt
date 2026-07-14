@@ -146,6 +146,30 @@ VITE_SUPABASE_ANON_KEY=<自托管生成的 anon key>
 | 多浏览器登录但看不到对方数据 | 没配 Supabase,降级到 localStorage | 走模式 B 或 C |
 | docker-compose up 后 8000 端口被占 | 端口冲突 | 改 .env 的 `API_PORT` |
 | 自托管的 anon key 怎么查 | Supabase Studio Settings > API | 复制 anon public 即可 |
+| **`npm install -g supabase` 后跑 `supabase login` 报 `No matching Supabase CLI binary package found for win32-x64`** | npm 上的 supabase 是 wrapper,Windows x64 二进制常拉不下 | 见下面 "Windows 装 CLI 踩坑" |
+| **在 Windows CMD 粘贴了带 `#` 的注释行 → "不是内部或外部命令"** | CMD 不认 `#` 当注释 | 用 `::` 注释,或者忽略(报错不影响后续命令) |
+
+### Windows 装 CLI 踩坑
+
+`npm install -g supabase` 在 Windows 上经常报:
+
+```
+Error: No matching Supabase CLI binary package found for win32-x64
+    at file:///.../supabase/dist/supabase.js:36:9
+```
+
+**这不是您的错** — Supabase npm 包需要 postinstall 下载原生二进制,在受限网络经常失败。
+
+**推荐方案**(任选一种):
+
+| 方案 | 命令 | 适合 |
+|---|---|---|
+| **A. 不用 CLI** | 在 Supabase 网页 Studio > SQL Editor,依次粘贴 4 个 `*.sql` 文件跑 | 诊所管理员一次性使用,最稳 |
+| **B. winget**(推荐) | `winget install Supabase.CLI`,安装后 `supabase --version` 验证 | Windows 10/11 用户 |
+| **C. 直接下 EXE** | https://github.com/supabase/cli/releases → `supabase_windows_amd64.zip`,解压加 PATH | 网络受限 / 不能用 winget |
+| **D. Docker** | `docker run --rm -v "$PWD:/app" -w /app supabase/cli db push` | 有 Docker 的人 |
+
+**强烈建议诊所管理员直接走方案 A** — 不依赖系统级安装,把 4 个 SQL 复制粘贴,5 分钟搞定,无踩坑风险。
 
 ---
 
