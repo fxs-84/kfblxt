@@ -3,11 +3,14 @@ import { useDraftAutosave } from "../../exam/useDraftAutosave";
 import { useTreatmentPlans, useCreateTreatmentPlan, useProgressNotes, useCreateProgressNote } from "../useTreatment";
 import { INTERVENTIONS_CATALOG } from "../interventions-catalog";
 import { INTERVENTION_CATEGORIES, TREATMENT_PHASES, OUTCOME_RATINGS, GOAL_TEMPLATES, GOAL_DOMAINS, type TreatmentPhase, type TreatmentGoal, type OutcomeRating } from "../treatment.types";
+import { INTENSITY_LEVELS, normalizeInterventionDoses, type InterventionDoseMap } from "../intervention-dose";
 import type { TreatmentPlanRecord } from "../treatment.repository";
 import { predictOutcome } from "../../agent/agent-utils";
 import { formatDate } from "../../../lib/format";
 
 interface TreatmentPanelProps { encounterId: string }
+
+type DoseDraft = Partial<{ durationMin: number; sets: number; intensity: "轻度" | "中度" | "重度" }>;
 
 export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
   const { data: plans = [] } = useTreatmentPlans(encounterId);
@@ -16,7 +19,7 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
   const [phase, setPhase] = useState<TreatmentPhase>("急性期");
   const [frequency, setFrequency] = useState("");
   const [duration, setDuration] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [doses, setDoses] = useState<InterventionDoseMap>({});
   const [goals, setGoals] = useState<TreatmentGoal[]>([]);
   const [goalText, setGoalText] = useState<{ term: "short" | "long"; desc: string; metric: string }>({ term: "short", desc: "", metric: "" });
   const [boundaries, setBoundaries] = useState("");
@@ -26,39 +29,74 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
   const [notePlanId, setNotePlanId] = useState<string | null>(null);
   const tpDraft = useDraftAutosave(
     "tp:" + encounterId,
-    { phase: "急性期" as TreatmentPhase, frequency: "", duration: "", selectedIds: [] as string[], goals: [] as TreatmentGoal[], goalText: { term: "short" as "short" | "long", desc: "", metric: "" }, boundaries: "" },
+    { phase: "急性期" as TreatmentPhase, frequency: "", duration: "", doses: {} as InterventionDoseMap, goals: [] as TreatmentGoal[], goalText: { term: "short" as "short" | "long", desc: "", metric: "" }, boundaries: "" },
   );
   const tpInit = useRef(false);
   // hydrate from draft
-  if (tpDraft.value.frequency && !tpInit.current) {
+  if (Object.keys(tpDraft.value.doses ?? {}).length > 0 && !tpInit.current) {
     tpInit.current = true;
     setPhase(tpDraft.value.phase);
     setFrequency(tpDraft.value.frequency);
     setDuration(tpDraft.value.duration);
-    setSelectedIds(new Set(tpDraft.value.selectedIds));
+    setDoses(tpDraft.value.doses);
     setGoals(tpDraft.value.goals);
     setGoalText(tpDraft.value.goalText);
     setBoundaries(tpDraft.value.boundaries);
   }
   // 草稿自动同步
   useEffect(() => {
-    tpDraft.setValue({ phase, frequency, duration, selectedIds: [...selectedIds], goals, goalText, boundaries });
-  }, [phase, frequency, duration, JSON.stringify([...selectedIds]), JSON.stringify(goals), JSON.stringify(goalText), boundaries]);
+    tpDraft.setValue({ phase, frequency, duration, doses, goals, goalText, boundaries });
+  }, [phase, frequency, duration, JSON.stringify(doses), JSON.stringify(goals), JSON.stringify(goalText), boundaries]);
+
+  const toggleIntervention = (id: string) => {
+    setDoses((prev) => {
+      const next = { ...prev };
+      if (id in next) delete next[id];
+      else next[id] = {};
+      return next;
+    });
+  };
+
+  const updateDoseField = (id: string, field: keyof DoseDraft, value: number | string | undefined) => {
+    setDoses((prev) => {
+      const current = prev[id] ?? {};
+      const nextEntry: Record<string, unknown> = { ...current };
+      if (value === "" || value === undefined) {
+        delete nextEntry[field as string];
+      } else {
+        nextEntry[field as string] = value;
+      }
+      if (!("durationMin" in nextEntry) && !("sets" in nextEntry) && !("intensity" in nextEntry)) {
+        const { [id]: _drop, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: nextEntry };
+    });
+  };
+
+  const selectedIds = Object.keys(doses);
 
   const handleSave = async () => {
     if (!frequency.trim()) { setError("请输入治疗频率"); return; }
-    if (selectedIds.size === 0) { setError("请选择至少一项干预技术"); return; }
+    if (selectedIds.length === 0) { setError("请选择至少一项干预技术"); return; }
     if (goals.length === 0) { setError("请添加至少一个 SMART 目标"); return; }
+    let normalized: InterventionDoseMap;
+    try {
+      normalized = normalizeInterventionDoses(doses);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? `剂量配置错误: ${e.message}` : "剂量配置错误");
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
       await createPlan.mutateAsync({
         encounterId, phase, frequency: frequency.trim(), duration: duration.trim(),
-        interventionIds: [...selectedIds], goals,
+        interventionIds: selectedIds, interventionDoses: normalized, goals,
         boundaries: boundaries.trim() || undefined,
       });
       setShowForm(false);
-      setSelectedIds(new Set());
+      setDoses({});
       setGoals([]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "保存失败,请重试");
@@ -97,9 +135,9 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
             </div>
           </div>
 
-          {/* 干预选择 */}
+          {/* 干预选择 + 剂量 */}
           <div className="field" style={{ marginTop: "var(--space-4)" }}>
-            <label>干预技术(可多选)</label>
+            <label>干预技术(勾选后填写训练时长/组数/强度)</label>
             <div className="intervention-grid">
               {INTERVENTION_CATEGORIES.map((cat) => {
                 const items = INTERVENTIONS_CATALOG.filter((d) => d.category === cat);
@@ -112,14 +150,58 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
                     </button>
                     {open && (
                       <div className="int-cat__items">
-                        {items.map((item) => (
-                          <label key={item.id} className="chip">
-                            <input type="checkbox" checked={selectedIds.has(item.id)}
-                              onChange={() => { const n = new Set(selectedIds); if (n.has(item.id)) n.delete(item.id); else n.add(item.id); setSelectedIds(n); }} />
-                            <span title={`${item.parameters}\n${item.indications}`}>{item.name}</span>
-                            {item.pendingConfirmation && <span style={{ fontSize: "10px" }}>⚠</span>}
-                          </label>
-                        ))}
+                        {items.map((item) => {
+                          const checked = item.id in doses;
+                          const dose = doses[item.id] ?? {};
+                          return (
+                            <div key={item.id} className={`int-row ${checked ? "int-row--checked" : ""}`}>
+                              <label className="chip">
+                                <input type="checkbox" checked={checked} onChange={() => toggleIntervention(item.id)} />
+                                <span title={`${item.parameters}\n${item.indications}`}>{item.name}</span>
+                                {item.pendingConfirmation && <span style={{ fontSize: "10px" }}>⚠</span>}
+                              </label>
+                              {checked && (
+                                <div className="int-dose">
+                                  <label>
+                                    <span>时长</span>
+                                    <input type="number" inputMode="numeric" min={0} step={1}
+                                      placeholder="min"
+                                      value={dose.durationMin ?? ""}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        updateDoseField(item.id, "durationMin", v === "" ? "" : Number(v));
+                                      }}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span>组数</span>
+                                    <input type="number" inputMode="numeric" min={1} step={1}
+                                      placeholder="组"
+                                      value={dose.sets ?? ""}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        updateDoseField(item.id, "sets", v === "" ? "" : Number(v));
+                                      }}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span>强度</span>
+                                    <select
+                                      value={dose.intensity ?? ""}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        updateDoseField(item.id, "intensity", v === "" ? "" : v);
+                                      }}
+                                    >
+                                      <option value="">—</option>
+                                      {INTENSITY_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
+                                    </select>
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -212,7 +294,18 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
 
 function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote: (() => void) | null }) {
   const { data: notes = [] } = useProgressNotes(plan.id);
-  const items = plan.interventionIds.map((id) => INTERVENTIONS_CATALOG.find((d) => d.id === id)?.name ?? id);
+  const items = plan.interventionIds.map((id) => {
+    const def = INTERVENTIONS_CATALOG.find((d) => d.id === id);
+    return { id, name: def?.name ?? id, dose: plan.interventionDoses?.[id] };
+  });
+  const doseSummary = (d: { durationMin?: number; sets?: number; intensity?: string } | undefined) => {
+    if (!d) return null;
+    const parts: string[] = [];
+    if (d.durationMin !== undefined) parts.push(`${d.durationMin}min`);
+    if (d.sets !== undefined) parts.push(`${d.sets}组`);
+    if (d.intensity) parts.push(d.intensity);
+    return parts.length ? parts.join(" · ") : null;
+  };
   return (
     <div className="plan-card">
       <div className="plan-card__head">
@@ -222,7 +315,15 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
       </div>
       <div className="plan-card__body">
         <div className="plan-card__interventions">
-          {items.map((name, i) => <span key={i} className="exam-summary__item">{name}</span>)}
+          {items.map((it, i) => {
+            const summary = doseSummary(it.dose);
+            return (
+              <span key={i} className="exam-summary__item" title={summary ?? undefined}>
+                {it.name}
+                {summary && <em style={{ fontStyle: "normal", color: "var(--color-text-muted)", marginLeft: 4, fontSize: "11px" }}>({summary})</em>}
+              </span>
+            );
+          })}
         </div>
         {plan.goals.length > 0 && (
           <div className="plan-card__goals">

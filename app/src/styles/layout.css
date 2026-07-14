@@ -1127,9 +1127,53 @@ body {
 .int-cat__items {
   padding: var(--space-2) var(--space-2) var(--space-2) 20px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
 }
+
+/* 干预勾选行 + 折叠剂量表单 */
+.int-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 2px 0;
+}
+.int-row--checked {
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+}
+.int-dose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: 2px;
+  padding-left: var(--space-3);
+}
+.int-dose label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.int-dose input,
+.int-dose select {
+  width: 72px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-xs);
+  background: var(--color-surface);
+}
+.int-dose input:focus,
+.int-dose select:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.int-dose select { width: 80px; }
 
 /* 目标模板 */
 .goal-templates {

@@ -155,6 +155,12 @@ export interface TreatmentPlan {
   duration: string;
   /** 选择的干预技术 ID 列表 */
   interventionIds: string[];
+  /**
+   * 逐项剂量(训练时长/组数/强度);与 interventionIds 一一对应。
+   * 可选:旧 plan 可缺省,UI 不显示剂量区。
+   * 全空(三个剂量字段都未填)的 ID 视为"已选但未配置剂量"。
+   */
+  interventionDoses?: Record<string, import("./intervention-dose").InterventionDose>;
   goals: TreatmentGoal[];
   /** 康复界限触发条件 */
   boundaries?: string;

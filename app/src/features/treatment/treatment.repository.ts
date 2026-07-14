@@ -1,6 +1,7 @@
 import { type Entity, type Repository } from "../../lib/repository"
 import { lazyPersistent } from "../../lib/storage";
 import type { TreatmentPlan, ProgressNote } from "./treatment.types";
+import type { InterventionDoseMap } from "./intervention-dose";
 
 export type TreatmentPlanRecord = Omit<TreatmentPlan, "id" | "createdAt"> & Entity;
 export type ProgressNoteRecord = Omit<ProgressNote, "id" | "createdAt"> & Entity;
@@ -12,6 +13,8 @@ export interface TreatmentPlanInput {
   frequency: string;
   duration: string;
   interventionIds: string[];
+  /** 逐项剂量(可选,见 intervention-dose.ts) */
+  interventionDoses?: InterventionDoseMap;
   goals: TreatmentPlan["goals"];
   boundaries?: string;
 }
