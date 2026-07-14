@@ -160,14 +160,43 @@ export function PatientViewPage() {
       {displayPlans.length > 0 && (
         <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-4)" }}>
           <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)", color: "var(--color-accent)" }}>治疗计划</h2>
-          {displayPlans.map((plan) => (
-            <div key={plan.id} style={{ marginBottom: "var(--space-3)" }}>
-              <p style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>{plan.phase} · {plan.frequency} · {plan.duration}</p>
-              <p style={{ fontSize: "var(--text-sm)" }}>
-                干预: {plan.interventionIds.map((id) => INTERVENTIONS_CATALOG.find((d) => d.id === id)?.name ?? id).join("、")}
-              </p>
-            </div>
-          ))}
+          {displayPlans.map((plan) => {
+            const interventionNames = plan.interventionIds.map(
+              (id) => INTERVENTIONS_CATALOG.find((d) => d.id === id)?.name ?? id,
+            );
+            const fmtDose = (d: { durationMin?: number; sets?: number; intensity?: string } | undefined) => {
+              if (!d) return null;
+              const parts: string[] = [];
+              if (d.durationMin !== undefined) parts.push(`${d.durationMin}min`);
+              if (d.sets !== undefined) parts.push(`${d.sets}组`);
+              if (d.intensity) parts.push(d.intensity);
+              return parts.length ? parts.join(" · ") : null;
+            };
+            return (
+              <div key={plan.id} style={{ marginBottom: "var(--space-3)" }}>
+                <p style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>{plan.phase} · {plan.frequency} · {plan.duration}</p>
+                <ul style={{ margin: "var(--space-1) 0 0 var(--space-4)", padding: 0, fontSize: "var(--text-sm)" }}>
+                  {plan.interventionIds.map((id, idx) => {
+                    const dose = plan.interventionDoses?.[id];
+                    const summary = fmtDose(dose);
+                    return (
+                      <li key={id} style={{ marginBottom: 4 }}>
+                        <span>{interventionNames[idx]}</span>
+                        {summary && (
+                          <span style={{ color: "var(--color-text-muted)", marginLeft: 6 }}>· {summary}</span>
+                        )}
+                        {dose?.note && (
+                          <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginTop: 2, paddingLeft: 8, borderLeft: "2px solid var(--color-accent-light, var(--color-accent))" }}>
+                            📝 {dose.note}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       )}
 

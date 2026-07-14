@@ -10,7 +10,25 @@ import { findSessionsByEncounter } from "../exam/exam.repository";
 import { findDiagnosisByEncounter } from "../diagnosis/diagnosis.repository";
 import { findPlansByEncounter } from "../treatment/treatment.repository";
 import { findAttachmentsByEncounter } from "../attachments/attachment.repository";
-import type { ShareSnapshot } from "./share.types";
+import type { SharePlan, ShareSnapshot } from "./share.types";
+import type { TreatmentPlanRecord } from "../treatment/treatment.repository";
+
+/**
+ * 把治疗计划记录投给分享层(单一职责,纯函数,易于单元测试)。
+ * - 包含逐项剂量(interventionDoses),与治疗师端 UI 一致
+ * - note 在前端 UI 已存在,这里保留原样
+ */
+export function toSharePlan(plan: TreatmentPlanRecord): SharePlan {
+  return {
+    id: plan.id,
+    phase: plan.phase,
+    frequency: plan.frequency,
+    duration: plan.duration,
+    interventionIds: plan.interventionIds,
+    interventionDoses: plan.interventionDoses,
+    goals: plan.goals.map((g: { description?: string; targetDate?: string | Date; achieved?: boolean }) => (typeof g === "string" ? g : g.description ?? "")),
+  };
+}
 
 export async function buildShareSnapshot(encounterId: string, patientId: string): Promise<ShareSnapshot> {
   const encounters = await findEncountersByPatient(patientId);
@@ -40,14 +58,7 @@ export async function buildShareSnapshot(encounterId: string, patientId: string)
       nerves: diagnosis.nerves,
       cutaneousNerveIds: diagnosis.cutaneousNerveIds,
     } : null,
-    plans: plans.map((p) => ({
-      id: p.id,
-      phase: p.phase,
-      frequency: p.frequency,
-      duration: p.duration,
-      interventionIds: p.interventionIds,
-      goals: p.goals.map((g: { description?: string; targetDate?: string | Date; achieved?: boolean }) => (typeof g === "string" ? g : g.description ?? "")),
-    })),
+    plans: plans.map(toSharePlan),
     attachments: attachments.map((a) => ({
       id: a.id,
       category: a.category,

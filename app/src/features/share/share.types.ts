@@ -28,6 +28,13 @@ export interface ShareLink {
   hashData?: string;
 }
 
+export type ShareInterventionDose = {
+  durationMin?: number;
+  sets?: number;
+  intensity?: "轻度" | "中度" | "重度";
+  note?: string;
+};
+
 /** 分享快照 — 打包 PatientViewPage 所需的全部临床数据 */
 export interface ShareSnapshot {
   encounter: {
@@ -55,14 +62,7 @@ export interface ShareSnapshot {
     nerves?: string[];
     cutaneousNerveIds?: string[];
   } | null;
-  plans: Array<{
-    id: string;
-    phase: string;
-    frequency: string;
-    duration: string;
-    interventionIds: string[];
-    goals?: string[];
-  }>;
+  plans: SharePlan[];
   attachments: Array<{
     id: string;
     category: string;
@@ -71,4 +71,16 @@ export interface ShareSnapshot {
     timeline?: string;
     comparisonGroup?: string;
   }>;
+}
+
+/** 治疗计划在分享快照中的形态;含每条干预的逐项剂量 */
+export interface SharePlan {
+  id: string;
+  phase: string;
+  frequency: string;
+  duration: string;
+  interventionIds: string[];
+  /** 逐项剂量(训练时长/组数/强度/备注);可选,旧 plan 可缺省 */
+  interventionDoses?: Record<string, ShareInterventionDose>;
+  goals?: string[];
 }
