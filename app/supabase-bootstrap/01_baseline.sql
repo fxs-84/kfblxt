@@ -12,7 +12,11 @@ create table if not exists public.organizations (
 );
 
 -- 用户档案:关联 auth.users,承载机构归属与角色(RBAC)
-create type if not exists public.user_role as enum ('admin', 'physician', 'therapist');
+-- PG 不支持 CREATE TYPE IF NOT EXISTS,用 DO 块做幂等保护。
+do $$ begin
+  create type public.user_role as enum ('admin', 'physician', 'therapist');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -25,8 +29,14 @@ create table if not exists public.profiles (
 create index if not exists profiles_org_id_idx on public.profiles (org_id);
 
 -- 患者档案
-create type if not exists public.patient_sex as enum ('male', 'female', 'other');
-create type if not exists public.dominant_hand as enum ('left', 'right', 'ambidextrous');
+do $$ begin
+  create type public.patient_sex as enum ('male', 'female', 'other');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create type public.dominant_hand as enum ('left', 'right', 'ambidextrous');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.patients (
   id uuid primary key default gen_random_uuid(),
