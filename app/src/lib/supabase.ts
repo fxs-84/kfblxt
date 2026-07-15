@@ -1,28 +1,68 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { loadEnv } from "./env";
+import { readStoredConfig, type SupabaseConfig } from "../components/SetupWizard";
 
 let client: SupabaseClient | null = null;
+let initError: string | null = null;
 
-/** 懒初始化 Supabase 客户端——环境变量没配时返回 null,不抛错 */
-export function getSupabase(): SupabaseClient | null {
-  if (client) return client;
+/**
+ * 解析运行时 Supabase 配置(优先级):
+ *   1. 浏览器 localStorage(用户在 SetupWizard 填的,各自独立)
+ *   2. .env / 构建时 env vars(开发者预设)
+ *   3. 都没有 → null(走单机版)
+ */
+function resolveConfig(): SupabaseConfig | null {
+  const stored = readStoredConfig();
+  if (stored) return stored;
   try {
     const env = loadEnv();
-    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) return null;
-    client = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
+    if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
+      return {
+        url: env.VITE_SUPABASE_URL,
+        anonKey: env.VITE_SUPABASE_ANON_KEY,
+      };
+    }
+  } catch {
+    /* noop */
+  }
+  return null;
+}
+
+/** 懒初始化 Supabase 客户端——未配时返回 null,不抛错 */
+export function getSupabase(): SupabaseClient | null {
+  if (client) return client;
+  if (initError) return null;
+  const cfg = resolveConfig();
+  if (!cfg) return null;
+  try {
+    client = createClient(cfg.url, cfg.anonKey, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
     return client;
-  } catch {
+  } catch (e) {
+    initError = e instanceof Error ? e.message : String(e);
     return null;
   }
+}
+
+/** 强制重置缓存(供用户点"重置配置"后重连) */
+export function resetSupabaseClient(): void {
+  client = null;
+  initError = null;
+}
+
+/** 当前是否配了 Supabase(读 localStorage 或 env) */
+export function hasSupabaseConfig(): boolean {
+  return resolveConfig() !== null;
 }
 
 /** 为向后兼容保留,内部调用 getSupabase() */
 export const supabase = new Proxy({} as SupabaseClient, {
   get(_, prop) {
     const s = getSupabase();
-    if (!s) throw new Error("Supabase 未配置——请将 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY 写入 .env.local");
+    if (!s) {
+      throw new Error("Supabase 未配置 — 首次访问会显示配置向导;或者您可以编辑 .env.local");
+    }
     return (s as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
