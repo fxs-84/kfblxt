@@ -37,9 +37,28 @@ npm run dev                         # http://localhost:5173
 
 ---
 
-## 多机构 / 多人模式
+## 多用户模式 — 浏览器侧自助配置(零部署,零复制代码)
 
-10 分钟上手完整步骤见 [`docs/SELF_HOST_GUIDE.md`](docs/SELF_HOST_GUIDE.md)。
+如果您用 GitHub Pages 部署给多个诊所 / 同事,**不需要他们各自 clone 代码、自己建 Supabase、自己部署**。
+
+**最终用户首次打开 `https://fxs-84.github.io/kfblxt/` 看到的**:
+- 应用启动 → 自动检查浏览器 localStorage 里的 Supabase 配置
+- 没有 → **弹一个"配置向导"页面**,让用户填:
+  - Supabase Project URL
+  - anon / publishable key
+- 用户点保存 → 实时连通性测试通过 → 存到浏览器 localStorage → reload
+- **之后该用户所有数据都进他们填的 Supabase**
+
+> **数据隔离**:每个用户的 localStorage 存自己填的 Supabase URL,数据进自己 Supabase,**开发者(您)不碰任何用户数据**。
+
+**完整配置流程**:
+1. **用户**自己到 supabase.com 注册免费 project(5 分钟,见配置页面里的 5 步折叠教程)
+2. **用户**跑 4 个 SQL migration(配置页面里有 raw 链接,一键复制)
+3. **用户**在配置页填 URL + anon key → 完成
+
+**开发者(您)做什么**:**什么都不用做**。一份代码托管在 GitHub Pages,任何用户访问都会自己填自己的 Supabase。
+
+**完整技术说明**见 [`docs/SELF_HOST_GUIDE.md`](docs/SELF_HOST_GUIDE.md)。
 
 后端已就绪:
 - ✅ 14 张临床业务表的 Supabase 迁移(`app/supabase/migrations/`) + RLS + 审计
