@@ -133,14 +133,23 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
         </summary>
         <ol style={{ paddingLeft: 20, lineHeight: 1.8 }}>
           <li>
+            下载 <strong>快速启动包</strong>:
+            <a href="https://github.com/fxs-84/kfblxt/raw/main/supabase-bootstrap.zip"
+               target="_blank" rel="noopener"
+               style={{ marginLeft: 6 }}>
+              📦 supabase-bootstrap.zip
+            </a>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+              (9 KB,内含 SQL + 指南)
+            </span>
+          </li>
+          <li>
             浏览器打开 <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">supabase.com/dashboard</a> 注册
           </li>
-          <li>点 <strong>New Project</strong>,选个 region(近您近就行),设数据库密码</li>
-          <li>等 1-2 分钟创建完成</li>
+          <li>点 <strong>New Project</strong>,选个 region,设数据库密码</li>
           <li>
-            进项目 → 左侧 <strong>SQL Editor</strong> → 把本仓库
-            <code>scripts/all-migrations.sql</code>{" "}
-            全段粘到查询框 → <strong>Run</strong>
+            进项目 → 左侧 <strong>SQL Editor</strong> → 把下载的 4 个 <code>.sql</code> 文件
+            依次全粘到查询框 → 每个点 <strong>Run</strong>
           </li>
           <li>
             左侧 <strong>Settings(齿轮)→ API</strong> → 复制
@@ -148,6 +157,9 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
             → 粘到下面两个输入框
           </li>
         </ol>
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 8 }}>
+          ⚡ 总共约 5 分钟。数据存你自已的 Supabase,开发者碰不到。
+        </p>
       </details>
 
       <form onSubmit={handleSubmit}>
