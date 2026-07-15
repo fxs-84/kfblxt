@@ -9,7 +9,7 @@
  * 设计:
  *  - 纯前端表单(无后端协调)
  *  - 输入即时校验 URL 格式
- *  - anon key 一般是 sb_publishable_... 开头(新版)或 eyJ... 开头(旧版)
+ *  - anon key 是一段 JWT,以 eyJ 开头(从 Settings → API → anon public key 复制)
  *  - "跳过"按钮 — 暂时不配,走单机版(纯 localStorage)
  *  - "重置"按钮 — 任何时候点"重置配置"清掉 localStorage
  */
@@ -70,8 +70,8 @@ function isValidSupabaseUrl(url: string): boolean {
 
 function isValidAnonKey(k: string): boolean {
   if (!k) return false;
-  // 新版: sb_publishable_...  旧版 JWT: eyJ...
-  return k.startsWith("sb_publishable_") || k.startsWith("eyJ");
+  // Supabase anon key 是 JWT 格式(eyJ 开头),从 Settings → API → anon public key 复制
+  return k.startsWith("eyJ");
 }
 
 interface SetupWizardProps {
@@ -102,7 +102,7 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
       const testUrl = `${url.trim().replace(/\/$/, "")}/rest/v1/?apikey=${encodeURIComponent(anonKey.trim())}`;
       const res = await fetch(testUrl, { method: "GET" });
       if (res.status === 401) {
-        setError("anon key 被拒,请检查复制是否完整(应该 sb_publishable_ 或 eyJ 开头)");
+        setError("anon key 被拒,请确认是从 Settings → API → anon public key 复制的 JWT(eyJ 开头)");
         return;
       }
       if (!res.ok) {
@@ -188,13 +188,13 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
             type="password"
             value={anonKey}
             onChange={(e) => setAnonKey(e.target.value)}
-            placeholder="sb_publishable_...  或  eyJ..."
+            placeholder="eyJhbGciOiJIUzI1NiIs..."
             autoComplete="off"
             spellCheck={false}
           />
           {anonKey && !keyOk && (
             <span style={{ color: "var(--color-warning, #c66)", fontSize: 12 }}>
-              应以 sb_publishable_ 或 eyJ 开头
+              应是以 eyJ 开头的 JWT 格式,从 Supabase Settings → API → anon public key 复制
             </span>
           )}
         </div>

@@ -36,9 +36,10 @@
 左侧 **Settings(齿轮)** → **API**,找:
 
 - **Project URL**(长得像 `https://xxxxxx.supabase.co`)
-- **Project API keys** 里的 **"Publishable / anon public"** key
+- **Project API keys** 里的 **"anon public"** key（以 `eyJ` 开头的 JWT，约 300 多字符）
 
 > ⚠ **不要复制 "service_role" key** — 那个权限过高,泄露会让别人全权控制您数据库。
+> ⚠ 不要复制 `sb_publishable_` 开头的值——那不是真正的 anon key。
 
 #### 2.3 填进配置页
 
