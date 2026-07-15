@@ -1,57 +1,51 @@
-# Apply Supabase Migrations workflow
-#
-# 此文件为示例,若您要在 GitHub Actions 跑迁移,需:
-#   1. 把此文件搬到 .github/workflows/migrate-supabase.yml
-#   2. 去 GitHub PAT 设置里加 'workflow' 权限后推上去
-#   3. repo Settings → Secrets → 加 SUPABASE_DB_URL
-#
-# 因为现有 PAT 不含 workflow scope,我把 yaml 留作备份在 docs/。
-# 临时方案:用 scripts/setup-supabase.mjs 在您本地一行命令搞定。
-
 name: Apply Supabase Migrations
 
-on:
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: '空跑(只 print 即将应用的 SQL)'
-        required: false
-        default: 'false'
+  on:
+    workflow_dispatch:
+      inputs:
+        db_url:
+          description: 'Supabase DB 连接串(postgresql://...)'
+          required: true
+          type: string
 
-jobs:
-  migrate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: 检测 Secrets
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          if [ -z "$DB_URL" ]; then
-            echo "::error::Secrets 缺 SUPABASE_DB_URL"
-            exit 1
-          fi
-      - name: 安装 psql + 验证
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client
-          psql "$DB_URL" -c "SELECT current_database(), current_user;"
-      - name: 跑 4 个迁移
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          cd app/supabase/migrations
-          set -e
-          for f in $(ls *.sql | sort); do
-            echo "▶ $f"
-            psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$f" 2>&1 | tail -8
-          done
-      - name: 校验
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          COUNT=$(psql "$DB_URL" -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" | xargs)
-          echo "现存 public 表数量: $COUNT"
-          [ "$COUNT" -ge 10 ] || (echo "::error::表数量不足" && exit 1)
+  jobs:
+    migrate:
+      runs-on: ubuntu-latest
+      steps:
+        - name: 安装 psql
+          run: |
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+        - name: 检测输入
+          run: |
+            if [ -z "${{ inputs.db_url }}" ]; then
+              echo "::error::必须填入 db_url"
+              exit 1
+            fi
+            echo "DB_URL 长度: ${#DB_URL}"
+        - name: 测试连接
+          env:
+            DB_URL: ${{ inputs.db_url }}
+          run: |
+            echo "$DB_URL" | head -c 30
+            psql "$DB_URL" -c "SELECT current_database(), current_user;" || {
+              echo "::error::psql 连接失败,看看上面 log 的 host/端口"
+              exit 1
+            }
+        - name: 跑 4 个迁移
+          env:
+            DB_URL: ${{ inputs.db_url }}
+          run: |
+            cd app/supabase/migrations
+            for f in $(ls *.sql | sort); do
+              echo "▶$f"
+              psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$f" 2>&1 | tail -8
+            done
+        - name: 校验表数量
+          env:
+            DB_URL: ${{ inputs.db_url }}
+          run: |
+            COUNT=$(psql "$DB_URL" -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND
+  table_type='BASE TABLE';" | xargs)
+            echo "现存 public 表数量: $COUNT"
+            [ "$COUNT" -ge 10 ] || (echo "::error::表数量不足" && exit 1)
