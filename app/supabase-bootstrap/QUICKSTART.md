@@ -16,7 +16,7 @@
 
 注册完进入项目,左侧菜单:
 
-#### 2.1 跑 SQL(按顺序 4 个)
+#### 2.1 跑 SQL(按顺序 5 个)
 
 左侧 **SQL Editor** → **"New query"** → 把以下文件按顺序整段粘到查询框,**点 Run**:
 
@@ -26,10 +26,25 @@
 | ② | `02_tables.sql` |
 | ③ | `03_shares.sql` |
 | ④ | `04_snapshot.sql` |
+| ⑤ | `05_setup_auth.sql` ← 默认机构 + 注册自动建 profile |
 
 > **每个文件跑完会显示 "Success. No rows returned"。**
-> 
+>
 > 看到 "type already exists" 之类的告警?**正常**,跳过即可。
+>
+> ⚠️ 不跑第 5 个会出现"SQL 都成功但应用连不上数据库"——因为空 profiles 表让 RLS 默默拒绝所有读写。
+
+#### 2.2 注册第一个管理员账号(1 分钟)
+
+左侧 **Authentication** → **Users** → 右上角 **"Add user"** → **"Create new user"**:
+- Email: `admin@yourclinic.local`(随便填,后面就当作登录账号)
+- Password: 设个 **密码 ≥ 6 位**(**记牢**,以后每次登录用)
+- ☑ Auto Confirm User(必须勾,免邮件验证)
+- 点 **Create user**
+
+> 这一步会自动在 `profiles` 表给这个用户建一行,并标记为 `admin` 角色。
+
+#### 2.3 拿 2 个字段
 
 #### 2.2 拿 2 个字段
 
@@ -41,17 +56,16 @@
 > ⚠ **不要复制 "service_role" key** — 那个权限过高,泄露会让别人全权控制您数据库。
 > ⚠ 不要复制 `sb_publishable_` 开头的值——那不是真正的 anon key。
 
-#### 2.3 填进配置页
+#### 2.4 填进配置页
 
-浏览器打开(您的开发/运营人员会给您发这个链接):
-```
-https://fxs-84.github.io/kfblxt/
-```
-
-第一次会弹一个"配置 Supabase"页面:
-- 把刚才的 URL 粘到第一个框
+打开 `https://fxs-84.github.io/kfblxt/`,会弹出"配置 Supabase":
+- 把 URL 粘到第一个框
 - 把 key 粘到第二个框
-- 点"保存并开始使用"
+- 点"保存并开始使用" → 跳到登录页
+
+#### 2.5 用注册时的邮箱 + 密码登录
+
+配置页跳到登录页后,用 **2.2 里设的 email + password** 登录即可。第一次会以 **admin** 身份进入,后续 admin 可邀请其他 staff 加入(开发下一版支持)。
 
 **完成。** 所有数据将存到**您自己刚注册的 Supabase** — 您的开发人员看不到、也碰不到。
 
