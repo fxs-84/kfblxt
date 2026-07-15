@@ -31,5 +31,3 @@ Compress-Archive -Path "app\supabase-bootstrap\*" -DestinationPath "supabase-boo
 ## 这是**单租户**启动包
 
 每个用户(诊所)独立注册自己的 Supabase project,数据隔离在各自的 Supabase 里。
-
-如果需要给开发者本人(您)做"演示版",直接用现有的 `https://csfbquytxxjguuiacagu.supabase.co` + `sb_publishable_mfWYW3tIse0U7FzNbbArnw_qfPDt` 这对值(已为您预填到 README 文档例子中)。
