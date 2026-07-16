@@ -79,7 +79,19 @@ export async function createDiagnosisDual(input: DiagnosisInput & { patientId?: 
   const supabase = getSupabase()!;
   const id = crypto.randomUUID();
   const createdAt = new Date();
-  const { data, error } = await supabase.from("diagnoses").insert(toRow({ ...input, id, createdAt })).select().maybeSingle();
+
+  // patient_id 必填但 DiagnosisInput 里没有,从 encounter 查
+  let patientId = input.patientId;
+  if (!patientId && input.encounterId) {
+    const { data: enc } = await supabase
+      .from("encounters")
+      .select("patient_id")
+      .eq("id", input.encounterId)
+      .maybeSingle();
+    if (enc) patientId = enc.patient_id;
+  }
+
+  const { data, error } = await supabase.from("diagnoses").insert(toRow({ ...input, id, createdAt, patientId })).select().maybeSingle();
   if (error || !data) throw new Error(`保存诊断失败: ${error?.message ?? "无响应"}`);
   return fromRow(data);
 }
