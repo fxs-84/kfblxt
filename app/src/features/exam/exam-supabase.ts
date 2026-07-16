@@ -77,15 +77,24 @@ export async function createExamSessionDual(input: ExamSessionInput): Promise<Ex
     .select()
     .maybeSingle();
 
-  const raced = await Promise.race([
-    insert,
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("超时")), TIMEOUT_MS)),
+  const result = await Promise.race([
+    insert.then((r) => ({ ...r, timedOut: false as const })),
+    new Promise<{ timedOut: true }>((resolve) => setTimeout(() => resolve({ timedOut: true }), TIMEOUT_MS)),
   ]);
 
-  const { data, error } = raced as Awaited<typeof insert>;
-  if (error || !data) {
-    // Supabase 失败(含超时)→落回 localStorage
-    console.warn("[exam] Supabase insert failed, fallback to localStorage:", error?.message);
+  if (result.timedOut) {
+    console.warn("[exam] Supabase insert timed out, fallback to localStorage");
+    return examSessionRepository.create({ ...input, orgId: input.orgId });
+  }
+
+  const { data, error } = result as NonNullable<typeof result>;
+  if (error) {
+    // 真实错误(非超时),抛出让 UI 显示
+    throw new Error(`保存查体失败: ${error.message}`);
+  }
+  if (!data) {
+    // 无返回数据也落回 localStorage
+    console.warn("[exam] Supabase insert returned no data, fallback to localStorage");
     return examSessionRepository.create({ ...input, orgId: input.orgId });
   }
   return fromRow(data);
