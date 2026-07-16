@@ -277,6 +277,13 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
         );
       })}
 
+      {/* 错误提示 */}
+      {submitError && (
+        <div className="field__error" style={{ padding: "var(--space-2) var(--space-3)", margin: "0 var(--space-6) var(--space-2)", background: "#fef2f2", borderRadius: "var(--radius-sm)", fontSize: 13, color: "#c33" }}>
+          ❌ {submitError}
+        </div>
+      )}
+
       {/* 底部操作 */}
       <div className="brain-form__foot">
         <span className="brain-form__foot-status">
