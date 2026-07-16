@@ -1,43 +1,92 @@
 /**
  * 量表(评估)仓储的 Supabase 双模式分发。
  *
- * ⚠ 当前 Supabase schema (0001 + 0002 + shares + 0003) 暂无 assessments 表。
- * 分布式部署前需要在 0002_audit_trail_and_tables 后续追加:
- *   create table assessments (
- *     id uuid primary key,
- *     org_id uuid not null references organizations(id),
- *     patient_id uuid not null,
- *     encounter_id uuid,
- *     type text not null check (type in ('brain_region','pain_assessment')),
- *     created_at timestamptz not null default now(),
- *     created_by uuid,
- *     payload jsonb not null,
- *     deleted_at timestamptz,
- *     deleted_by uuid
- *   );
+ * 表名:assessments(由 09_assessments.sql 创建)
+ * 列:
+ *   id uuid PK
+ *   org_id uuid FK
+ *   patient_id uuid NOT NULL FK
+ *   encounter_id uuid (nullable)
+ *   type text NOT NULL CHECK (in ('brain_region','pain_assessment'))
+ *   payload jsonb NOT NULL  ← 量表答卷数据(除上面 DB 列外的所有字段)
+ *   created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
  *
- * 当前的 supabase 分支是一个可用的"占位 — 报错清晰"的形态。
- * localStorage 分支未变,以保持单机模式零回归。
+ * 决定权:`getSupabase() !== null` → 走 Supabase,否则 → 落回 localStorage。
  */
 
 import { getSupabase } from "../../lib/supabase";
 import {
   assessmentRepository,
-  type StoredAssessmentRow as _Stored,
+  type AssessmentRecordRow,
 } from "./assessment.repository";
-
-export type AssessmentInput = import("./assessment.types").AssessmentInput;
+import type { AssessmentInput } from "./assessment.types";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-export async function findAssessmentsByPatientDual(patientId: string): Promise<_Stored[]> {
+/**
+ * 把 AssessmentInput 拆成"DB 顶层列 + payload jsonb"。
+ * payload 只保留业务答卷字段(responses/score/phoneEar/note/csi/slanss),
+ * 顶部列保留 id/org_id/patient_id/encounter_id/type/created_at/created_by。
+ */
+function toRow(
+  input: AssessmentInput & { id: string; createdAt: Date },
+): Record<string, unknown> {
+  const { id, orgId, patientId, encounterId, type, createdAt } = input;
+  // payload = 原始 input 的全部字段,但剔除顶部已映射的列
+  const payload = { ...input };
+  delete (payload as Record<string, unknown>).id;
+  delete (payload as Record<string, unknown>).createdAt;
+  delete (payload as Record<string, unknown>).createdBy;
+  delete (payload as Record<string, unknown>).updatedAt;
+  delete (payload as Record<string, unknown>).updatedBy;
+  delete (payload as Record<string, unknown>).deletedAt;
+  delete (payload as Record<string, unknown>).deletedBy;
+
+  return {
+    id,
+    org_id: orgId,
+    patient_id: patientId,
+    encounter_id: encounterId ?? null,
+    type,
+    payload,
+    created_at: createdAt.toISOString(),
+    created_by: null,
+  };
+}
+
+/**
+ * DB 行 → 业务记录。
+ * payload 中的字段先展开,再用顶部列(id/orgId/patientId/encounterId/createdAt)
+ * 覆盖,保证类型与 DB 列完全一致。
+ */
+function fromRow(row: Record<string, unknown>): AssessmentRecordRow {
+  const payload = (row.payload as Record<string, unknown> | null) ?? {};
+  const createdStr = String(row.created_at);
+  const merged = { ...payload } as Record<string, unknown>;
+  // 顶部列以 DB 为准
+  merged.id = String(row.id);
+  merged.orgId = String(row.org_id);
+  merged.patientId = String(row.patient_id);
+  merged.encounterId = row.encounter_id ? String(row.encounter_id) : undefined;
+  merged.type = String(row.type);
+  merged.createdAt = new Date(createdStr);
+  merged.createdBy = (row.created_by as string) ?? null;
+  merged.updatedAt = new Date(createdStr);
+  merged.updatedBy = null;
+  merged.deletedAt = null;
+  merged.deletedBy = null;
+  return merged as unknown as AssessmentRecordRow;
+}
+
+export async function findAssessmentsByPatientDual(patientId: string): Promise<AssessmentRecordRow[]> {
   if (!isSupabaseReady()) {
     const all = await assessmentRepository.findAll();
-    return all.filter((a) => a.patientId === patientId);
+    return all
+      .filter((a) => a.patientId === patientId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  // Supabase 路径:需要 assessments 表 + payload 列
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("assessments")
@@ -45,36 +94,16 @@ export async function findAssessmentsByPatientDual(patientId: string): Promise<_
     .eq("patient_id", patientId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
-  if (error) {
-    if (error.message.includes("does not exist") || error.code === "42P01") {
-      throw new Error("Supabase 模式启用但缺 assessments 表。请按 assessment-supabase.ts 头部说明手动添加 migration 后再启用多人模式。");
-    }
-    throw new Error(`查询量表失败: ${error.message}`);
-  }
-  // payload 还原成原结构;此处不展开(单机模式足以支撑现有 UI)
-  return (data ?? []).map((row) => {
-    const r = row as Record<string, unknown>;
-    const payload = (r.payload as _Stored) ?? ({} as _Stored);
-    return {
-      ...payload,
-      id: String(r.id),
-      orgId: String(r.org_id),
-      patientId: String(r.patient_id),
-      encounterId: (r.encounter_id as string) ?? undefined,
-      createdAt: new Date(String(r.created_at)),
-      createdBy: (r.created_by as string) ?? null,
-      updatedAt: new Date(String(r.created_at)),
-      updatedBy: null,
-      deletedAt: null,
-      deletedBy: null,
-    } as _Stored;
-  });
+  if (error) throw new Error(`查询量表失败: ${error.message}`);
+  return (data ?? []).map(fromRow);
 }
 
-export async function findAssessmentsByEncounterDual(encounterId: string): Promise<_Stored[]> {
+export async function findAssessmentsByEncounterDual(encounterId: string): Promise<AssessmentRecordRow[]> {
   if (!isSupabaseReady()) {
     const all = await assessmentRepository.findAll();
-    return all.filter((a) => a.encounterId === encounterId);
+    return all
+      .filter((a) => a.encounterId === encounterId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase
@@ -83,49 +112,71 @@ export async function findAssessmentsByEncounterDual(encounterId: string): Promi
     .eq("encounter_id", encounterId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
-  if (error) {
-    if (error.message.includes("does not exist") || error.code === "42P01") {
-      throw new Error("Supabase 模式启用但缺 assessments 表。");
-    }
-    throw new Error(`查询量表失败: ${error.message}`);
-  }
-  return (data ?? []).map((row) => {
-    const r = row as Record<string, unknown>;
-    const payload = (r.payload as _Stored) ?? ({} as _Stored);
-    return {
-      ...payload,
-      id: String(r.id),
-      orgId: String(r.org_id),
-      patientId: String(r.patient_id),
-      encounterId: (r.encounter_id as string) ?? undefined,
-      createdAt: new Date(String(r.created_at)),
-      createdBy: (r.created_by as string) ?? null,
-      updatedAt: new Date(String(r.created_at)),
-      updatedBy: null,
-      deletedAt: null,
-      deletedBy: null,
-    } as _Stored;
-  });
+  if (error) throw new Error(`查询量表失败: ${error.message}`);
+  return (data ?? []).map(fromRow);
 }
 
-export async function createAssessmentDual(input: AssessmentInput): Promise<_Stored> {
+export async function createAssessmentDual(input: AssessmentInput): Promise<AssessmentRecordRow> {
   if (!isSupabaseReady()) return assessmentRepository.create(input);
   const supabase = getSupabase()!;
-  // 留个 warning:需要在 Supabase 加 assessments 表后才能用
-  throw new Error(
-    "Supabase 多人模式暂未实现量表存储。请先按 assessment-supabase.ts 顶部说明手动执行追加 migration。",
-  );
-  /* 启用后:
   const id = crypto.randomUUID();
-  const { data, error } = await supabase.from("assessments").insert({
-    id, org_id: (input as { orgId?: string }).orgId ?? "00000000-0000-4000-8000-0000000000f0",
-    patient_id: input.patientId,
-    encounter_id: input.encounterId ?? null,
-    type: input.type,
-    payload: input,
-    created_by: null,
-  }).select().maybeSingle();
+  const createdAt = new Date();
+  const row = toRow({ ...input, id, createdAt });
+  const { data, error } = await supabase.from("assessments").insert(row).select().maybeSingle();
   if (error || !data) throw new Error(`保存量表失败: ${error?.message ?? "无响应"}`);
-  return ...;
-  */
+  return fromRow(data as Record<string, unknown>);
+}
+
+/** 仅支持对 jsonb payload 内字段的局部更新;type 不允许变更。 */
+export async function updateAssessmentDual(
+  id: string,
+  patch: Partial<AssessmentInput>,
+): Promise<AssessmentRecordRow> {
+  if (!isSupabaseReady()) {
+    return assessmentRepository.update(id, patch as Parameters<typeof assessmentRepository.update>[1]);
+  }
+  const supabase = getSupabase()!;
+  const now = new Date().toISOString();
+  const row: Record<string, unknown> = { updated_at: now };
+  // encounter_id 可单独更新;payload 整体 merge
+  if (patch.encounterId !== undefined) {
+    row.encounter_id = patch.encounterId ?? null;
+  }
+  // 读出当前行,payload 合并 patch 后写回
+  const { data: current, error: readErr } = await supabase
+    .from("assessments")
+    .select("payload")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (readErr || !current) {
+    throw new Error(`读取量表失败: ${readErr?.message ?? "记录不存在"}`);
+  }
+  const currentPayload = (current.payload as Record<string, unknown> | null) ?? {};
+  const nextPayload: Record<string, unknown> = { ...currentPayload };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    if (k === "encounterId") continue; // 已映射到顶部列
+    if (k === "id" || k === "orgId" || k === "patientId" || k === "type") continue; // 不可变
+    nextPayload[k] = v as unknown;
+  }
+  row.payload = nextPayload;
+  const { data, error } = await supabase
+    .from("assessments")
+    .update(row)
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error || !data) throw new Error(`更新量表失败: ${error?.message ?? "无响应"}`);
+  return fromRow(data as Record<string, unknown>);
+}
+
+export async function deleteAssessmentDual(id: string): Promise<void> {
+  if (!isSupabaseReady()) return assessmentRepository.remove(id);
+  const supabase = getSupabase()!;
+  const { error } = await supabase
+    .from("assessments")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(`删除量表失败: ${error.message}`);
 }

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { diagnosisRepository, findDiagnosisByEncounter, type DiagnosisInput } from "./diagnosis.repository";
 import { getSession } from "../../lib/session";
 import { hasSupabaseConfig } from "../../lib/supabase";
-import { findDiagnosisByEncounterDual, createDiagnosisDual } from "./diagnosis-supabase";
+import { findDiagnosisByEncounterDual, createDiagnosisDual, updateDiagnosisDual } from "./diagnosis-supabase";
 import { findEncounterByIdDual } from "../encounters/encounter-supabase";
 
 export function useDiagnosis(encounterId: string | undefined) {
@@ -79,6 +79,22 @@ export function useCreateDiagnosis() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["diagnosis"] });
       qc.invalidateQueries({ queryKey: ["encounters"] }); // EncounterTable 诊断列也刷新
+    },
+  });
+}
+
+export function useUpdateDiagnosis() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<DiagnosisInput> }) => {
+      const fullPatch = { ...patch, orgId: getSession().orgId };
+      return hasSupabaseConfig()
+        ? updateDiagnosisDual(id, fullPatch)
+        : diagnosisRepository.update(id, fullPatch as never);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["diagnosis"] });
+      qc.invalidateQueries({ queryKey: ["encounters"] });
     },
   });
 }

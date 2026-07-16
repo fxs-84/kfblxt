@@ -25,6 +25,7 @@ function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?
     spinal_segments: input.segments ?? [],
     nerve_trunks: input.nerves ?? [],
     cutaneous_nerves: input.cutaneousNerveIds ?? [],
+    clinical_diagnoses: input.clinicalDiagnoses ?? [],
     mechanisms: input.mechanisms ?? [],
     rationale: input.reasoning ?? null,
     confidence: input.confidence ?? null,
@@ -44,6 +45,7 @@ function fromRow(row: Record<string, unknown>): DiagnosisRecord {
     segments: (row.spinal_segments as DiagnosisRecord["segments"]) ?? undefined,
     nerves: (row.nerve_trunks as DiagnosisRecord["nerves"]) ?? undefined,
     cutaneousNerveIds: (row.cutaneous_nerves as string[]) ?? undefined,
+    clinicalDiagnoses: (row.clinical_diagnoses as DiagnosisRecord["clinicalDiagnoses"]) ?? [],
     side: (row.side as DiagnosisRecord["side"]) ?? "midline",
     reasoning: String(row.rationale ?? ""),
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
@@ -105,6 +107,7 @@ export async function updateDiagnosisDual(id: string, patch: Partial<DiagnosisIn
   if (patch.segments !== undefined) row.spinal_segments = patch.segments ?? [];
   if (patch.nerves !== undefined) row.nerve_trunks = patch.nerves ?? [];
   if (patch.cutaneousNerveIds !== undefined) row.cutaneous_nerves = patch.cutaneousNerveIds ?? [];
+  if (patch.clinicalDiagnoses !== undefined) row.clinical_diagnoses = patch.clinicalDiagnoses ?? [];
   if (patch.reasoning !== undefined) row.rationale = patch.reasoning;
   const { data, error } = await supabase.from("diagnoses").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新诊断失败: ${error?.message ?? "无响应"}`);

@@ -1,20 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   assessmentRepository,
-  findAssessmentsByEncounter,
-  findAssessmentsByPatient,
   type BrainAssessmentRecordRow,
   type PainAssessmentRecordRow,
 } from "./assessment.repository";
 import type { BrainAssessmentInput, PainAssessmentInput } from "./assessment.types";
 import { getSession } from "../../lib/session";
+import {
+  findAssessmentsByPatientDual,
+  findAssessmentsByEncounterDual,
+  createAssessmentDual,
+  updateAssessmentDual,
+  deleteAssessmentDual,
+} from "./assessment-supabase";
 
 export type AssessmentRecordRow = BrainAssessmentRecordRow | PainAssessmentRecordRow;
 
 export function usePatientAssessments(patientId: string | undefined) {
   return useQuery({
     queryKey: ["assessments", "patient", patientId],
-    queryFn: () => findAssessmentsByPatient(patientId as string),
+    queryFn: () => findAssessmentsByPatientDual(patientId as string),
     enabled: Boolean(patientId),
   });
 }
@@ -22,7 +27,7 @@ export function usePatientAssessments(patientId: string | undefined) {
 export function useEncounterAssessments(encounterId: string | undefined) {
   return useQuery({
     queryKey: ["assessments", "encounter", encounterId],
-    queryFn: () => findAssessmentsByEncounter(encounterId as string),
+    queryFn: () => findAssessmentsByEncounterDual(encounterId as string),
     enabled: Boolean(encounterId),
   });
 }
@@ -30,7 +35,11 @@ export function useEncounterAssessments(encounterId: string | undefined) {
 export function useAllAssessments() {
   return useQuery({
     queryKey: ["assessments", "all"],
-    queryFn: () => assessmentRepository.findAll(),
+    queryFn: async () => {
+      // 全量当前未提供 Dual 版本,统一用本地仓储(单机模式足够;Supabase 模式按需扩展)
+      const all = await assessmentRepository.findAll();
+      return all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    },
   });
 }
 
@@ -39,7 +48,28 @@ export function useCreateAssessment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<BrainAssessmentInput, "orgId"> | Omit<PainAssessmentInput, "orgId">) =>
-      assessmentRepository.create({ ...input, orgId: getSession().orgId } as any),
+      createAssessmentDual({ ...input, orgId: getSession().orgId } as any),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["assessments", "patient", vars.patientId] });
+      if (vars.encounterId) {
+        qc.invalidateQueries({ queryKey: ["assessments", "encounter", vars.encounterId] });
+      }
+      qc.invalidateQueries({ queryKey: ["assessments", "all"] });
+    },
+  });
+}
+
+export function useUpdateAssessment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      id: string;
+      patch: Partial<BrainAssessmentInput | PainAssessmentInput>;
+      patientId: string;
+      encounterId?: string;
+    }) => {
+      return updateAssessmentDual(vars.id, vars.patch as any);
+    },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["assessments", "patient", vars.patientId] });
       if (vars.encounterId) {
@@ -54,7 +84,7 @@ export function useDeleteAssessment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (vars: { id: string; patientId: string; encounterId?: string }) => {
-      await assessmentRepository.remove(vars.id);
+      await deleteAssessmentDual(vars.id);
       return vars;
     },
     onSuccess: (vars) => {

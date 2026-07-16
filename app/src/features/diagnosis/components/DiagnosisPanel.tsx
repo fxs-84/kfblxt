@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useDraftAutosave } from "../../exam/useDraftAutosave";
-import { useDiagnosis, useCreateDiagnosis } from "../useDiagnosis";
+import { useDiagnosis, useCreateDiagnosis, useUpdateDiagnosis } from "../useDiagnosis";
 import {
   NEURO_LEVELS, MECHANISMS, SPINAL_SEGMENTS, NERVE_TRUNKS, CUTANEOUS_NERVES,
   type NeuroLevel, type Mechanism, type SpinalSegment, type NerveTrunk,
@@ -14,6 +14,7 @@ interface DiagnosisPanelProps { encounterId: string }
 export function DiagnosisPanel({ encounterId }: DiagnosisPanelProps) {
   const { data: diagnosis, isLoading } = useDiagnosis(encounterId);
   const createDiagnosis = useCreateDiagnosis();
+  const updateDiagnosis = useUpdateDiagnosis();
   const dxDraft = useDraftAutosave(
     `dx:${encounterId}`,
     { levels: [], mechanisms: [], segments: [], nerves: [], cutaneousIds: [], side: "left", reasoning: "", clinical: [] },
@@ -62,14 +63,19 @@ const handleSave = async () => {
     setSaving(true);
     try {
       dxDraft.clearDraft();
-      await createDiagnosis.mutateAsync({
+      const payload = {
         encounterId, levels: [...levels], mechanisms: [...mechanisms],
         segments: segments.size ? [...segments] : undefined,
         nerves: nerves.size ? [...nerves] : undefined,
         cutaneousNerveIds: cutaneousIds.size ? [...cutaneousIds] : undefined,
         side, reasoning,
         clinicalDiagnoses,
-      });
+      };
+      if (diagnosis) {
+        await updateDiagnosis.mutateAsync({ id: diagnosis.id, patch: payload });
+      } else {
+        await createDiagnosis.mutateAsync(payload);
+      }
       setShowForm(false);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "保存失败,请重试");
