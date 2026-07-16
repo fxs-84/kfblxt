@@ -20,7 +20,6 @@ function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<
     encounter_date: input.encounterDate instanceof Date ? input.encounterDate.toISOString() : String(input.encounterDate),
     visit_type: input.visitType || null,
     status: input.status || null,
-    amount: input.amount,
     chief_complaint: input.chiefComplaint,
     created_at: input.createdAt.toISOString(),
     created_by: null,
@@ -37,7 +36,7 @@ function fromRow(row: Record<string, unknown>): EncounterRecord {
     encounterDate: new Date(typeof enc === "string" ? enc : String(enc)),
     visitType: row.visit_type as EncounterRecord["visitType"],
     status: row.status as EncounterRecord["status"],
-    amount: Number(row.amount),
+    amount: typeof row.amount === "number" ? row.amount : 0,
     chiefComplaint: row.chief_complaint as EncounterRecord["chiefComplaint"],
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
     createdBy: (row.created_by as string) ?? null,
@@ -97,7 +96,6 @@ export async function updateEncounterDual(id: string, patch: Partial<EncounterIn
   if (patch.encounterDate !== undefined) row.encounter_date = patch.encounterDate instanceof Date ? patch.encounterDate.toISOString() : patch.encounterDate;
   if (patch.visitType !== undefined) row.visit_type = patch.visitType || null;
   if (patch.status !== undefined) row.status = patch.status || null;
-  if (patch.amount !== undefined) row.amount = patch.amount;
   if (patch.chiefComplaint !== undefined) row.chief_complaint = patch.chiefComplaint;
   const { data, error } = await supabase.from("encounters").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新就诊失败: ${error?.message ?? "无响应"}`);
