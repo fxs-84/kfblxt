@@ -68,12 +68,26 @@ export async function createExamSessionDual(input: ExamSessionInput): Promise<Ex
   const supabase = getSupabase()!;
   const id = crypto.randomUUID();
   const createdAt = new Date();
-  const { data, error } = await supabase
+
+  // 加 15 秒超时:网络慢或数据大时不卡 UI
+  const TIMEOUT_MS = 15_000;
+  const insert = supabase
     .from("exam_sessions")
     .insert(toRow({ ...input, id, createdAt }))
     .select()
     .maybeSingle();
-  if (error || !data) throw new Error(`保存查体失败: ${error?.message ?? "无响应"}`);
+
+  const raced = await Promise.race([
+    insert,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("超时")), TIMEOUT_MS)),
+  ]);
+
+  const { data, error } = raced as Awaited<typeof insert>;
+  if (error || !data) {
+    // Supabase 失败(含超时)→落回 localStorage
+    console.warn("[exam] Supabase insert failed, fallback to localStorage:", error?.message);
+    return examSessionRepository.create({ ...input, orgId: input.orgId });
+  }
   return fromRow(data);
 }
 
