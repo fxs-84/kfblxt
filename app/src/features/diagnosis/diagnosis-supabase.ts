@@ -94,7 +94,9 @@ export async function createDiagnosisDual(input: DiagnosisInput & { patientId?: 
     if (enc) patientId = enc.patient_id;
   }
 
-  const { data, error } = await supabase.from("diagnoses").insert(toRow({ ...input, id, createdAt, patientId })).select().maybeSingle();
+  const row = toRow({ ...input, id, createdAt, patientId });
+  console.log("[diagnosis-create] sending to Supabase:", JSON.stringify(row));
+  const { data, error } = await supabase.from("diagnoses").insert(row).select().maybeSingle();
   if (error || !data) throw new Error(`保存诊断失败: ${error?.message ?? "无响应"}`);
   return fromRow(data);
 }
