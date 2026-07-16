@@ -82,7 +82,19 @@ export async function createPlanDual(input: TreatmentPlanInput): Promise<Treatme
   const supabase = getSupabase()!;
   const id = crypto.randomUUID();
   const createdAt = new Date();
-  const { data, error } = await supabase.from("treatment_plans").insert(planToRow({ ...input, id, createdAt })).select().maybeSingle();
+
+  // patient_id 必填,从 encounter 查
+  let patientId = input.patientId;
+  if (!patientId && input.encounterId) {
+    const { data: enc } = await supabase
+      .from("encounters")
+      .select("patient_id")
+      .eq("id", input.encounterId)
+      .maybeSingle();
+    if (enc) patientId = enc.patient_id;
+  }
+
+  const { data, error } = await supabase.from("treatment_plans").insert(planToRow({ ...input, id, createdAt, patientId })).select().maybeSingle();
   if (error || !data) throw new Error(`保存治疗计划失败: ${error?.message ?? "无响应"}`);
   return planFromRow(data);
 }
@@ -123,7 +135,7 @@ function noteFromRow(row: Record<string, unknown>): ProgressNoteRecord {
     orgId: String(row.org_id),
     encounterId: String(row.encounter_id),
     patientId: String(row.patient_id),
-    treatmentPlanId: (row.treatment_plan_id as string) ?? "",
+    treatmentPlanId: String(row.encounter_id),  // progress_notes 没有 planId 列,用 encounter_id
     horizon: row.horizon as ProgressNoteRecord["horizon"],
     subjective: (row.subjective as string) ?? "",
     objective: (row.objective as string) ?? "",
@@ -150,7 +162,7 @@ export async function findNotesByPlanDual(planId: string): Promise<ProgressNoteR
   const { data, error } = await supabase
     .from("progress_notes")
     .select("*")
-    .eq("treatment_plan_id", planId)
+    .eq("encounter_id", planId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(`查询疗效复评失败: ${error.message}`);
