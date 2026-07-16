@@ -18,11 +18,18 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
+/** 生成唯一病历号:ANRM-YYYYMMDD-NNN (与 localStorage 版一致) */
+function generateMRN(): string {
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const seq = String(Math.floor(Math.random() * 900) + 100);
+  return `ANRM-${today}-${seq}`;
+}
+
 function toRow(p: PatientInput & { id: string; createdAt: Date }): Record<string, unknown> {
   return {
     id: p.id,
     org_id: p.orgId,
-    medical_record_no: p.medicalRecordNo,
+    medical_record_no: p.medicalRecordNo || generateMRN(),
     name: p.name,
     sex: p.sex,
     birth_date: p.birthDate instanceof Date ? p.birthDate.toISOString().slice(0, 10) : String(p.birthDate),
