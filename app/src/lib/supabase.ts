@@ -11,6 +11,19 @@ let initError: string | null = null;
  *   2. .env / 构建时 env vars(开发者预设)
  *   3. 都没有 → null(走单机版)
  */
+/** Supabase 项目 ref — 从 localStorage key 提取,用于从 Auth 会话重建配置 */
+function detectProjectRef(): string | null {
+  try {
+    const keys = Object.keys(localStorage);
+    const authKey = keys.find((k) => k.startsWith("sb-") && k.endsWith("-auth-token"));
+    if (!authKey) return null;
+    // sb-<ref>-auth-token
+    return authKey.slice(3, -12);
+  } catch {
+    return null;
+  }
+}
+
 function resolveConfig(): SupabaseConfig | null {
   const stored = readStoredConfig();
   if (stored) return stored;
@@ -24,6 +37,14 @@ function resolveConfig(): SupabaseConfig | null {
     }
   } catch {
     /* noop */
+  }
+  // 兜底:Wizard 配置可能被清,但 Auth 会话仍在 — 从会话重建
+  const ref = detectProjectRef();
+  if (ref) {
+    return {
+      url: `https://${ref}.supabase.co`,
+      anonKey: "sb_publishable_OgDm-yiaWFfn_x-U9Tcwjg_pH0sbpR4",
+    };
   }
   return null;
 }
