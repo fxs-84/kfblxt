@@ -1,12 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { hasSupabaseConfig } from "../../lib/supabase";
 import { billingRepository, findBillingByPatient, calcBalance, type BillingInput } from "./billing.repository";
 import { getSession } from "../../lib/session";
 import { processEvent } from "../membership/rule-engine";
+import {
+  findBillingByPatientDual,
+  createBillingDual,
+  deleteBillingDual,
+} from "./billing-supabase";
 
 export function useBilling(patientId: string | undefined) {
   const { data: records = [], ...rest } = useQuery({
     queryKey: ["billing", patientId],
-    queryFn: () => findBillingByPatient(patientId as string),
+    queryFn: async () => {
+      if (hasSupabaseConfig()) {
+        return findBillingByPatientDual(patientId as string);
+      }
+      return findBillingByPatient(patientId as string);
+    },
     enabled: Boolean(patientId),
   });
   return { records, balance: calcBalance(records), ...rest };
@@ -15,7 +26,14 @@ export function useBilling(patientId: string | undefined) {
 export function useAllBilling() {
   const { data: records = [], ...rest } = useQuery({
     queryKey: ["billing", "all"],
-    queryFn: () => billingRepository.findAll(),
+    queryFn: async () => {
+      if (hasSupabaseConfig()) {
+        // 没有对应的 findAllDual API,退化为按空 patientId 查询获取全量
+        const all = await billingRepository.findAll();
+        return all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      }
+      return billingRepository.findAll();
+    },
   });
   return { records, ...rest };
 }
@@ -24,8 +42,9 @@ export function useCreateBilling() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<BillingInput, "orgId">) => {
-      const created = await billingRepository.create({ ...input, orgId: getSession().orgId });
-      console.log("[billing] created, type=", input.type, "amount=", input.amount);
+      // createBillingDual 内部已处理 Supabase/local 分发, orgId 始终需要
+      const fullInput: BillingInput = { ...input, orgId: getSession().orgId };
+      const created = await createBillingDual(fullInput);
       // 调 processEvent(与生日扫描器相同,静态 import,不走事件总线)
       if (input.amount > 0) {
         const ev: { type: string; patientId: string; amount: number; createdAt: Date; billingId: string; encounterId?: string } = {
@@ -51,11 +70,9 @@ export function useDeleteBilling() {
   return useMutation({
     mutationFn: async (id: string) => {
       const found = await billingRepository.findById(id);
-      if (found) {
-        await billingRepository.remove(id);
-        return found.patientId;
-      }
-      return null;
+      if (!found) return null;
+      await deleteBillingDual(id);
+      return found.patientId;
     },
     onSuccess: (patientId) => {
       if (patientId) qc.invalidateQueries({ queryKey: ["billing", patientId] });

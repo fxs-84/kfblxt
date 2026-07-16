@@ -1,11 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { diagnosisRepository, findDiagnosisByEncounter, type DiagnosisInput } from "./diagnosis.repository";
 import { getSession } from "../../lib/session";
+import { hasSupabaseConfig } from "../../lib/supabase";
+import { findDiagnosisByEncounterDual, createDiagnosisDual } from "./diagnosis-supabase";
+import { findEncounterByIdDual } from "../encounters/encounter-supabase";
 
 export function useDiagnosis(encounterId: string | undefined) {
   return useQuery({
     queryKey: ["diagnosis", encounterId],
-    queryFn: () => findDiagnosisByEncounter(encounterId as string),
+    queryFn: () => hasSupabaseConfig()
+      ? findDiagnosisByEncounterDual(encounterId as string)
+      : findDiagnosisByEncounter(encounterId as string),
     enabled: Boolean(encounterId),
   });
 }
@@ -55,11 +60,15 @@ export function useCreateDiagnosis() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<DiagnosisInput, "orgId">) => {
-      const created = await diagnosisRepository.create({ ...input, orgId: getSession().orgId });
+      const fullInput = { ...input, orgId: getSession().orgId };
+      const created = hasSupabaseConfig()
+        ? await createDiagnosisDual(fullInput)
+        : await diagnosisRepository.create(fullInput);
       // 触发积分引擎:diagnosis.created (诊断完成奖励)
       try {
-        const { encounterRepository } = await import("../encounters/encounter.repository");
-        const enc = await encounterRepository.findById(created.encounterId);
+        const enc = hasSupabaseConfig()
+          ? await findEncounterByIdDual(created.encounterId)
+          : (await import("../encounters/encounter.repository")).encounterRepository.findById(created.encounterId);
         if (enc) {
           const { onDiagnosisCreated } = await import("../membership/integration");
           await onDiagnosisCreated(enc.patientId, created.encounterId);

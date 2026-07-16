@@ -3,11 +3,21 @@ import { encounterRepository, findEncountersByPatient } from "./encounter.reposi
 import type { EncounterInput } from "./encounter.schema";
 import { getSession } from "../../lib/session";
 import { can } from "../../lib/rbac";
+import { hasSupabaseConfig } from "../../lib/supabase";
+import {
+  findEncountersByPatientDual,
+  findEncounterByIdDual,
+  createEncounterDual,
+  updateEncounterDual,
+} from "./encounter-supabase";
 
 export function usePatientEncounters(patientId: string | undefined) {
   return useQuery({
     queryKey: ["encounters", patientId],
-    queryFn: () => findEncountersByPatient(patientId as string),
+    queryFn: () =>
+      hasSupabaseConfig()
+        ? findEncountersByPatientDual(patientId as string)
+        : findEncountersByPatient(patientId as string),
     enabled: Boolean(patientId),
   });
 }
@@ -23,14 +33,18 @@ export function useCloseEncounter() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const existing = await encounterRepository.findById(id);
+      const existing = hasSupabaseConfig()
+        ? await findEncounterByIdDual(id)
+        : await encounterRepository.findById(id);
       if (!existing || existing.status === "已结束") return existing!;
-      const e = await encounterRepository.update(id, { status: "已结束" });
+      const e = hasSupabaseConfig()
+        ? await updateEncounterDual(id, { status: "已结束" })
+        : await encounterRepository.update(id, { status: "已结束" });
       // 计算实际就诊金额:取 billing 中该就诊的 sum(消费金额),否则 fallback encounter.amount
       let realAmount = e.amount ?? 0;
       try {
-        const { findBillingByEncounter } = await import("../billing/billing.repository");
-        const bills = await findBillingByEncounter(id);
+        const { findBillingByEncounterDual } = await import("../billing/billing-supabase");
+        const bills = await findBillingByEncounterDual(id);
         const consumed = bills.filter((b) => b.type === "消费");
         if (consumed.length > 0) {
           realAmount = consumed.reduce((s, b) => s + b.amount, 0);
@@ -51,7 +65,9 @@ export function useUpdateEncounter() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<EncounterInput> }) =>
-      encounterRepository.update(id, patch),
+      hasSupabaseConfig()
+        ? updateEncounterDual(id, patch)
+        : encounterRepository.update(id, patch),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["encounters"] });
     },
@@ -65,7 +81,9 @@ export function useCreateEncounter() {
       if (!can(getSession().role, "encounter:write")) {
         throw new Error("当前角色无权新建就诊记录");
       }
-      const created = await encounterRepository.create(input);
+      const created = hasSupabaseConfig()
+        ? await createEncounterDual(input)
+        : await encounterRepository.create(input);
       // 触发积分引擎:encounter.created(可触发里程碑等)
       const { onEncounterCreated } = await import("../membership/integration");
       await onEncounterCreated(created.patientId, created.id);
