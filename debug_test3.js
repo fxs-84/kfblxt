@@ -1,0 +1,4 @@
+var s=JSON.parse(localStorage.getItem('sb-agjjwugkrdurbcrgilhw-auth-token'));
+var tok=s.access_token||(s.currentSession&&s.currentSession.access_token);
+var r=await fetch('https://agjjwugkrdurbcrgilhw.supabase.co/rest/v1/assessments',{method:'POST',headers:{'Content-Type':'application/json','apikey':'sb_publishable_OgDm-yiaWFfn_x-U9Tcwjg_pH0sbpR4','Authorization':'Bearer '+tok,'Prefer':'return=representation'},body:JSON.stringify({id:crypto.randomUUID(),org_id:'00000000-0000-0000-0000-000000000001',patient_id:'aaaaaaaa-0000-4000-8000-000000000001',encounter_id:'f97cb82a-d56d-4623-b44a-72806fe180b4',type:'pain_assessment',payload:{csi:{items:{1:2,2:3},total:5,severity:'mild'},slanss:{items:{1:1,2:0},total:1,positive:false}},created_at:new Date().toISOString(),created_by:null}));
+console.log('HTTP',r.status,await r.text())

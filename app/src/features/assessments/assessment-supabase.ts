@@ -48,7 +48,7 @@ function toRow(
     id,
     org_id: orgId,
     patient_id: patientId,
-    encounter_id: encounterId ?? null,
+    encounter_id: (encounterId && encounterId !== "new") ? encounterId : null,
     type,
     payload,
     created_at: createdAt.toISOString(),
