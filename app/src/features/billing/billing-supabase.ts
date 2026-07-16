@@ -20,7 +20,7 @@ function toRow(input: BillingInput & { id: string; createdAt: Date }): Record<st
     id: input.id,
     org_id: input.orgId,
     patient_id: input.patientId,
-    type: input.type || null,
+    type: input.type,
     amount: input.amount,
     sessions: input.sessions ?? null,
     note: input.note,

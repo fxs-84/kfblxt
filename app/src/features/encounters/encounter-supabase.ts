@@ -18,8 +18,8 @@ function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<
     org_id: input.orgId,
     patient_id: input.patientId,
     encounter_date: input.encounterDate instanceof Date ? input.encounterDate.toISOString() : String(input.encounterDate),
-    visit_type: input.visitType || null,
-    status: input.status || null,
+    visit_type: input.visitType,
+    status: input.status,
     chief_complaint: input.chiefComplaint,
     created_at: input.createdAt.toISOString(),
     created_by: null,
@@ -94,8 +94,8 @@ export async function updateEncounterDual(id: string, patch: Partial<EncounterIn
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.patientId !== undefined) row.patient_id = patch.patientId;
   if (patch.encounterDate !== undefined) row.encounter_date = patch.encounterDate instanceof Date ? patch.encounterDate.toISOString() : patch.encounterDate;
-  if (patch.visitType !== undefined) row.visit_type = patch.visitType || null;
-  if (patch.status !== undefined) row.status = patch.status || null;
+  if (patch.visitType !== undefined) row.visit_type = patch.visitType;
+  if (patch.status !== undefined) row.status = patch.status;
   if (patch.chiefComplaint !== undefined) row.chief_complaint = patch.chiefComplaint;
   const { data, error } = await supabase.from("encounters").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新就诊失败: ${error?.message ?? "无响应"}`);

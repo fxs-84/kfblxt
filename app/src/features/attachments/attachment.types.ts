@@ -11,6 +11,7 @@ export const ATTACHMENT_CATEGORIES: readonly AttachmentCategory[] = ["检查报�
 
 export interface Attachment {
   id: string;
+  patientId: string;
   encounterId: string;
   orgId: string;
   createdAt: Date;

@@ -7,6 +7,7 @@ export type AttachmentRecord = Omit<Attachment, "id" | "createdAt"> & Entity;
 export interface AttachmentInput {
   encounterId: string;
   orgId: string;
+  patientId: string;
   category: AttachmentCategory;
   fileName: string;
   mimeType: string;

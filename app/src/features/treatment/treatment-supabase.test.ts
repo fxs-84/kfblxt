@@ -36,10 +36,13 @@ const baseNoteInput = (planId: string) => ({
   orgId: ORG,
   encounterId: ENC_A,
   treatmentPlanId: planId,
-  node: "立即" as const,
-  vasAfter: 3,
-  outcome: "有效" as const,
-  adjustment: "调整强度",
+  patientId: "patient-001",
+  horizon: "立即" as const,
+  subjective: "主诉内容",
+  objective: "客观检查结果",
+  assessment: "评估分析",
+  plan: "后续处理计划",
+  vasCurrent: 3,
 });
 
 describe("treatment dual-mode dispatcher (no Supabase env → fallback)", () => {
@@ -72,8 +75,8 @@ describe("treatment dual-mode dispatcher (no Supabase env → fallback)", () => 
   it("createNoteDual + findNotesByPlanDual round-trip", async () => {
     const plan = await createPlanDual(basePlanInput as Parameters<typeof createPlanDual>[0]);
     const note = await createNoteDual(baseNoteInput(plan.id) as Parameters<typeof createNoteDual>[0]);
-    expect(note.vasAfter).toBe(3);
-    expect(note.outcome).toBe("有效");
+    expect(note.vasCurrent).toBe(3);
+    expect(note.subjective).toBe("主诉内容");
     const list = await findNotesByPlanDual(plan.id);
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe(note.id);

@@ -72,6 +72,7 @@ export interface ExamSession {
   id: string;
   encounterId: string;
   orgId: string;
+  patientId: string;
   createdAt: Date;
   /** 逐项结果,key = examItemDef.id */
   results: Record<string, ExamResult>;

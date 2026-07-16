@@ -18,8 +18,9 @@ function toRow(input: AttachmentInput & { id: string; createdAt: Date }): Record
   return {
     id: input.id,
     org_id: input.orgId,
+    patient_id: input.patientId,
     encounter_id: input.encounterId,
-    category: input.category || null,
+    category: input.category,
     file_name: input.fileName,
     mime_type: input.mimeType,
     data_url: input.dataUrl,
@@ -37,6 +38,7 @@ function fromRow(row: Record<string, unknown>): AttachmentRecord {
   return {
     id: String(row.id),
     orgId: String(row.org_id),
+    patientId: String(row.patient_id),
     encounterId: String(row.encounter_id),
     category: row.category as AttachmentRecord["category"],
     fileName: String(row.file_name),

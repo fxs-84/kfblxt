@@ -7,6 +7,7 @@ export type ExamSessionRecord = Omit<ExamSession, "id" | "createdAt"> & Entity;
 export interface ExamSessionInput {
   encounterId: string;
   orgId: string;
+  patientId: string;
   results: Record<string, ExamResult>;
 }
 

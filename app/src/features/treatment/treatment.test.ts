@@ -5,6 +5,7 @@ import type { TreatmentPlanInput } from "./treatment.repository";
 const VALID: TreatmentPlanInput = {
   encounterId: "enc-001",
   orgId: "00000000-0000-4000-8000-0000000000f0",
+  patientId: "patient-001",
   phase: "急性期",
   frequency: "3次/周",
   duration: "4周",
@@ -13,7 +14,7 @@ const VALID: TreatmentPlanInput = {
     { term: "short", description: "VAS 疼痛评分降低", metric: "7→3 分" },
     { term: "long", description: "独立上下楼", metric: "扶手→无扶" },
   ],
-  boundaries: "3月无改善转诊手术",
+  boundary: "3月无改善转诊手术",
 };
 
 describe("treatmentPlanRepository", () => {

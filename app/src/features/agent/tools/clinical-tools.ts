@@ -166,7 +166,7 @@ export const getTreatmentPlansTool: AgentTool<typeof getPlansSchema> = {
         return { id, name: def?.name ?? id };
       }),
       goals: p.goals,
-      boundaries: p.boundaries,
+      boundaries: p.boundary,
     })), null, 2);
   },
 };

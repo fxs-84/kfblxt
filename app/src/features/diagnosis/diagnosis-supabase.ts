@@ -1,8 +1,10 @@
 /**
  * 诊断仓储的 Supabase 双模式分发。
- * - LocalizationDiagnosis 含多个 optional 数组字段 → 全部存 jsonb (Supabase 一列存整个)
- *   OR 同步拆成多个 nullable 列(本次选拆开,与 RLS 索引友好)。
- *   columns: levels / mechanisms / segments / nerves / cutaneousNerveIds / side / reasoning / clinicalDiagnoses
+ * DB columns:
+ *   id / org_id / encounter_id / patient_id / neuro_levels / spinal_segments /
+ *   nerve_trunks / cutaneous_nerves / mechanisms / rationale / confidence /
+ *   created_at / created_by / updated_at / updated_by / deleted_at
+ * 前端模型名 → DB 列名映射在 toRow / fromRow / updateDiagnosisDual 中维护。
  */
 
 import { getSupabase } from "../../lib/supabase";
@@ -13,19 +15,19 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-function toRow(input: DiagnosisInput & { id: string; createdAt: Date }): Record<string, unknown> {
+function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?: string; confidence?: number }): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
     encounter_id: input.encounterId,
-    levels: input.levels,
+    patient_id: input.patientId ?? null,
+    neuro_levels: input.levels,
+    spinal_segments: input.segments ?? null,
+    nerve_trunks: input.nerves ?? null,
+    cutaneous_nerves: input.cutaneousNerveIds ?? null,
     mechanisms: input.mechanisms,
-    segments: input.segments ?? null,
-    nerves: input.nerves ?? null,
-    cutaneous_nerve_ids: input.cutaneousNerveIds ?? null,
-    side: input.side,
-    reasoning: input.reasoning,
-    clinical_diagnoses: input.clinicalDiagnoses ?? null,
+    rationale: input.reasoning,
+    confidence: input.confidence ?? null,
     created_at: input.createdAt.toISOString(),
     created_by: null,
   };
@@ -37,21 +39,20 @@ function fromRow(row: Record<string, unknown>): DiagnosisRecord {
     id: String(row.id),
     orgId: String(row.org_id),
     encounterId: String(row.encounter_id),
-    levels: (row.levels as DiagnosisRecord["levels"]) ?? [],
+    levels: (row.neuro_levels as DiagnosisRecord["levels"]) ?? [],
     mechanisms: (row.mechanisms as DiagnosisRecord["mechanisms"]) ?? [],
-    segments: (row.segments as DiagnosisRecord["segments"]) ?? undefined,
-    nerves: (row.nerves as DiagnosisRecord["nerves"]) ?? undefined,
-    cutaneousNerveIds: (row.cutaneous_nerve_ids as string[]) ?? undefined,
-    side: row.side as DiagnosisRecord["side"],
-    reasoning: String(row.reasoning ?? ""),
-    clinicalDiagnoses: (row.clinical_diagnoses as ClinicalDx[] | null) ?? undefined,
+    segments: (row.spinal_segments as DiagnosisRecord["segments"]) ?? undefined,
+    nerves: (row.nerve_trunks as DiagnosisRecord["nerves"]) ?? undefined,
+    cutaneousNerveIds: (row.cutaneous_nerves as string[]) ?? undefined,
+    side: (row.side as DiagnosisRecord["side"]) ?? "midline",
+    reasoning: String(row.rationale ?? ""),
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
     createdBy: (row.created_by as string) ?? null,
     updatedAt: new Date(typeof crt === "string" ? crt : String(crt)),
     updatedBy: null,
     deletedAt: null,
     deletedBy: null,
-  };
+  } as DiagnosisRecord;
 }
 
 export async function findDiagnosisByEncounterDual(encounterId: string): Promise<DiagnosisRecord | null> {
@@ -73,7 +74,7 @@ export async function findDiagnosisByEncounterDual(encounterId: string): Promise
   return fromRow(data);
 }
 
-export async function createDiagnosisDual(input: DiagnosisInput): Promise<DiagnosisRecord> {
+export async function createDiagnosisDual(input: DiagnosisInput & { patientId?: string; confidence?: number }): Promise<DiagnosisRecord> {
   if (!isSupabaseReady()) return diagnosisRepository.create(input);
   const supabase = getSupabase()!;
   const id = crypto.randomUUID();
@@ -87,14 +88,12 @@ export async function updateDiagnosisDual(id: string, patch: Partial<DiagnosisIn
   if (!isSupabaseReady()) return diagnosisRepository.update(id, patch as never);
   const supabase = getSupabase()!;
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (patch.levels !== undefined) row.levels = patch.levels;
+  if (patch.levels !== undefined) row.neuro_levels = patch.levels;
   if (patch.mechanisms !== undefined) row.mechanisms = patch.mechanisms;
-  if (patch.segments !== undefined) row.segments = patch.segments ?? null;
-  if (patch.nerves !== undefined) row.nerves = patch.nerves ?? null;
-  if (patch.cutaneousNerveIds !== undefined) row.cutaneous_nerve_ids = patch.cutaneousNerveIds ?? null;
-  if (patch.side !== undefined) row.side = patch.side;
-  if (patch.reasoning !== undefined) row.reasoning = patch.reasoning;
-  if (patch.clinicalDiagnoses !== undefined) row.clinical_diagnoses = patch.clinicalDiagnoses ?? null;
+  if (patch.segments !== undefined) row.spinal_segments = patch.segments ?? null;
+  if (patch.nerves !== undefined) row.nerve_trunks = patch.nerves ?? null;
+  if (patch.cutaneousNerveIds !== undefined) row.cutaneous_nerves = patch.cutaneousNerveIds ?? null;
+  if (patch.reasoning !== undefined) row.rationale = patch.reasoning;
   const { data, error } = await supabase.from("diagnoses").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新诊断失败: ${error?.message ?? "无响应"}`);
   return fromRow(data);

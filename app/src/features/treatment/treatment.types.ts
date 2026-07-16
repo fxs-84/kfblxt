@@ -147,6 +147,7 @@ export interface TreatmentPlan {
   id: string;
   encounterId: string;
   orgId: string;
+  patientId: string;
   createdAt: Date;
   phase: TreatmentPhase;
   /** 频率 */
@@ -163,7 +164,9 @@ export interface TreatmentPlan {
   interventionDoses?: Record<string, import("./intervention-dose").InterventionDose>;
   goals: TreatmentGoal[];
   /** 康复界限触发条件 */
-  boundaries?: string;
+  boundary?: string;
+  /** 训练备注 */
+  notes?: string;
 }
 
 /** 进展复评 */
@@ -172,13 +175,18 @@ export interface ProgressNote {
   treatmentPlanId: string;
   encounterId: string;
   orgId: string;
+  patientId: string;
   createdAt: Date;
-  /** 复评节点 */
-  node: "立即" | "短期" | "长期";
-  vasAfter?: number;
-  /** 量表复评 delta */
-  scaleDelta?: Record<string, number>;
-  outcome: OutcomeRating;
-  adjustment?: string;
-  note?: string;
+  /** 复评节点 (对应 DB horizon 列) */
+  horizon: "立即" | "短期" | "长期";
+  /** 主观资料 */
+  subjective: string;
+  /** 客观资料 */
+  objective: string;
+  /** 评估 */
+  assessment: string;
+  /** 计划 */
+  plan: string;
+  /** 当前 VAS 疼痛评分 */
+  vasCurrent?: number;
 }

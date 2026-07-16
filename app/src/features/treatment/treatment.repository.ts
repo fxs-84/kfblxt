@@ -9,6 +9,7 @@ export type ProgressNoteRecord = Omit<ProgressNote, "id" | "createdAt"> & Entity
 export interface TreatmentPlanInput {
   encounterId: string;
   orgId: string;
+  patientId: string;
   phase: TreatmentPlan["phase"];
   frequency: string;
   duration: string;
@@ -16,19 +17,21 @@ export interface TreatmentPlanInput {
   /** 逐项剂量(可选,见 intervention-dose.ts) */
   interventionDoses?: InterventionDoseMap;
   goals: TreatmentPlan["goals"];
-  boundaries?: string;
+  boundary?: string;
+  notes?: string;
 }
 
 export interface ProgressNoteInput {
   treatmentPlanId: string;
   encounterId: string;
   orgId: string;
-  node: ProgressNote["node"];
-  vasAfter?: number;
-  scaleDelta?: Record<string, number>;
-  outcome: ProgressNote["outcome"];
-  adjustment?: string;
-  note?: string;
+  patientId: string;
+  horizon: ProgressNote["horizon"];
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  vasCurrent?: number;
 }
 
 export const treatmentPlanRepository: Repository<TreatmentPlanRecord, TreatmentPlanInput> =

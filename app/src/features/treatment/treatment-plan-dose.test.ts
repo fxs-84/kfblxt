@@ -5,12 +5,13 @@ import type { TreatmentPlanInput } from "./treatment.repository";
 const BASE: TreatmentPlanInput = {
   encounterId: "enc-dose",
   orgId: "00000000-0000-4000-8000-0000000000f0",
+  patientId: "patient-001",
   phase: "恢复期",
   frequency: "3次/周",
   duration: "4周",
   interventionIds: ["vor-training", "neural-desensitization"],
   goals: [{ term: "short", description: "VOR 增益改善", metric: "<10%" }],
-  boundaries: undefined,
+  boundary: undefined,
 };
 
 describe("TreatmentPlan interventionDoses", () => {
