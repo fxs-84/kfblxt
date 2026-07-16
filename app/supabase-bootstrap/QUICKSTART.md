@@ -51,10 +51,10 @@
 左侧 **Settings(齿轮)** → **API**,找:
 
 - **Project URL**(长得像 `https://xxxxxx.supabase.co`)
-- **Project API keys** 里的 **"anon public"** key（以 `eyJ` 开头的 JWT，约 300 多字符）
+- **Project API keys** 里的 **"Publishable"** key（以 `sb_publishable_` 开头 — 2025+ 新版 dashboard）
+  如果你的 dashboard 较老，可能是 **"anon public"** key（`eyJ` 开头 JWT，约 200+ 字符）
 
-> ⚠ **不要复制 "service_role" key** — 那个权限过高,泄露会让别人全权控制您数据库。
-> ⚠ 不要复制 `sb_publishable_` 开头的值——那不是真正的 anon key。
+> ⚠ **不要复制 "Secret keys" 里的 `sb_secret_...`** — 那个权限过高,泄露会让别人全权控制您数据库。
 
 #### 2.4 填进配置页
 

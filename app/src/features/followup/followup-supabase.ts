@@ -16,7 +16,7 @@ function toRow(input: FollowupInput & { id: string; createdAt: Date }): Record<s
     patient_id: input.patientId,
     due_date: input.dueDate instanceof Date ? input.dueDate.toISOString() : String(input.dueDate),
     note: input.note,
-    status: input.status ?? "待复诊",
+    status: input.status || "待复诊",
     completed_encounter_id: input.completedEncounterId ?? null,
     created_at: input.createdAt.toISOString(),
     created_by: null,
@@ -104,7 +104,7 @@ export async function deleteFollowupDual(id: string): Promise<void> {
   const supabase = getSupabase()!;
   const { error } = await supabase
     .from("followups")
-    .update({ deleted_at: new Date().toISOString(), deleted_by: null })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(`删除复诊失败: ${error.message}`);
 }

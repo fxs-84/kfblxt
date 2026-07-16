@@ -20,7 +20,7 @@ function toRow(input: BillingInput & { id: string; createdAt: Date }): Record<st
     id: input.id,
     org_id: input.orgId,
     patient_id: input.patientId,
-    type: input.type,
+    type: input.type || null,
     amount: input.amount,
     sessions: input.sessions ?? null,
     note: input.note,
@@ -101,7 +101,7 @@ export async function deleteBillingDual(id: string): Promise<void> {
   const supabase = getSupabase()!;
   const { error } = await supabase
     .from("billing_records")
-    .update({ deleted_at: new Date().toISOString(), deleted_by: null })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(`删除账单失败: ${error.message}`);
 }

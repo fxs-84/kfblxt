@@ -105,7 +105,7 @@ export async function deleteDiagnosisDual(id: string): Promise<void> {
   const supabase = getSupabase()!;
   const { error } = await supabase
     .from("diagnoses")
-    .update({ deleted_at: new Date().toISOString(), deleted_by: null })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(`删除诊断失败: ${error.message}`);
 }

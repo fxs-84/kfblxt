@@ -91,7 +91,7 @@ export async function deletePlanDual(id: string): Promise<void> {
   const supabase = getSupabase()!;
   const { error } = await supabase
     .from("treatment_plans")
-    .update({ deleted_at: new Date().toISOString(), deleted_by: null })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(`删除治疗计划失败: ${error.message}`);
 }

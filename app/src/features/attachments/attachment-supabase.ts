@@ -19,13 +19,13 @@ function toRow(input: AttachmentInput & { id: string; createdAt: Date }): Record
     id: input.id,
     org_id: input.orgId,
     encounter_id: input.encounterId,
-    category: input.category,
+    category: input.category || null,
     file_name: input.fileName,
     mime_type: input.mimeType,
     data_url: input.dataUrl,
     size_bytes: input.sizeBytes,
     note: input.note ?? null,
-    timeline: input.timeline ?? null,
+    timeline: input.timeline || null,
     comparison_group: input.comparisonGroup ?? null,
     created_at: input.createdAt.toISOString(),
     created_by: null,
@@ -93,7 +93,7 @@ export async function deleteAttachmentDual(id: string): Promise<void> {
   const supabase = getSupabase()!;
   const { error } = await supabase
     .from("attachments")
-    .update({ deleted_at: new Date().toISOString(), deleted_by: null })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(`删除附件失败: ${error.message}`);
 }

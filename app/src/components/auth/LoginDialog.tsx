@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { registerUser, loginByPassword } from "../../features/auth/user.repository";
+import { loginByPasswordDual, registerUserDual } from "../../features/auth/user-supabase";
 import type { UserRole } from "../../lib/rbac";
 import type { Session } from "../../lib/session";
 import { saveSession } from "./useSession";
+import { hasSupabaseConfig } from "../../lib/supabase";
 
 type Tab = "login" | "register";
 
@@ -15,10 +16,7 @@ const loginSchema = z.object({
 const registerSchema = loginSchema.extend({
   fullName: z.string().trim().min(1, "请输入姓名").max(40, "姓名过长"),
   role: z.enum(["admin", "physician", "therapist"]),
-  orgId: z.string().min(1),
 });
-
-const ORG_ID = "00000000-0000-4000-8000-0000000000f0";
 
 interface LoginDialogProps {
   open: boolean;
@@ -77,7 +75,7 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
       }
       try {
         setSubmitting(true);
-        const user = await loginByPassword(parsed.data.username, parsed.data.password);
+        const user = await loginByPasswordDual(parsed.data.username, parsed.data.password);
         saveSession({ userId: user.id, orgId: user.orgId, fullName: user.fullName, role: user.role });
         onClose();
       } catch (err) {
@@ -86,7 +84,7 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
         setSubmitting(false);
       }
     } else {
-      const parsed = registerSchema.safeParse({ username, password, fullName, role, orgId: ORG_ID });
+      const parsed = registerSchema.safeParse({ username, password, fullName, role });
       if (!parsed.success) {
         const fieldErrors: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
@@ -98,12 +96,11 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
       }
       try {
         setSubmitting(true);
-        const user = await registerUser({
+        const user = await registerUserDual({
           username: parsed.data.username,
           password: parsed.data.password,
           fullName: parsed.data.fullName,
           role: parsed.data.role,
-          orgId: parsed.data.orgId,
         });
         saveSession({ userId: user.id, orgId: user.orgId, fullName: user.fullName, role: user.role });
         onClose();
@@ -133,6 +130,22 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
           </h2>
           <button type="button" className="modal-card__close" onClick={onClose} aria-label="关闭">×</button>
         </header>
+
+        {/* Supabase 模式提示 */}
+        {hasSupabaseConfig() && (
+          <div
+            role="note"
+            style={{
+              padding: "var(--space-2) var(--space-3)",
+              background: "var(--color-accent-bg, #ecfeff)",
+              color: "var(--color-accent-dark, #0e7490)",
+              fontSize: 12,
+              borderBottom: "1px solid var(--color-border)",
+            }}
+          >
+            ☁️ 多设备共享模式 — 用同一组用户名 + 密码,在任意设备登录都看到同一份数据。
+          </div>
+        )}
 
         {/* Tab 切换 */}
         <div className="login-tabs" role="tablist" style={{ display: "flex", borderBottom: "1px solid var(--color-border)" }}>

@@ -70,8 +70,10 @@ function isValidSupabaseUrl(url: string): boolean {
 
 function isValidAnonKey(k: string): boolean {
   if (!k) return false;
-  // Supabase anon key 是 JWT 格式(eyJ 开头),从 Settings → API → anon public key 复制
-  return k.startsWith("eyJ");
+  const trimmed = k.trim();
+  // 两种合法格式:legacy JWT (eyJ...) 或 2025+ publishable key (sb_publishable_...)
+  // 都从 Supabase 项目 Settings → API 复制
+  return trimmed.startsWith("eyJ") || trimmed.startsWith("sb_publishable_");
 }
 
 interface SetupWizardProps {
@@ -98,11 +100,15 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
     }
     setSubmitting(true);
     try {
-      // 轻量连通性测试:用 fetch 打 Supabase REST 根端点
-      const testUrl = `${url.trim().replace(/\/$/, "")}/rest/v1/?apikey=${encodeURIComponent(anonKey.trim())}`;
-      const res = await fetch(testUrl, { method: "GET" });
-      if (res.status === 401) {
-        setError("anon key 被拒,请确认是从 Settings → API → anon public key 复制的 JWT(eyJ 开头)");
+      // 连通性测试:用 fetch 打 Supabase Auth 的 settings 端点(公开可读,任何 key 都能过)
+      // 不用 /rest/v1/:PostgREST 拒 sb_publishable_ 类 key(它只接受 user JWT)
+      const base = url.trim().replace(/\/$/, "");
+      const res = await fetch(`${base}/auth/v1/settings`, {
+        method: "GET",
+        headers: { apikey: anonKey.trim() },
+      });
+      if (res.status === 401 || res.status === 403) {
+        setError(`key 被拒(HTTP ${res.status}):请确认是从 Settings → API → anon / Publishable key 整段复制的,首尾空格裁掉`);
         return;
       }
       if (!res.ok) {
@@ -153,7 +159,7 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
           </li>
           <li>
             左侧 <strong>Settings(齿轮)→ API</strong> → 复制
-            <strong>Project URL</strong> + <strong>Publishable / anon key</strong>
+            <strong>Project URL</strong> + <strong>anon / Publishable key</strong>(新项目是 <code>sb_publishable_…</code> 开头的)
             → 粘到下面两个输入框
           </li>
         </ol>
@@ -188,13 +194,14 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
             type="password"
             value={anonKey}
             onChange={(e) => setAnonKey(e.target.value)}
-            placeholder="eyJhbGciOiJIUzI1NiIs..."
+            placeholder="eyJhbGciOiJIUzI1NiIs... 或 sb_publishable_xxx..."
             autoComplete="off"
             spellCheck={false}
           />
           {anonKey && !keyOk && (
             <span style={{ color: "var(--color-warning, #c66)", fontSize: 12 }}>
-              应是以 eyJ 开头的 JWT 格式,从 Supabase Settings → API → anon public key 复制
+              应是以 <code>eyJ</code> 开头的 JWT(legacy) 或 <code>sb_publishable_</code> 开头(2025+),
+              从 Supabase 项目 Settings → API → anon / publishable key 复制
             </span>
           )}
         </div>

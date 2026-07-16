@@ -83,69 +83,163 @@ export async function bootstrapOrg(input: BootstrapOrgInput): Promise<BootstrapO
   return { orgId, adminUserId: userId };
 }
 
-function usernameToEmail(username: string, orgName: string): string {
-  const slug = (orgName || "clinic").toLowerCase().replace(/[^a-z0-9]/g, "-") || "clinic";
-  return `${username}@${slug}.local`;
+/**
+ * 用户名 → 合成 Supabase Auth 邮箱。
+ *
+ * 约束:
+ *  - Supabase Auth 要求合法 email 格式(不能空,必须有 @,TLD 必须是公认的)。
+ *    实测 `.local` 被服务端拒(报 "invalid format"),`.app` 被接受。
+ *  - 应用 UI 只显示用户名 + 密码,不显示邮箱,所以必须服务端合成且对用户透明。
+ *  - 所有用户在同一默认 org 下(MVP 阶段),所以邮箱域名固定一个常量,
+ *    后续多 org 时改为 derived from org.slug。
+ *  - 用户名规范化:仅保留 [a-z 0-9 . _ -],大写 → 小写。
+ *    如果清洗后为空,用 'user' 占位。
+ */
+const EMAIL_DOMAIN = "nrm-default.app";
+
+export function usernameToEmail(username: string): string {
+  const clean = username
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "user";
+  return `${clean}@${EMAIL_DOMAIN}`;
 }
 
 /**
- * 注册新用户 — 双模式分发
+ * 从 profiles 表读取当前登录用户的资料。
+ *
+ * 如果 profile 不存在(触发器未执行完毕等竞争条件),则自己创建一条。
+ * 这样不依赖 trigger 的 metadata 解析,由应用层明确写 role + full_name。
+ */
+async function fetchOwnProfile(
+  supabase: NonNullable<ReturnType<typeof getSupabase>>,
+  opts?: { fullName?: string; role?: UserRole; orgId?: string },
+): Promise<{ id: string; org_id: string; full_name: string; role: string }> {
+  const { data: user, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !user?.user) throw new Error(`未登录: ${userErr?.message ?? ""}`);
+  const uid = user.user.id;
+
+  // 一次读,不存在则自动创建
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, org_id, full_name, role")
+      .eq("id", uid)
+      .maybeSingle();
+    if (error) throw new Error(`读 profile 失败: ${error.message}`);
+    if (data) return data;
+
+    // profile 不存在 — 常见于 signUp 之后 trigger 还没触发完。立即自己建一条。
+    if (opts) {
+      const { error: insertErr } = await supabase.from("profiles").insert({
+        id: uid,
+        org_id: opts.orgId ?? "00000000-0000-0000-0000-000000000001",
+        full_name: opts.fullName ?? "用户",
+        role: opts.role ?? "therapist",
+      });
+      if (insertErr) throw new Error(`创建 profile 失败: ${insertErr.message}`);
+    } else {
+      throw new Error("profile 缺失且无 fallback 数据,无法完成注册");
+    }
+  }
+  throw new Error("profile 读取超时");
+}
+
+/**
+ * 注册新用户 — 双模式分发。
+ *
+ * Supabase 模式下的行为:
+ *  1. supabase.auth.signUp 提交 email + password + raw_user_meta_data={full_name, role}
+ *  2. handle_new_user 触发器自动 INSERT profiles 行(role 从 metadata 取,full_name 同理)
+ *  3. 立即读回 profile,返回 AuthUid / orgId / fullName / role
  */
 export async function registerUserDual(input: {
   username: string;
   password: string;
   fullName: string;
   role: UserRole;
-  orgId: string;
-  orgName: string;
+  /** 保留以兼容现有 caller;Supabase 模式下被忽略(从 profile 读) */
+  orgId?: string;
 }): Promise<UserRecord> {
   if (!isSupabaseReady()) {
     return userRepository.create({
       username: input.username,
       fullName: input.fullName.trim(),
       role: input.role,
-      orgId: input.orgId,
+      orgId: input.orgId ?? "00000000-0000-4000-8000-0000000000f0",
       passwordHash: await hashPassword(input.password),
     }) as Promise<UserRecord>;
   }
   const supabase = getSupabase()!;
 
-  // 1. 在 Supabase Auth 建账号
-  const email = usernameToEmail(input.username, input.orgName);
+  const email = usernameToEmail(input.username);
+
+  // 注册:由于 auth.email_confirm 通常需要邮件确认才能拿到 session,
+  // 我们注册后主动做一次 signInWithPassword 拉起 session。
+  // 这样不依赖 Dashboard "Confirm email" 开关。
   const { data: signUp, error: signUpErr } = await supabase.auth.signUp({
     email,
     password: input.password,
+    options: {
+      data: {
+        full_name: input.fullName.trim(),
+        role: input.role,
+        username: input.username.trim(),
+      },
+    },
   });
-  if (signUpErr || !signUp.user) {
-    throw new Error(`Auth 注册失败: ${signUpErr?.message ?? "无响应"}`);
+  if (signUpErr) {
+    throw new Error(`Auth 注册失败: ${signUpErr.message}`);
+  }
+  if (!signUp.user) {
+    throw new Error("Auth 注册失败: 未返回 user 对象");
   }
 
-  // 2. 写 profiles 行(同 org)
-  const { error: profileErr } = await supabase.from("profiles").insert({
-    id: signUp.user.id,
-    org_id: input.orgId,
-    full_name: input.fullName.trim(),
-    role: input.role,
-  });
-  if (profileErr) {
-    throw new Error(`Profile 写入失败: ${profileErr.message}`);
+  // 没有 session(因为 email 未确认),主动签入拉起 session
+  const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: input.password });
+  if (signInErr) {
+    const msg = signInErr.message.toLowerCase();
+    if (msg.includes("email not confirmed")) {
+      throw new Error(
+        `注册成功,但 Supabase 要求 email 确认后才允许登录(默认安全策略)。\n` +
+        `解决方法(任选其一,推荐 ①):\n` +
+        `  ① Supabase Dashboard → Authentication → Providers → Email → 关掉 "Confirm email" 开关\n` +
+        `  ② Supabase SQL Editor 跑: update auth.users set email_confirmed_at = now() where email = '${email}';\n` +
+        `  ③ 我给你留个"我已经确认邮箱了,重试登录"的按钮(改前端即可)`
+      );
+    }
+    throw new Error(`注册成功,但立即签入失败: ${signInErr.message}`);
   }
 
-  // 3. 同步一份到 localStorage(给前端 Session 用 — 不再依赖 supabase.auth 后端读 profile)
-  const localRecord = await userRepository.create({
-    username: input.username,
+  const profile = await fetchOwnProfile(supabase, {
     fullName: input.fullName.trim(),
     role: input.role,
-    orgId: input.orgId,
-    passwordHash: await hashPassword(input.password),
+    orgId: "00000000-0000-0000-0000-000000000001",
   });
-  return localRecord;
+  return {
+    id: profile.id,
+    username: input.username.trim(),
+    fullName: profile.full_name,
+    role: profile.role as UserRole,
+    orgId: profile.org_id,
+    createdAt: new Date(),
+  };
 }
 
 /**
- * 登录 — 双模式分发
+ * 登录 — 双模式分发。
+ *
+ * Supabase 模式:
+ *  1. signInWithPassword
+ *  2. 读 profile → 返回 profile 驱动的 userId/orgId/role/fullName
+ *  3. 不再写 localStorage(单一数据源就是 Supabase)
  */
-export async function loginByPasswordDual(username: string, password: string, orgName: string): Promise<UserRecord> {
+export async function loginByPasswordDual(
+  username: string,
+  password: string,
+): Promise<UserRecord> {
   if (!isSupabaseReady()) {
     const all = await userRepository.findAll();
     const user = all.find((u) => u.username.toLowerCase() === username.toLowerCase());
@@ -156,8 +250,7 @@ export async function loginByPasswordDual(username: string, password: string, or
   }
   const supabase = getSupabase()!;
 
-  // 1. Supabase Auth 登录
-  const email = usernameToEmail(username, orgName);
+  const email = usernameToEmail(username);
   const { data: signIn, error: signInErr } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -166,49 +259,15 @@ export async function loginByPasswordDual(username: string, password: string, or
     throw new Error(`登录失败: ${signInErr?.message ?? "用户名或密码错误"}`);
   }
 
-  // 2. 查 profile(失败回退到本地缓存)
-  const { data: profile, error: profileErr } = await supabase
-    .from("profiles")
-    .select("id, org_id, full_name, role")
-    .eq("id", signIn.user.id)
-    .maybeSingle();
-  if (profileErr || !profile) {
-    throw new Error("无法读取用户资料,请联系管理员");
-  }
-
-  // 3. 在 localStorage 同步一份(以和单机模式行为一致 — 客户端 Session 走 zustand)
-  const passwordHash = await hashPassword(password);
-  let local: UserRecord;
-  try {
-    if (await isUsernameTaken(username)) {
-      // 已存在:更新密码 hash 以保证下次登录兜底
-      const all = await userRepository.findAll();
-      const existing = all.find((u) => u.username.toLowerCase() === username.toLowerCase());
-      if (existing) {
-        const updated = await userRepository.update(existing.id, { passwordHash });
-        local = updated;
-      } else {
-        local = await userRepository.create({
-          username,
-          fullName: profile.full_name,
-          role: profile.role,
-          orgId: profile.org_id,
-          passwordHash,
-        });
-      }
-    } else {
-      local = await userRepository.create({
-        username,
-        fullName: profile.full_name,
-        role: profile.role,
-        orgId: profile.org_id,
-        passwordHash,
-      });
-    }
-  } catch (e) {
-    throw new Error("本地缓存同步失败: " + (e instanceof Error ? e.message : String(e)));
-  }
-  return local;
+  const profile = await fetchOwnProfile(supabase);
+  return {
+    id: profile.id,
+    username: username.trim(),
+    fullName: profile.full_name,
+    role: profile.role as UserRole,
+    orgId: profile.org_id,
+    createdAt: new Date(),
+  };
 }
 
 /** 探针:当前是否走 Supabase?给 UI 用来显示"多机构模式"提示 */

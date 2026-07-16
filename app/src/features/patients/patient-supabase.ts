@@ -26,8 +26,8 @@ function toRow(p: PatientInput & { id: string; createdAt: Date }): Record<string
     name: p.name,
     sex: p.sex,
     birth_date: p.birthDate instanceof Date ? p.birthDate.toISOString().slice(0, 10) : String(p.birthDate),
-    phone: p.phone ?? null,
-    dominant_hand: p.dominantHand ?? null,
+    phone: p.phone || null,
+    dominant_hand: p.dominantHand || null,
     created_at: p.createdAt.toISOString(),
     created_by: null,
   };
@@ -84,8 +84,8 @@ export async function updatePatientSupabase(id: string, patch: Partial<PatientIn
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.sex !== undefined) row.sex = patch.sex;
   if (patch.birthDate !== undefined) row.birth_date = patch.birthDate instanceof Date ? patch.birthDate.toISOString().slice(0, 10) : patch.birthDate;
-  if (patch.phone !== undefined) row.phone = patch.phone;
-  if (patch.dominantHand !== undefined) row.dominant_hand = patch.dominantHand;
+  if (patch.phone !== undefined) row.phone = patch.phone || null;
+  if (patch.dominantHand !== undefined) row.dominant_hand = patch.dominantHand || null;
   const { data, error } = await supabase.from("patients").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新客户失败: ${error?.message ?? "无响应"}`);
   return fromRow(data);
@@ -95,7 +95,7 @@ export async function deletePatientSupabase(id: string): Promise<void> {
   const supabase = getSupabase()!;
   const { error } = await supabase
     .from("patients")
-    .update({ deleted_at: new Date().toISOString(), deleted_by: null })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(`删除客户失败: ${error.message}`);
 }

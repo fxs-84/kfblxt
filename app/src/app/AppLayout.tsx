@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { LoginDialog } from "../components/auth/LoginDialog";
 import { resetSession, useSession } from "../components/auth/useSession";
+import { getSupabase, resetSupabaseClient } from "../lib/supabase";
 import { AgentMonitor } from "../features/agent/AgentMonitor";
 import { AgentChatFAB } from "../features/agent/AgentChatFAB";
 
@@ -50,9 +51,12 @@ export function AppLayout() {
   const session = useSession();
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(async () => {
+    // Supabase 登出(清除服务器 session)
+    try { await getSupabase()?.auth.signOut(); } catch { /* noop */ }
+    resetSupabaseClient();
     resetSession();
-  };
+  }, []);
 
   return (
     <div className="app-shell">
@@ -85,6 +89,31 @@ export function AppLayout() {
           </span>
           <span className="sidebar__user-action" aria-hidden="true">↗</span>
         </button>
+        <button
+          type="button"
+          className="sidebar__logout"
+          onClick={handleLogout}
+          aria-label="退出登录"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-2)",
+            width: "100%",
+            padding: "var(--space-2) var(--space-4)",
+            border: "none",
+            background: "transparent",
+            color: "var(--color-text-muted, #999)",
+            cursor: "pointer",
+            fontSize: 13,
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          退出登录
+        </button>
       </aside>
       <main className="main">
         <Outlet />
@@ -96,25 +125,6 @@ export function AppLayout() {
         open={loginOpen}
         current={session}
         onClose={() => setLoginOpen(false)}
-      />
-
-      {/* 隐藏的退出触发点:键盘快捷键 Ctrl+Shift+Q 登出(mock 阶段演示用) */}
-      <button
-        type="button"
-        onClick={handleLogout}
-        title="退出登录 (mock 演示用)"
-        style={{
-          position: "fixed",
-          bottom: 4,
-          left: 4,
-          width: 1,
-          height: 1,
-          opacity: 0,
-          border: 0,
-          padding: 0,
-        }}
-        aria-hidden="true"
-        tabIndex={-1}
       />
     </div>
   );
