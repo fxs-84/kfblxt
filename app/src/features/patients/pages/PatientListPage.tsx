@@ -16,7 +16,7 @@ type MigrateState =
 
 export function PatientListPage() {
   const navigate = useNavigate();
-  const { data: patients, isLoading } = usePatients();
+  const { data: patients, isLoading, isError, error } = usePatients();
   const session = useSession();
   const [query, setQuery] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
@@ -105,6 +105,26 @@ export function PatientListPage() {
           </button>
         )}
       </div>
+
+      {isError && (
+        <div
+          className="field__error"
+          style={{
+            padding: "var(--space-2) var(--space-3)",
+            marginBottom: "var(--space-2)",
+            background: "#fef2f2",
+            borderRadius: "var(--radius-sm)",
+            fontSize: 13,
+            color: "#c33",
+          }}
+        >
+          ❌ 查询失败: {error instanceof Error ? error.message : "未知错误"}
+          <br />
+          <span style={{ fontSize: 12 }}>
+            (如果 Supabase 连接正常,可以 F5 重试;如果持续失败,检查 Console 的 Network 请求)
+          </span>
+        </div>
+      )}
 
       <div className="card">
         {isLoading ? (
