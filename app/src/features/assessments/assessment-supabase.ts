@@ -98,7 +98,7 @@ export async function findAssessmentsByPatientDual(patientId: string): Promise<A
   return (data ?? []).map(fromRow);
 }
 
-export async function findAssessmentsByEncounterDual(encounterId: string): Promise<AssessmentRecordRow[]> {
+export async function findAssessmentsByEncounterDual(encounterId: string, patientId?: string): Promise<AssessmentRecordRow[]> {
   if (!isSupabaseReady()) {
     const all = await assessmentRepository.findAll();
     return all
@@ -106,6 +106,18 @@ export async function findAssessmentsByEncounterDual(encounterId: string): Promi
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
   const supabase = getSupabase()!;
+  // 同时查 encounter_id 匹配 + encounter_id=null(新建就诊时存的)
+  const filter: Record<string, unknown> = { deleted_at: null };
+  if (patientId) {
+    const { data, error } = await supabase
+      .from("assessments")
+      .select("*")
+      .or(`encounter_id.eq.${encounterId},and(encounter_id.is.null,patient_id.eq.${patientId})`)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(`查询量表失败: ${error.message}`);
+    return (data ?? []).map(fromRow);
+  }
   const { data, error } = await supabase
     .from("assessments")
     .select("*")

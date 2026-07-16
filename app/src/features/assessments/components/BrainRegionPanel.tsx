@@ -17,7 +17,7 @@ interface BrainRegionPanelProps {
  * - 填写问卷在弹窗中进行(便于阅读、滚动、聚焦)
  */
 export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelProps) {
-  const { data: encounterList } = useEncounterAssessments(encounterId);
+  const { data: encounterList } = useEncounterAssessments(encounterId, patientId);
   const { data: patientList } = usePatientAssessments(encounterId ? undefined : patientId);
   const [showForm, setShowForm] = useState(false);
 

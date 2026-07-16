@@ -14,7 +14,7 @@ interface Props {
  * 治疗师完成评估后,可在此查阅历史打分。
  */
 export function PainAssessmentList({ patientId, encounterId }: Props) {
-  const { data: records } = useEncounterAssessments(encounterId);
+  const { data: records } = useEncounterAssessments(encounterId, patientId);
   const list: PainAssessmentRecordRow[] = (records ?? []).filter((r) => r.type === "pain_assessment");
 
   if (list.length === 0) {

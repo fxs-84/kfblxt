@@ -24,10 +24,10 @@ export function usePatientAssessments(patientId: string | undefined) {
   });
 }
 
-export function useEncounterAssessments(encounterId: string | undefined) {
+export function useEncounterAssessments(encounterId: string | undefined, patientId?: string) {
   return useQuery({
-    queryKey: ["assessments", "encounter", encounterId],
-    queryFn: () => findAssessmentsByEncounterDual(encounterId as string),
+    queryKey: ["assessments", "encounter", encounterId, patientId],
+    queryFn: () => findAssessmentsByEncounterDual(encounterId as string, patientId),
     enabled: Boolean(encounterId),
   });
 }
