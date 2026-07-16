@@ -29,7 +29,7 @@ function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?
     mechanisms: input.mechanisms ?? [],
     rationale: input.reasoning ?? null,
     confidence: input.confidence ?? null,
-    side: input.side || null,
+    side: input.side || "left",
     created_at: input.createdAt.toISOString(),
     created_by: null,
   };
@@ -112,7 +112,7 @@ export async function updateDiagnosisDual(id: string, patch: Partial<DiagnosisIn
   if (patch.cutaneousNerveIds !== undefined) row.cutaneous_nerves = patch.cutaneousNerveIds ?? [];
   if (patch.clinicalDiagnoses !== undefined) row.clinical_diagnoses = patch.clinicalDiagnoses ?? [];
   if (patch.reasoning !== undefined) row.rationale = patch.reasoning;
-  if (patch.side !== undefined) row.side = patch.side || null;
+  if (patch.side) row.side = patch.side;
   const { data, error } = await supabase.from("diagnoses").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新诊断失败: ${error?.message ?? "无响应"}`);
   return fromRow(data);

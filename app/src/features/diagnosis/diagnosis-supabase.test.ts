@@ -59,9 +59,16 @@ describe("diagnosis dual-mode dispatcher (no Supabase env → fallback)", () => 
 
   it("updateDiagnosisDual 部分字段更新", async () => {
     const d = await createDiagnosisDual(baseInput as Parameters<typeof createDiagnosisDual>[0]);
-    const updated = await updateDiagnosisDual(d.id, { reasoning: "改后理由" });
+    const clinicalDiagnoses = [
+      { code: "M51.2", name: "其他特指的椎间盘移位", isPrimary: true },
+    ];
+    const updated = await updateDiagnosisDual(d.id, {
+      reasoning: "改后理由",
+      clinicalDiagnoses,
+    });
     expect(updated.reasoning).toBe("改后理由");
     expect(updated.levels).toEqual(["皮质", "前庭"]);
+    expect(updated.clinicalDiagnoses).toEqual(clinicalDiagnoses);
   });
 
   it("deleteDiagnosisDual 软删除", async () => {
