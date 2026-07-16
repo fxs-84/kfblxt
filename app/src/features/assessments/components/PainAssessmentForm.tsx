@@ -126,24 +126,26 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
     }
     setSaving(true);
     try {
-      // 真实持久化:pain_assessment 写 assessments 仓储(独立表)
-      if (patientId) {
-        await createAssessment.mutateAsync({
-          patientId,
-          encounterId,
-          type: "pain_assessment",
-          csi: {
-            items: csi,
-            total: csiScore.total,
-            severity: csiScore.severity,
-          },
-          slanss: {
-            items: slanss,
-            total: slanssScore.total,
-            positive: slanssScore.result === "positive",
-          },
-        } as any);
+      if (!patientId) {
+        setSubmitError("缺少患者 ID,无法保存");
+        return;
       }
+      await createAssessment.mutateAsync({
+        patientId,
+        encounterId,
+        type: "pain_assessment",
+        csi: {
+          items: csi,
+          total: csiScore.total,
+          severity: csiScore.severity,
+        },
+        slanss: {
+          items: slanss,
+          total: slanssScore.total,
+          positive: slanssScore.result === "positive",
+        },
+      } as any);
+      // 只有 persist 成功才切完成态
       setDoneState(true);
       if (draftId) draft.clearDraft();
     } catch (e: unknown) {
@@ -163,6 +165,11 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
             S-LANSS <b>{slanssScore.total}</b> · {slanssScore.result === "positive" ? "⚠ 阳性" : "阴性"}
           </span>
         </div>
+        {submitError && (
+          <div className="field__error" style={{ padding: "var(--space-2) var(--space-3)", margin: "var(--space-2) var(--space-6)", background: "#fef2f2", borderRadius: "var(--radius-sm)", fontSize: 13, color: "#c33" }}>
+            ❌ {submitError}
+          </div>
+        )}
         <div className="form-actions" style={{ justifyContent: "center" }}>
           <button className="btn btn--ghost" onClick={() => { setDoneState(false); }}>返回</button>
         </div>
