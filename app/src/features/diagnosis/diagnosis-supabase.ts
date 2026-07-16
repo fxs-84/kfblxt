@@ -21,12 +21,12 @@ function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?
     org_id: input.orgId,
     encounter_id: input.encounterId,
     patient_id: input.patientId ?? null,
-    neuro_levels: input.levels,
-    spinal_segments: input.segments ?? null,
-    nerve_trunks: input.nerves ?? null,
-    cutaneous_nerves: input.cutaneousNerveIds ?? null,
-    mechanisms: input.mechanisms,
-    rationale: input.reasoning,
+    neuro_levels: input.levels ?? [],
+    spinal_segments: input.segments ?? [],
+    nerve_trunks: input.nerves ?? [],
+    cutaneous_nerves: input.cutaneousNerveIds ?? [],
+    mechanisms: input.mechanisms ?? [],
+    rationale: input.reasoning ?? null,
     confidence: input.confidence ?? null,
     created_at: input.createdAt.toISOString(),
     created_by: null,
@@ -102,9 +102,9 @@ export async function updateDiagnosisDual(id: string, patch: Partial<DiagnosisIn
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.levels !== undefined) row.neuro_levels = patch.levels;
   if (patch.mechanisms !== undefined) row.mechanisms = patch.mechanisms;
-  if (patch.segments !== undefined) row.spinal_segments = patch.segments ?? null;
-  if (patch.nerves !== undefined) row.nerve_trunks = patch.nerves ?? null;
-  if (patch.cutaneousNerveIds !== undefined) row.cutaneous_nerves = patch.cutaneousNerveIds ?? null;
+  if (patch.segments !== undefined) row.spinal_segments = patch.segments ?? [];
+  if (patch.nerves !== undefined) row.nerve_trunks = patch.nerves ?? [];
+  if (patch.cutaneousNerveIds !== undefined) row.cutaneous_nerves = patch.cutaneousNerveIds ?? [];
   if (patch.reasoning !== undefined) row.rationale = patch.reasoning;
   const { data, error } = await supabase.from("diagnoses").update(row).eq("id", id).select().maybeSingle();
   if (error || !data) throw new Error(`更新诊断失败: ${error?.message ?? "无响应"}`);
