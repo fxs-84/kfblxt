@@ -7,6 +7,7 @@ import { getExamFrequency, recordExamUsage, recordLastExam } from "../../agent/a
 
 interface ExamFormProps {
   encounterId: string;
+  patientId: string;
   onDone: () => void;
 }
 
@@ -150,7 +151,7 @@ function ExamField({
   );
 }
 
-export function ExamForm({ encounterId, onDone }: ExamFormProps) {
+export function ExamForm({ encounterId, patientId, onDone }: ExamFormProps) {
   const createExam = useCreateExamSession();
   // 草稿自动保存 — 跨页面/刷新不丢数据
   const draft = useDraftAutosave<{ results: Record<string, ExamResult> }>(
@@ -203,15 +204,23 @@ export function ExamForm({ encounterId, onDone }: ExamFormProps) {
 
   const handleSave = async () => {
     setSaving(true);
-    await createExam.mutateAsync({ encounterId, results });
-    draft.clearDraft();
-    // P2: 记录查体频率(供下次智能排序)
-    const usedIds = Object.keys(results);
-    if (usedIds.length > 0) {
-      recordExamUsage(usedIds);
-      recordLastExam(encounterId, usedIds);
+    try {
+      await createExam.mutateAsync({ encounterId, patientId, results });
+      draft.clearDraft();
+      // P2: 记录查体频率(供下次智能排序)
+      const usedIds = Object.keys(results);
+      if (usedIds.length > 0) {
+        recordExamUsage(usedIds);
+        recordLastExam(encounterId, usedIds);
+      }
+      onDone();
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "保存查体失败,请重试";
+      // eslint-disable-next-line no-alert
+      alert(message);
+    } finally {
+      setSaving(false);
     }
-    onDone();
   };
 
   const countFilled = Object.keys(results).length;

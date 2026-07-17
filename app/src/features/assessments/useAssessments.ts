@@ -48,7 +48,7 @@ export function useCreateAssessment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<BrainAssessmentInput, "orgId"> | Omit<PainAssessmentInput, "orgId">) =>
-      createAssessmentDual({ ...input, orgId: getSession().orgId } as any),
+      createAssessmentDual({ ...input, orgId: getSession().orgId }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["assessments", "patient", vars.patientId] });
       if (vars.encounterId) {
@@ -68,7 +68,7 @@ export function useUpdateAssessment() {
       patientId: string;
       encounterId?: string;
     }) => {
-      return updateAssessmentDual(vars.id, vars.patch as any);
+      return updateAssessmentDual(vars.id, vars.patch);
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["assessments", "patient", vars.patientId] });

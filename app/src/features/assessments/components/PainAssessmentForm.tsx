@@ -6,7 +6,7 @@ import { SLANSS_ITEMS, scoreSlanss, SLANSS_THRESHOLD } from "../scales/slanss";
 
 interface PainAssessmentFormProps {
   /** patientId + encounterId 都传才会真正持久化到 assessments 表 */
-  patientId?: string;
+  patientId: string;
   encounterId?: string;
   /** 用于草稿 key,传了才有自动恢复 */
   draftKey?: string;
@@ -19,7 +19,7 @@ interface PainAssessmentFormProps {
  *  CSI 25 题(0-4) + S-LANSS 7 题(二选一,各题分值不同)
  *  支持草稿自动保存(draftKey 传 encounterId)
  */
-export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult }: PainAssessmentFormProps = {}) {
+export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult }: PainAssessmentFormProps) {
   const draftId = draftKey ? `pain:${draftKey}` : undefined;
   const draft = useDraftAutosave<{ csi: Record<number, number>; slanss: Record<number, number>; done: boolean }>(
     draftId ?? "",
@@ -140,7 +140,7 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
           total: slanssScore.total,
           positive: slanssScore.result === "positive",
         },
-      } as any);
+      });
       // 只有 persist 成功才切完成态
       setDoneState(true);
       if (draftId) draft.clearDraft();

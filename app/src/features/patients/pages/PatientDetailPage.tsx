@@ -262,7 +262,7 @@ export function PatientDetailPage() {
               <PainAssessmentForm key={examEncounterId} patientId={patient.id} encounterId={examEncounterId} draftKey={examEncounterId} />
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
-                : <ExamForm encounterId={examEncounterId} onDone={() => setExamEncounterId(null)} />}
+                : <ExamForm encounterId={examEncounterId} patientId={patient.id} onDone={() => setExamEncounterId(null)} />}
               <DiagnosisPanel key={examEncounterId} encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />

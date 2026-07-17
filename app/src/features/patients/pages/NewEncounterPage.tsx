@@ -111,7 +111,7 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
       {/* 疼痛评估量表(客户自评) */}
       <FoldSection title="📋 疼痛评估量表(客户自评)" open={!!expanded.pain} onToggle={() => toggle("pain")}>
         <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
-          <PainAssessmentForm patientId={patientId} encounterId="new" draftKey="new-{patientId}" />
+          <PainAssessmentForm patientId={patientId} encounterId="new" draftKey={`new-${patientId}`} />
         </div>
       </FoldSection>
 
@@ -124,7 +124,13 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
           <div className="form-actions">
             <button className="btn btn--primary" onClick={async () => {
               if (Object.keys(examResults).length === 0) return;
-              await createExam.mutateAsync({ encounterId, results: examResults } as ExamSessionInput);
+              try {
+                await createExam.mutateAsync({ encounterId, patientId, results: examResults });
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : "保存查体失败,请重试";
+                // eslint-disable-next-line no-alert
+                alert(message);
+              }
             }} style={{ fontSize: "var(--text-base)" }}>保存查体</button>
           </div>
         </div>

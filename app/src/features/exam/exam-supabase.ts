@@ -64,26 +64,16 @@ export async function findLatestSessionDual(encounterId: string): Promise<ExamSe
 }
 
 export async function createExamSessionDual(input: ExamSessionInput): Promise<ExamSessionRecord> {
+  if (!input.patientId) throw new Error("客户 ID 不能为空");
   if (!isSupabaseReady()) return examSessionRepository.create(input);
   const supabase = getSupabase()!;
   const id = crypto.randomUUID();
   const createdAt = new Date();
 
-  // patient_id 必填但调用方可能没传,从 encounter 查
-  let patientId = input.patientId;
-  if (!patientId && input.encounterId) {
-    const { data: enc } = await supabase
-      .from("encounters")
-      .select("patient_id")
-      .eq("id", input.encounterId)
-      .maybeSingle();
-    if (enc) patientId = enc.patient_id;
-  }
-
   const TIMEOUT_MS = 15_000;
   const insert = supabase
     .from("exam_sessions")
-    .insert(toRow({ ...input, id, createdAt, patientId }))
+    .insert(toRow({ ...input, id, createdAt }))
     .select()
     .maybeSingle();
 

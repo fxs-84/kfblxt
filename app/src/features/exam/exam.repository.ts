@@ -15,6 +15,7 @@ export const examSessionRepository: Repository<ExamSessionRecord, ExamSessionInp
   lazyPersistent<ExamSessionRecord, ExamSessionInput>("exam-sessions", [], {
     validate: (input) => {
       if (!input.encounterId) throw new Error("就诊 ID 不能为空");
+      if (!input.patientId) throw new Error("客户 ID 不能为空");
       return input;
     },
   });

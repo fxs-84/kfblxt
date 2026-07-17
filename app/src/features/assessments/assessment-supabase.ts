@@ -33,16 +33,8 @@ function isSupabaseReady(): boolean {
 function toRow(
   input: AssessmentInput & { id: string; createdAt: Date },
 ): Record<string, unknown> {
-  const { id, orgId, patientId, encounterId, type, createdAt } = input;
-  // payload = 原始 input 的全部字段,但剔除顶部已映射的列
-  const payload = { ...input };
-  delete (payload as Record<string, unknown>).id;
-  delete (payload as Record<string, unknown>).createdAt;
-  delete (payload as Record<string, unknown>).createdBy;
-  delete (payload as Record<string, unknown>).updatedAt;
-  delete (payload as Record<string, unknown>).updatedBy;
-  delete (payload as Record<string, unknown>).deletedAt;
-  delete (payload as Record<string, unknown>).deletedBy;
+  if (!input.patientId) throw new Error("客户 ID 不能为空");
+  const { id, orgId, patientId, encounterId, type, createdAt, ...payload } = input;
 
   return {
     id,
@@ -101,18 +93,22 @@ export async function findAssessmentsByPatientDual(patientId: string): Promise<A
 export async function findAssessmentsByEncounterDual(encounterId: string, patientId?: string): Promise<AssessmentRecordRow[]> {
   if (!isSupabaseReady()) {
     const all = await assessmentRepository.findAll();
+    const isNewEncounter = encounterId === "new";
     return all
-      .filter((a) => a.encounterId === encounterId)
+      .filter((a) => {
+        if (a.encounterId === encounterId) return true;
+        if (isNewEncounter && !a.encounterId && a.patientId === patientId) return true;
+        return false;
+      })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
   const supabase = getSupabase()!;
-  // 同时查 encounter_id 匹配 + encounter_id=null(新建就诊时存的)
-  const filter: Record<string, unknown> = { deleted_at: null };
-  if (patientId) {
+  if (encounterId === "new" && patientId) {
     const { data, error } = await supabase
       .from("assessments")
       .select("*")
-      .or(`encounter_id.eq.${encounterId},and(encounter_id.is.null,patient_id.eq.${patientId})`)
+      .is("encounter_id", null)
+      .eq("patient_id", patientId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(`查询量表失败: ${error.message}`);
