@@ -6,7 +6,7 @@
 -- 1. 客户会员档案
 -- ============================================================
 create table if not exists public.patient_memberships (
-  patient_id uuid primary key references public.patients (id) on delete restrict,
+  patient_id uuid not null references public.patients (id) on delete restrict,
   org_id uuid not null references public.organizations (id) on delete restrict,
   tier text not null default 'regular',
   points integer not null default 0,
@@ -19,7 +19,8 @@ create table if not exists public.patient_memberships (
   updated_at timestamptz not null default now(),
   updated_by uuid references public.profiles (id),
   deleted_at timestamptz,
-  deleted_by uuid references public.profiles (id)
+  deleted_by uuid references public.profiles (id),
+  primary key (org_id, patient_id)
 );
 
 create index if not exists patient_memberships_org_id_idx on public.patient_memberships (org_id);

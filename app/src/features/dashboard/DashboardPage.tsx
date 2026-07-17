@@ -7,6 +7,8 @@ import { BodyMap } from "../../components/bodymap/BodyMap";
 import { formatDate } from "../../lib/format";
 import { regionLabel } from "../../components/bodymap/regions";
 import { MyWorkStats } from "../../components/auth/MyWorkStats";
+import { hasSupabaseConfig } from "../../lib/supabase";
+import { hasLocalData } from "../../lib/migrate";
 
 function isThisMonth(d: Date): boolean {
   const now = new Date();
@@ -65,6 +67,26 @@ export function DashboardPage() {
         </div>
         <Link to="/patients/new" className="btn btn--primary">+ 新建客户</Link>
       </header>
+
+      {hasSupabaseConfig() && hasLocalData() && (
+        <div
+          className="card"
+          style={{
+            marginBottom: "var(--space-4)",
+            padding: "var(--space-3) var(--space-4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "var(--space-3)",
+            background: "var(--color-accent-weak, #e6f0fa)",
+          }}
+        >
+          <span>检测到本浏览器有单机版数据,可一键导入到当前 Supabase 机构。</span>
+          <Link to="/migrate" className="btn btn--primary" style={{ fontSize: 13 }}>
+            去导入
+          </Link>
+        </div>
+      )}
 
       <section className="tile-row">
         {tiles.map((t) => (

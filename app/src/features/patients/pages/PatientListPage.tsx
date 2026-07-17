@@ -6,13 +6,6 @@ import { calcAge, formatDate, SEX_LABELS } from "../../../lib/format";
 import { useSession } from "../../../components/auth/useSession";
 import { MyFilterToggle, applyMyFilter } from "../../../components/auth/MyFilterToggle";
 import { hasSupabaseConfig } from "../../../lib/supabase";
-import { migrateLocalPatientsToCloud } from "../localToCloud";
-
-type MigrateState =
-  | { status: "idle" }
-  | { status: "running" }
-  | { status: "done"; inserted: number; skipped: number; errors: number }
-  | { status: "error"; message: string };
 
 export function PatientListPage() {
   const navigate = useNavigate();
@@ -20,7 +13,6 @@ export function PatientListPage() {
   const session = useSession();
   const [query, setQuery] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
-  const [migrate, setMigrate] = useState<MigrateState>({ status: "idle" });
 
   const filtered = useMemo(() => {
     if (!patients) return [];
@@ -38,16 +30,6 @@ export function PatientListPage() {
     return sortPatientsByCreatedDesc(list);
   }, [patients, query, onlyMine, session.userId]);
 
-  const handleMigrate = async () => {
-    setMigrate({ status: "running" });
-    try {
-      const report = await migrateLocalPatientsToCloud();
-      setMigrate({ status: "done", inserted: report.inserted, skipped: report.skipped, errors: report.errors.length });
-    } catch (e) {
-      setMigrate({ status: "error", message: e instanceof Error ? e.message : String(e) });
-    }
-  };
-
   return (
     <>
       <header className="page-header">
@@ -56,23 +38,11 @@ export function PatientListPage() {
           <p className="page-subtitle">神经科学特色病历 · 客户档案</p>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-          {hasSupabaseConfig() && migrate.status === "idle" && (
-            <button className="btn btn--ghost" onClick={handleMigrate} style={{ fontSize: 13 }}>
-              📤 导入本地客户
-            </button>
+          {hasSupabaseConfig() && (
+            <Link to="/migrate" className="btn btn--ghost" style={{ fontSize: 13 }}>
+              导入本地数据
+            </Link>
           )}
-          {migrate.status === "running" && <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>迁移中…</span>}
-          {migrate.status === "done" && (
-            <span style={{ fontSize: 13, color: "var(--color-success, #15803d)" }}>
-              ✅ {migrate.inserted} 名导入成功{migrate.errors > 0 ? `, ${migrate.errors} 失败` : ""}
-              {migrate.inserted > 0 && (
-                <button className="btn btn--primary" onClick={() => window.location.reload()} style={{ marginLeft: 8, fontSize: 13 }}>
-                  刷新
-                </button>
-              )}
-            </span>
-          )}
-          {migrate.status === "error" && <span style={{ fontSize: 13, color: "#c33" }}>导入失败: {migrate.message}</span>}
           <Link to="/patients/new" className="btn btn--primary">
             + 新建客户
           </Link>

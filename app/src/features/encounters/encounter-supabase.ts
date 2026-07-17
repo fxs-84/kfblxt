@@ -13,7 +13,7 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -21,6 +21,7 @@ function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<
     encounter_date: input.encounterDate instanceof Date ? input.encounterDate.toISOString() : String(input.encounterDate),
     visit_type: input.visitType,
     status: input.status,
+    amount: typeof input.amount === "number" ? input.amount : 0,
     chief_complaint: input.chiefComplaint,
     created_at: input.createdAt.toISOString(),
     created_by: getSession().userId,

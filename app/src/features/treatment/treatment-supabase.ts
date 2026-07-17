@@ -20,14 +20,17 @@ function isSupabaseReady(): boolean {
 
 /* ---- 治疗计划 ---- */
 
-function planToRow(input: TreatmentPlanInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function planToRow(input: TreatmentPlanInput & { id: string; createdAt: Date }): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
     encounter_id: input.encounterId,
     patient_id: input.patientId,
     phase: input.phase,
+    frequency: input.frequency ?? null,
+    duration: input.duration ?? null,
     intervention_ids: input.interventionIds,
+    intervention_doses: input.interventionDoses ?? {},
     goals: input.goals,
     boundary: input.boundary ?? null,
     notes: input.notes ?? null,
@@ -47,7 +50,7 @@ function planFromRow(row: Record<string, unknown>): TreatmentPlanRecord {
     frequency: (row.frequency as string) ?? "",
     duration: (row.duration as string) ?? "",
     interventionIds: (row.intervention_ids as string[]) ?? [],
-    interventionDoses: undefined,
+    interventionDoses: (row.intervention_doses as TreatmentPlanRecord["interventionDoses"]) ?? undefined,
     goals: (row.goals as TreatmentPlanRecord["goals"]) ?? [],
     boundary: (row.boundary as string) ?? undefined,
     notes: (row.notes as string) ?? undefined,

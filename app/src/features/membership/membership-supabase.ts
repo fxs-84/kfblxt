@@ -144,7 +144,7 @@ async function seedConfigTables(): Promise<void> {
 
 /* ---- Membership ---- */
 
-function membershipToRow(m: PatientMembership): Record<string, unknown> {
+export function membershipToRow(m: PatientMembership): Record<string, unknown> {
   return {
     patient_id: m.patientId,
     org_id: orgId(),
@@ -208,7 +208,7 @@ export async function upsertMembershipDual(m: PatientMembership): Promise<Patien
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("patient_memberships")
-    .upsert(membershipToRow(m), { onConflict: "patient_id" })
+    .upsert(membershipToRow(m), { onConflict: "org_id,patient_id" })
     .select()
     .maybeSingle();
   if (error || !data) throw new Error(`保存客户会员档案失败: ${error?.message ?? "无响应"}`);
@@ -235,7 +235,7 @@ export async function getOrCreateMembershipDual(patientId: string): Promise<Pati
 
 /* ---- Points Logs ---- */
 
-function logToRow(l: PointsLog): Record<string, unknown> {
+export function logToRow(l: PointsLog): Record<string, unknown> {
   return {
     id: l.id,
     org_id: orgId(),
@@ -305,7 +305,7 @@ export async function getRecentLogsDual(patientId: string, limit = 20): Promise<
 
 /* ---- Redemptions ---- */
 
-function redemptionToRow(r: Redemption): Record<string, unknown> {
+export function redemptionToRow(r: Redemption): Record<string, unknown> {
   return {
     id: r.id,
     org_id: orgId(),

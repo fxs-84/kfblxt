@@ -12,7 +12,7 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-function toRow(input: ExamSessionInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function toRow(input: ExamSessionInput & { id: string; createdAt: Date }): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,

@@ -31,7 +31,7 @@ function isSupabaseReady(): boolean {
  * payload 只保留业务答卷字段(responses/score/phoneEar/note/csi/slanss),
  * 顶部列保留 id/org_id/patient_id/encounter_id/type/created_at/created_by。
  */
-function toRow(
+export function toRow(
   input: AssessmentInput & { id: string; createdAt: Date },
 ): Record<string, unknown> {
   if (!input.patientId) throw new Error("客户 ID 不能为空");

@@ -16,7 +16,7 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?: string; confidence?: number }): Record<string, unknown> {
+export function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?: string; confidence?: number }): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,

@@ -88,6 +88,8 @@ create table if not exists public.encounters (
   encounter_date timestamptz not null,
   visit_type public.visit_type not null,
   status public.encounter_status not null default '进行中',
+  -- 消费金额(本地数据迁移需要)
+  amount numeric(10,2) default 0,
   -- 主诉结构化(身体区域+性质+VAS+病程+发病)
   chief_complaint jsonb not null,
   -- SOAP 病程(治疗师撰写)
@@ -174,6 +176,10 @@ create table if not exists public.treatment_plans (
   encounter_id uuid not null references public.encounters (id) on delete restrict,
   patient_id uuid not null references public.patients (id) on delete restrict,
   phase text not null check (phase in ('急性期', '恢复期', '巩固期', '维持期')),
+  -- 治疗频次、时长与剂量(本地数据迁移需要)
+  frequency text,
+  duration text,
+  intervention_doses jsonb default '{}'::jsonb,
   -- 选中的干预 ID 数组(对应前端 interventions_catalog)
   intervention_ids text[] not null default '{}',
   -- SMART 目标(每条:metric/baseline/target/timeframe)
