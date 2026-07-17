@@ -3,6 +3,7 @@
  * - encounters 字段映射:Record<string, ExamResult> ↔ jsonb 列
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { examSessionRepository } from "./exam.repository";
 import type { ExamSessionRecord, ExamSessionInput } from "./exam.repository";
@@ -19,7 +20,7 @@ function toRow(input: ExamSessionInput & { id: string; createdAt: Date }): Recor
     patient_id: input.patientId,
     items: input.results,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

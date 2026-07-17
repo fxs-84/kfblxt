@@ -378,7 +378,7 @@ begin
         for insert with check (
           org_id = public.current_org_id()
           and (public.has_role('admin') or public.has_role('physician') or public.has_role('therapist'))
-          and (created_by is null or created_by = auth.uid())
+          and created_by = auth.uid()
         );
     $f$, t || '_insert_writer', t);
 

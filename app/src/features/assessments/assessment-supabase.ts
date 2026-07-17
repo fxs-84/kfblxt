@@ -14,6 +14,7 @@
  * 决定权:`getSupabase() !== null` → 走 Supabase,否则 → 落回 localStorage。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import {
   assessmentRepository,
@@ -44,7 +45,7 @@ function toRow(
     type,
     payload,
     created_at: createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

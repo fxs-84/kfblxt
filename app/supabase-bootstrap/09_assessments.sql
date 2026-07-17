@@ -44,12 +44,12 @@ create policy assessments_select_same_org on public.assessments
     and deleted_at is null
   );
 
--- INSERT: 同 org + 任意治疗师角色 + created_by 为自己(或 null)
+-- INSERT: 同 org + 任意治疗师角色 + created_by = 自己
 create policy assessments_insert_writer on public.assessments
   for insert with check (
     org_id = public.current_org_id()
     and (public.has_role('admin') or public.has_role('physician') or public.has_role('therapist'))
-    and (created_by is null or created_by = auth.uid())
+    and created_by = auth.uid()
   );
 
 -- UPDATE: 同 org + created_by = 自己(or admin)

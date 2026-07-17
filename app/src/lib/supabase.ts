@@ -38,13 +38,18 @@ function resolveConfig(): SupabaseConfig | null {
   } catch {
     /* noop */
   }
-  // 兜底:Wizard 配置可能被清,但 Auth 会话仍在 — 从会话重建
+  // 兜底:Wizard 配置可能被清,但 Auth 会话仍在 — 从会话重建,key 必须来自环境变量
   const ref = detectProjectRef();
   if (ref) {
-    return {
-      url: `https://${ref}.supabase.co`,
-      anonKey: "sb_publishable_OgDm-yiaWFfn_x-U9Tcwjg_pH0sbpR4",
-    };
+    const anonKey = typeof import.meta.env !== "undefined"
+      ? import.meta.env.VITE_SUPABASE_ANON_KEY
+      : undefined;
+    if (typeof anonKey === "string" && anonKey) {
+      return {
+        url: `https://${ref}.supabase.co`,
+        anonKey,
+      };
+    }
   }
   return null;
 }
