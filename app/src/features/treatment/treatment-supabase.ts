@@ -115,7 +115,7 @@ export async function deletePlanDual(id: string): Promise<void> {
 
 /* ---- 疗效复评 ---- */
 
-function noteToRow(input: ProgressNoteInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function noteToRow(input: ProgressNoteInput & { id: string; createdAt: Date }): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,

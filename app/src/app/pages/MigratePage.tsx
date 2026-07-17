@@ -106,7 +106,7 @@ export function MigratePage() {
                 {report.modules.flatMap((m) =>
                   m.errors.map((err, idx) => (
                     <li key={`${m.module}-${idx}`}>[{labelForModule(m.module)}] {sanitizeError(err)}</li>
-                  ),
+                  )),
                 )}
               </ul>
             </div>
