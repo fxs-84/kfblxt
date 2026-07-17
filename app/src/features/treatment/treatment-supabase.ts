@@ -3,6 +3,7 @@
  * treatment_plans + progress_notes 是核心业务表。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import {
   treatmentPlanRepository,
@@ -31,7 +32,7 @@ function planToRow(input: TreatmentPlanInput & { id: string; createdAt: Date }):
     boundary: input.boundary ?? null,
     notes: input.notes ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 
@@ -124,7 +125,7 @@ function noteToRow(input: ProgressNoteInput & { id: string; createdAt: Date }): 
     plan: input.plan,
     vas_current: input.vasCurrent ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

@@ -56,7 +56,7 @@ export async function migrateLocalPatientsToCloud(): Promise<MigrationReport> {
       phone: p.phone && p.phone !== "" ? p.phone : null,
       dominant_hand: p.dominantHand && p.dominantHand !== "" ? p.dominantHand : null,
       created_at: p.createdAt instanceof Date ? p.createdAt.toISOString() : String(p.createdAt),
-      created_by: null,
+      created_by: getSession().userId,
     };
     const { error } = await supabase.from("patients").insert(row);
     if (error) {

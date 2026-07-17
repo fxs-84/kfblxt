@@ -3,6 +3,7 @@
  * 表名: billing_records(已在 0002 迁移)。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import {
   billingRepository,
@@ -26,7 +27,7 @@ function toRow(input: BillingInput & { id: string; createdAt: Date }): Record<st
     note: input.note,
     encounter_id: input.encounterId ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

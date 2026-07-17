@@ -10,6 +10,7 @@
  *       我们的 PatientRecord.birthDate 是 Date,必须 ISO 序列化。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { patientRepository } from "./patient.repository";
 import type { PatientRecord, PatientInput } from "./patient.repository";
@@ -36,7 +37,7 @@ function toRow(p: PatientInput & { id: string; createdAt: Date }): Record<string
     phone: p.phone || null,
     dominant_hand: p.dominantHand || null,
     created_at: p.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

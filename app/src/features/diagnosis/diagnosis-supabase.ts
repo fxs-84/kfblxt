@@ -7,6 +7,7 @@
  * 前端模型名 → DB 列名映射在 toRow / fromRow / updateDiagnosisDual 中维护。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { diagnosisRepository, type ClinicalDx } from "./diagnosis.repository";
 import type { DiagnosisRecord, DiagnosisInput } from "./diagnosis.repository";
@@ -31,7 +32,7 @@ function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?
     confidence: input.confidence ?? null,
     side: input.side || "left",
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

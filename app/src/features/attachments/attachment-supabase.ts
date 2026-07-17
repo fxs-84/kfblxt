@@ -7,6 +7,7 @@
  * 真正生产部署建议:用 supabase.storage.from(bucket).upload(...)→publicUrl。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { attachmentRepository, type AttachmentRecord, type AttachmentInput } from "./attachment.repository";
 
@@ -29,7 +30,7 @@ function toRow(input: AttachmentInput & { id: string; createdAt: Date }): Record
     timeline: input.timeline || null,
     comparison_group: input.comparisonGroup ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

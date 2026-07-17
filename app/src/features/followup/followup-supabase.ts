@@ -2,6 +2,7 @@
  * 复诊提醒仓储的 Supabase 双模式分发。
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { followupRepository, type FollowupRecord, type FollowupInput } from "./followup.repository";
 
@@ -19,7 +20,7 @@ function toRow(input: FollowupInput & { id: string; createdAt: Date }): Record<s
     status: input.status || "待复诊",
     completed_encounter_id: input.completedEncounterId ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 

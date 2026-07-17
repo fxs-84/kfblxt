@@ -4,6 +4,7 @@
  * - 字段映射:Date ↔ ISO timestamptz,主诉对象为 jsonb 存整段
  */
 
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { encounterRepository } from "./encounter.repository";
 import type { EncounterRecord, EncounterInput } from "./encounter.repository";
@@ -22,7 +23,7 @@ function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<
     status: input.status,
     chief_complaint: input.chiefComplaint,
     created_at: input.createdAt.toISOString(),
-    created_by: null,
+    created_by: getSession().userId,
   };
 }
 
