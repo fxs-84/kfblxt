@@ -74,12 +74,11 @@ function fromRow(row: Record<string, unknown>): AssessmentRecordRow {
 }
 
 export async function findAssessmentsByPatientDual(patientId: string): Promise<AssessmentRecordRow[]> {
-  if (!isSupabaseReady()) {
-    const all = await assessmentRepository.findAll();
-    return all
-      .filter((a) => a.patientId === patientId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }
+  const local = await assessmentRepository.findAll();
+  const localList = local
+    .filter((a) => a.patientId === patientId && !a.deletedAt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  if (!isSupabaseReady()) return localList;
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("assessments")
@@ -88,41 +87,51 @@ export async function findAssessmentsByPatientDual(patientId: string): Promise<A
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(`查询量表失败: ${error.message}`);
-  return (data ?? []).map(fromRow);
+  const remoteList = (data ?? []).map(fromRow);
+  const merged = new Map<string, AssessmentRecordRow>();
+  for (const r of remoteList) merged.set(r.id, r);
+  for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
+  return [...merged.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function findAssessmentsByEncounterDual(encounterId: string, patientId?: string): Promise<AssessmentRecordRow[]> {
-  if (!isSupabaseReady()) {
-    const all = await assessmentRepository.findAll();
-    const isNewEncounter = encounterId === "new";
-    return all
-      .filter((a) => {
-        if (a.encounterId === encounterId) return true;
-        if (isNewEncounter && !a.encounterId && a.patientId === patientId) return true;
-        return false;
-      })
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }
+  const local = await assessmentRepository.findAll();
+  const localList = local
+    .filter((a) => {
+      if (a.deletedAt) return false;
+      if (a.encounterId === encounterId) return true;
+      if (patientId && !a.encounterId && a.patientId === patientId) return true;
+      return false;
+    })
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  if (!isSupabaseReady()) return localList;
   const supabase = getSupabase()!;
-  if (encounterId === "new" && patientId) {
-    const { data, error } = await supabase
+  const [byEncounter, byPatient] = await Promise.all([
+    supabase
       .from("assessments")
       .select("*")
-      .is("encounter_id", null)
-      .eq("patient_id", patientId)
+      .eq("encounter_id", encounterId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(`查询量表失败: ${error.message}`);
-    return (data ?? []).map(fromRow);
-  }
-  const { data, error } = await supabase
-    .from("assessments")
-    .select("*")
-    .eq("encounter_id", encounterId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`查询量表失败: ${error.message}`);
-  return (data ?? []).map(fromRow);
+      .order("created_at", { ascending: false }),
+    patientId
+      ? supabase
+          .from("assessments")
+          .select("*")
+          .is("encounter_id", null)
+          .eq("patient_id", patientId)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (byEncounter.error) throw new Error(`查询量表失败: ${byEncounter.error.message}`);
+  if (byPatient.error) throw new Error(`查询量表失败: ${byPatient.error.message}`);
+  const remoteList = [...(byEncounter.data ?? []), ...(byPatient.data ?? [])].map((row) =>
+    fromRow(row as Record<string, unknown>)
+  );
+  const merged = new Map<string, AssessmentRecordRow>();
+  for (const r of remoteList) merged.set(r.id, r);
+  for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
+  return [...merged.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function createAssessmentDual(input: AssessmentInput): Promise<AssessmentRecordRow> {

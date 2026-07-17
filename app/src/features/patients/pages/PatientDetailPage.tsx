@@ -25,6 +25,7 @@ import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
 import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
 import { PainAssessmentForm } from "../../assessments/components/PainAssessmentForm";
+import { PainAssessmentList } from "../../assessments/components/PainAssessmentList";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
 import { NewEncounterPage } from "./NewEncounterPage";
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
@@ -260,6 +261,7 @@ export function PatientDetailPage() {
               </div>
               <BrainRegionPanel patientId={patient.id} encounterId={examEncounterId} />
               <PainAssessmentForm key={examEncounterId} patientId={patient.id} encounterId={examEncounterId} draftKey={examEncounterId} />
+              <PainAssessmentList patientId={patient.id} encounterId={examEncounterId} />
               {sessionByEncounter.has(examEncounterId)
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} patientId={patient.id} onDone={() => setExamEncounterId(null)} />}

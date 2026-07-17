@@ -21,8 +21,10 @@ export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelPro
   const { data: patientList } = usePatientAssessments(encounterId ? undefined : patientId);
   const [showForm, setShowForm] = useState(false);
 
-  // 仅显示 brain_region 记录(pain_assessment 是另一个组件)
-  const list = (encounterId ? encounterList : patientList)?.filter((r): r is BrainAssessmentRecordRow => r.type === "brain_region" && (!encounterId || r.encounterId === encounterId)) ?? [];
+  // 仅显示 brain_region 记录;新建就诊时 encounterId 为 null 的记录也显示在当前就诊下
+  const list = (encounterId ? encounterList : patientList)?.filter((r): r is BrainAssessmentRecordRow =>
+    r.type === "brain_region" && (!encounterId || r.encounterId === encounterId || !r.encounterId)
+  ) ?? [];
   const latest = list.length > 0 ? list[0] : null;
 
   // ESC 关闭弹窗

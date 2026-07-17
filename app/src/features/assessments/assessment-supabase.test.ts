@@ -100,4 +100,19 @@ describe("assessment dual-mode dispatcher (no Supabase env → fallback)", () =>
     const list = await findAssessmentsByEncounterDual("new", patientId);
     expect(list.some((r) => r.id === created.id)).toBe(true);
   });
+
+  it("findAssessmentsByEncounterDual 用真实 encounterId 也能返回该患者 null encounter 记录", async () => {
+    const patientId = "aaaaaaaa-0000-4000-8000-000000000003";
+    const input: PainAssessmentInput = {
+      type: "pain_assessment",
+      patientId,
+      orgId: "00000000-0000-4000-8000-0000000000f0",
+      csi: { items: { 1: 1 }, total: 1, severity: "normal" },
+      slanss: { items: { 1: 0 }, total: 0, positive: false },
+    };
+    const created = await createAssessmentDual(input);
+
+    const list = await findAssessmentsByEncounterDual("enc-real-001", patientId);
+    expect(list.some((r) => r.id === created.id)).toBe(true);
+  });
 });

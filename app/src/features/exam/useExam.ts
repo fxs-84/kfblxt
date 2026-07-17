@@ -8,6 +8,7 @@ import {
 import {
   findSessionsByEncounterDual,
   createExamSessionDual,
+  findAllExamSessionsDual,
 } from "./exam-supabase";
 import { getSession } from "../../lib/session";
 
@@ -28,7 +29,7 @@ export function useExamSessions(encounterId: string | undefined) {
 export function useAllExamSessions() {
   return useQuery({
     queryKey: ["exam-sessions", "all"],
-    queryFn: () => examSessionRepository.findAll(),
+    queryFn: () => findAllExamSessionsDual(),
   });
 }
 

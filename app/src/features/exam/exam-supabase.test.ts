@@ -5,6 +5,7 @@ import {
   findLatestSessionDual,
   createExamSessionDual,
   deleteExamSessionDual,
+  findAllExamSessionsDual,
 } from "./exam-supabase";
 import type { ExamSessionInput } from "./exam.repository";
 
@@ -82,6 +83,15 @@ describe("exam dual-mode dispatcher (no Supabase env → fallback)", () => {
       results: {},
     });
     expect(explicit.patientId).toBe(PAT_B);
+  });
+
+  it("findAllExamSessionsDual 返回全部未软删会话", async () => {
+    await createExamSessionDual(inputA(ENC_A));
+    await createExamSessionDual(inputA(ENC_B));
+    const all = await findAllExamSessionsDual();
+    expect(all.length).toBeGreaterThanOrEqual(2);
+    expect(all.some((s) => s.encounterId === ENC_A)).toBe(true);
+    expect(all.some((s) => s.encounterId === ENC_B)).toBe(true);
   });
 
   it("deleteExamSessionDual 软删除后查询不到", async () => {

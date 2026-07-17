@@ -123,7 +123,11 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
           </div>
           <div className="form-actions">
             <button className="btn btn--primary" onClick={async () => {
-              if (Object.keys(examResults).length === 0) return;
+              if (Object.keys(examResults).length === 0) {
+                // eslint-disable-next-line no-alert
+                alert("请至少填写一项查体结果");
+                return;
+              }
               try {
                 await createExam.mutateAsync({ encounterId, patientId, results: examResults });
               } catch (e: unknown) {

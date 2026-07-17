@@ -41,13 +41,32 @@ function fromRow(row: Record<string, unknown>): ExamSessionRecord {
   };
 }
 
+export async function findAllExamSessionsDual(): Promise<ExamSessionRecord[]> {
+  const local = await examSessionRepository.findAll();
+  const localList = local
+    .filter((s) => !s.deletedAt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  if (!isSupabaseReady()) return localList;
+  const supabase = getSupabase()!;
+  const { data, error } = await supabase
+    .from("exam_sessions")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`查询查体失败: ${error.message}`);
+  const remoteList = (data ?? []).map(fromRow);
+  const merged = new Map<string, ExamSessionRecord>();
+  for (const r of remoteList) merged.set(r.id, r);
+  for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
+  return [...merged.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
 export async function findSessionsByEncounterDual(encounterId: string): Promise<ExamSessionRecord[]> {
-  if (!isSupabaseReady()) {
-    const all = await examSessionRepository.findAll();
-    return all
-      .filter((s) => s.encounterId === encounterId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }
+  const local = await examSessionRepository.findAll();
+  const localList = local
+    .filter((s) => s.encounterId === encounterId && !s.deletedAt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  if (!isSupabaseReady()) return localList;
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("exam_sessions")
@@ -56,7 +75,11 @@ export async function findSessionsByEncounterDual(encounterId: string): Promise<
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(`查询查体失败: ${error.message}`);
-  return (data ?? []).map(fromRow);
+  const remoteList = (data ?? []).map(fromRow);
+  const merged = new Map<string, ExamSessionRecord>();
+  for (const r of remoteList) merged.set(r.id, r);
+  for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
+  return [...merged.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function findLatestSessionDual(encounterId: string): Promise<ExamSessionRecord | null> {
