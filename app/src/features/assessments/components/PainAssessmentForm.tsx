@@ -126,10 +126,6 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
     }
     setSaving(true);
     try {
-      if (!patientId) {
-        setSubmitError("缺少患者 ID,无法保存");
-        return;
-      }
       await createAssessment.mutateAsync({
         patientId,
         encounterId,
