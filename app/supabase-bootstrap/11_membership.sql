@@ -46,6 +46,7 @@ create table if not exists public.points_logs (
   ref_id text,
   operator_id uuid references public.profiles (id),
   created_at timestamptz not null default now(),
+  created_by uuid references public.profiles (id),
   deleted_at timestamptz,
   deleted_by uuid references public.profiles (id)
 );
@@ -95,6 +96,7 @@ create table if not exists public.redemptions (
   notes text,
   operator_id uuid references public.profiles (id),
   created_at timestamptz not null default now(),
+  created_by uuid references public.profiles (id),
   fulfilled_at timestamptz,
   cancelled_at timestamptz,
   deleted_at timestamptz,

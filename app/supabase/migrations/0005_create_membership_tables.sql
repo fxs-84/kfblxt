@@ -46,9 +46,13 @@ create table if not exists public.points_logs (
   ref_id text,
   operator_id uuid references public.profiles (id),
   created_at timestamptz not null default now(),
+  created_by uuid references public.profiles (id),
   deleted_at timestamptz,
   deleted_by uuid references public.profiles (id)
 );
+
+-- 兼容已部分执行过的环境:若表已存在但缺 created_by,补列
+alter table public.points_logs add column if not exists created_by uuid references public.profiles (id);
 
 create index if not exists points_logs_org_id_idx on public.points_logs (org_id);
 create index if not exists points_logs_patient_id_idx on public.points_logs (patient_id);
@@ -96,11 +100,15 @@ create table if not exists public.redemptions (
   notes text,
   operator_id uuid references public.profiles (id),
   created_at timestamptz not null default now(),
+  created_by uuid references public.profiles (id),
   fulfilled_at timestamptz,
   cancelled_at timestamptz,
   deleted_at timestamptz,
   deleted_by uuid references public.profiles (id)
 );
+
+-- 兼容已部分执行过的环境:若表已存在但缺 created_by,补列
+alter table public.redemptions add column if not exists created_by uuid references public.profiles (id);
 
 create index if not exists redemptions_org_id_idx on public.redemptions (org_id);
 create index if not exists redemptions_patient_id_idx on public.redemptions (patient_id);
