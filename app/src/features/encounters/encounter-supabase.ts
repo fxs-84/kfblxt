@@ -13,7 +13,7 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-export function toRow(input: EncounterInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function toRow(input: EncounterInput & { id: string; createdAt: Date }, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -24,7 +24,7 @@ export function toRow(input: EncounterInput & { id: string; createdAt: Date }): 
     amount: typeof input.amount === "number" ? input.amount : 0,
     chief_complaint: input.chiefComplaint,
     created_at: input.createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 

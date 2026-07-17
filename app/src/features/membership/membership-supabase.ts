@@ -144,7 +144,7 @@ async function seedConfigTables(): Promise<void> {
 
 /* ---- Membership ---- */
 
-export function membershipToRow(m: PatientMembership): Record<string, unknown> {
+export function membershipToRow(m: PatientMembership, actorIdOverride?: string): Record<string, unknown> {
   return {
     patient_id: m.patientId,
     org_id: orgId(),
@@ -156,7 +156,7 @@ export function membershipToRow(m: PatientMembership): Record<string, unknown> {
     note: m.note ?? null,
     deleted_at: m.deletedAt ?? null,
     deleted_by: m.deletedBy ?? null,
-    created_by: actorId(),
+    created_by: actorIdOverride ?? actorId(),
   };
 }
 
@@ -235,7 +235,7 @@ export async function getOrCreateMembershipDual(patientId: string): Promise<Pati
 
 /* ---- Points Logs ---- */
 
-export function logToRow(l: PointsLog): Record<string, unknown> {
+export function logToRow(l: PointsLog, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: l.id,
     org_id: orgId(),
@@ -247,10 +247,10 @@ export function logToRow(l: PointsLog): Record<string, unknown> {
     trigger_type: l.triggerType ?? null,
     ref_type: l.refType ?? null,
     ref_id: l.refId ?? null,
-    operator_id: actorId(),
+    operator_id: actorIdOverride ?? actorId(),
     created_at: l.createdAt,
     deleted_at: l.deletedAt ?? null,
-    created_by: actorId(),
+    created_by: actorIdOverride ?? actorId(),
   };
 }
 
@@ -305,7 +305,7 @@ export async function getRecentLogsDual(patientId: string, limit = 20): Promise<
 
 /* ---- Redemptions ---- */
 
-export function redemptionToRow(r: Redemption): Record<string, unknown> {
+export function redemptionToRow(r: Redemption, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: r.id,
     org_id: orgId(),
@@ -315,12 +315,12 @@ export function redemptionToRow(r: Redemption): Record<string, unknown> {
     points_cost: r.pointsCost,
     status: r.status,
     notes: r.notes ?? null,
-    operator_id: actorId(),
+    operator_id: actorIdOverride ?? actorId(),
     created_at: r.createdAt,
     fulfilled_at: r.fulfilledAt ?? null,
     cancelled_at: r.cancelledAt ?? null,
     deleted_at: r.deletedAt ?? null,
-    created_by: actorId(),
+    created_by: actorIdOverride ?? actorId(),
   };
 }
 

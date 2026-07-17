@@ -16,7 +16,10 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-export function toRow(input: DiagnosisInput & { id: string; createdAt: Date; patientId?: string; confidence?: number }): Record<string, unknown> {
+export function toRow(
+  input: DiagnosisInput & { id: string; createdAt: Date; patientId?: string; confidence?: number },
+  actorIdOverride?: string,
+): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -32,7 +35,7 @@ export function toRow(input: DiagnosisInput & { id: string; createdAt: Date; pat
     confidence: input.confidence ?? null,
     side: input.side || "left",
     created_at: input.createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 

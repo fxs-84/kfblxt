@@ -94,10 +94,6 @@ function currentOrg(): string {
   return getSession().orgId;
 }
 
-function currentUser(): string {
-  return getSession().userId;
-}
-
 async function fetchCloudIds(table: string, keyColumn: string): Promise<Set<string>> {
   const supabase = getSupabase()!;
   const { data, error } = await supabase.from(table).select(keyColumn).eq("org_id", currentOrg());
@@ -208,7 +204,7 @@ async function runModule<T>(
   };
 }
 
-async function migratePatients(): Promise<ModuleReport> {
+async function migratePatients(actorId: string): Promise<ModuleReport> {
   const local = await patientRepository.findAll();
   const valid: typeof local = [];
   const validationErrors: string[] = [];
@@ -231,7 +227,7 @@ async function migratePatients(): Promise<ModuleReport> {
     phone: (p as unknown as { phone?: string }).phone || null,
     dominant_hand: (p as unknown as { dominantHand?: string }).dominantHand || null,
     created_at: toISO((p as unknown as { createdAt: Date }).createdAt),
-    created_by: currentUser(),
+    created_by: actorId,
   }));
 
   if (validationErrors.length === 0) return migrated;
@@ -242,10 +238,10 @@ async function migratePatients(): Promise<ModuleReport> {
   };
 }
 
-async function migrateEncounters(cloudPatientIds: Set<string>): Promise<ModuleReport> {
+async function migrateEncounters(cloudPatientIds: Set<string>, actorId: string): Promise<ModuleReport> {
   const local = await encounterRepository.findAll();
   return runModule("encounters", "encounters", local, (e) =>
-    encounterToRow(e as unknown as Parameters<typeof encounterToRow>[0]),
+    encounterToRow(e as unknown as Parameters<typeof encounterToRow>[0], actorId),
     {
       filter: (e) => cloudPatientIds.has((e as unknown as { patientId: string }).patientId),
     },
@@ -255,10 +251,11 @@ async function migrateEncounters(cloudPatientIds: Set<string>): Promise<ModuleRe
 async function migrateAssessments(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await assessmentRepository.findAll();
   return runModule("assessments", "assessments", local, (a) =>
-    assessmentToRow(a as unknown as Parameters<typeof assessmentToRow>[0]),
+    assessmentToRow(a as unknown as Parameters<typeof assessmentToRow>[0], actorId),
     {
       filter: (a) => {
         const rec = a as unknown as { patientId: string; encounterId?: string };
@@ -273,10 +270,11 @@ async function migrateAssessments(
 async function migrateExamSessions(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await examSessionRepository.findAll();
   return runModule("exam_sessions", "exam_sessions", local, (s) =>
-    examToRow(s as unknown as Parameters<typeof examToRow>[0]),
+    examToRow(s as unknown as Parameters<typeof examToRow>[0], actorId),
     {
       filter: (s) => {
         const rec = s as unknown as { patientId: string; encounterId: string };
@@ -290,10 +288,11 @@ async function migrateDiagnoses(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
   encounterPatientMap: Map<string, string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await diagnosisRepository.findAll();
   return runModule("diagnoses", "diagnoses", local, (d) =>
-    diagnosisToRow(d as unknown as Parameters<typeof diagnosisToRow>[0]),
+    diagnosisToRow(d as unknown as Parameters<typeof diagnosisToRow>[0], actorId),
     {
       filter: (d) => {
         const rec = d as unknown as { encounterId: string; patientId?: string };
@@ -315,10 +314,11 @@ async function migrateDiagnoses(
 async function migrateTreatmentPlans(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await treatmentPlanRepository.findAll();
   return runModule("treatment_plans", "treatment_plans", local, (p) =>
-    planToRow(p as unknown as Parameters<typeof planToRow>[0]),
+    planToRow(p as unknown as Parameters<typeof planToRow>[0], actorId),
     {
       filter: (p) => {
         const rec = p as unknown as { patientId: string; encounterId: string };
@@ -331,10 +331,11 @@ async function migrateTreatmentPlans(
 async function migrateProgressNotes(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await progressNoteRepository.findAll();
   return runModule("progress_notes", "progress_notes", local, (n) =>
-    noteToRow(n as unknown as Parameters<typeof noteToRow>[0]),
+    noteToRow(n as unknown as Parameters<typeof noteToRow>[0], actorId),
     {
       filter: (n) => {
         const rec = n as unknown as { patientId: string; encounterId: string };
@@ -347,10 +348,11 @@ async function migrateProgressNotes(
 async function migrateAttachments(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await attachmentRepository.findAll();
   return runModule("attachments", "attachments", local, (a) =>
-    attachmentToRow(a as unknown as Parameters<typeof attachmentToRow>[0]),
+    attachmentToRow(a as unknown as Parameters<typeof attachmentToRow>[0], actorId),
     {
       filter: (a) => {
         const rec = a as unknown as { patientId: string; encounterId: string };
@@ -363,10 +365,11 @@ async function migrateAttachments(
 async function migrateBilling(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await billingRepository.findAll();
   return runModule("billing_records", "billing_records", local, (b) =>
-    billingToRow(b as unknown as Parameters<typeof billingToRow>[0]),
+    billingToRow(b as unknown as Parameters<typeof billingToRow>[0], actorId),
     {
       filter: (b) => {
         const rec = b as unknown as { patientId: string; encounterId?: string };
@@ -381,10 +384,11 @@ async function migrateBilling(
 async function migrateFollowups(
   cloudPatientIds: Set<string>,
   cloudEncounterIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await followupRepository.findAll();
   return runModule("followups", "followups", local, (f) =>
-    followupToRow(f as unknown as Parameters<typeof followupToRow>[0]),
+    followupToRow(f as unknown as Parameters<typeof followupToRow>[0], actorId),
     {
       filter: (f) => {
         const rec = f as unknown as { patientId: string; completedEncounterId?: string };
@@ -396,17 +400,17 @@ async function migrateFollowups(
   );
 }
 
-async function migrateMemberships(cloudPatientIds: Set<string>): Promise<ModuleReport> {
+async function migrateMemberships(cloudPatientIds: Set<string>, actorId: string): Promise<ModuleReport> {
   const local = await localFindAllMemberships();
-  return runModule("patient_memberships", "patient_memberships", local, (m) => membershipToRow(m), {
+  return runModule("patient_memberships", "patient_memberships", local, (m) => membershipToRow(m, actorId), {
     keyColumn: "patient_id",
     filter: (m) => cloudPatientIds.has(m.patientId),
   });
 }
 
-async function migratePointsLogs(cloudPatientIds: Set<string>): Promise<ModuleReport> {
+async function migratePointsLogs(cloudPatientIds: Set<string>, actorId: string): Promise<ModuleReport> {
   const local = await localFindAllLogs();
-  return runModule("points_logs", "points_logs", local, (l) => logToRow(l), {
+  return runModule("points_logs", "points_logs", local, (l) => logToRow(l, actorId), {
     filter: (l) => cloudPatientIds.has(l.patientId),
   });
 }
@@ -414,9 +418,10 @@ async function migratePointsLogs(cloudPatientIds: Set<string>): Promise<ModuleRe
 async function migrateRedemptions(
   cloudPatientIds: Set<string>,
   cloudRewardIds: Set<string>,
+  actorId: string,
 ): Promise<ModuleReport> {
   const local = await localFindAllRedemptions();
-  return runModule("redemptions", "redemptions", local, (r) => redemptionToRow(r), {
+  return runModule("redemptions", "redemptions", local, (r) => redemptionToRow(r, actorId), {
     filter: (r) => {
       if (!cloudPatientIds.has(r.patientId)) return { ok: false, reason: `patient ${r.patientId} 未迁移` };
       if (!cloudRewardIds.has(r.rewardId)) return { ok: false, reason: `reward ${r.rewardId} 不存在` };
@@ -494,15 +499,15 @@ async function runStep(
   }
 }
 
-async function runMigrationSteps(onProgress?: ProgressHandler): Promise<ModuleReport[]> {
+async function runMigrationSteps(actorId: string, onProgress?: ProgressHandler): Promise<ModuleReport[]> {
   const modules: ModuleReport[] = [];
 
-  modules.push(await runStep("patients", onProgress, () => migratePatients()));
+  modules.push(await runStep("patients", onProgress, () => migratePatients(actorId)));
 
   modules.push(
     await runStep("encounters", onProgress, async () => {
       const patientIds = await fetchCloudIds("patients", "id");
-      return migrateEncounters(patientIds);
+      return migrateEncounters(patientIds, actorId);
     }),
   );
 
@@ -514,14 +519,14 @@ async function runMigrationSteps(onProgress?: ProgressHandler): Promise<ModuleRe
       ]);
       const encounterPatientMap = await buildEncounterPatientMap();
       const childReports = await Promise.all([
-        migrateAssessments(patientIds, encounterIds),
-        migrateExamSessions(patientIds, encounterIds),
-        migrateDiagnoses(patientIds, encounterIds, encounterPatientMap),
-        migrateTreatmentPlans(patientIds, encounterIds),
-        migrateProgressNotes(patientIds, encounterIds),
-        migrateAttachments(patientIds, encounterIds),
-        migrateBilling(patientIds, encounterIds),
-        migrateFollowups(patientIds, encounterIds),
+        migrateAssessments(patientIds, encounterIds, actorId),
+        migrateExamSessions(patientIds, encounterIds, actorId),
+        migrateDiagnoses(patientIds, encounterIds, encounterPatientMap, actorId),
+        migrateTreatmentPlans(patientIds, encounterIds, actorId),
+        migrateProgressNotes(patientIds, encounterIds, actorId),
+        migrateAttachments(patientIds, encounterIds, actorId),
+        migrateBilling(patientIds, encounterIds, actorId),
+        migrateFollowups(patientIds, encounterIds, actorId),
       ]);
       return mergeReports("encounter_children", childReports);
     }),
@@ -532,9 +537,9 @@ async function runMigrationSteps(onProgress?: ProgressHandler): Promise<ModuleRe
       const patientIds = await fetchCloudIds("patients", "id");
       const cloudRewardIds = await fetchCloudRewardIds();
       const membershipReports = await Promise.all([
-        migrateMemberships(patientIds),
-        migratePointsLogs(patientIds),
-        migrateRedemptions(patientIds, cloudRewardIds),
+        migrateMemberships(patientIds, actorId),
+        migratePointsLogs(patientIds, actorId),
+        migrateRedemptions(patientIds, cloudRewardIds, actorId),
       ]);
       return mergeReports("membership", membershipReports);
     }),
@@ -591,7 +596,7 @@ export async function migrateAllToCloud(onProgress?: ProgressHandler): Promise<M
   }
 
   try {
-    report.modules = await runMigrationSteps(onProgress);
+    report.modules = await runMigrationSteps(context.profile.userId, onProgress);
     report.ok = report.modules.every((m) => m.errors.length === 0);
   } catch (e) {
     report.ok = false;

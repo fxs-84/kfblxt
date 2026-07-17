@@ -16,7 +16,7 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-export function toRow(input: BillingInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function toRow(input: BillingInput & { id: string; createdAt: Date }, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -27,7 +27,7 @@ export function toRow(input: BillingInput & { id: string; createdAt: Date }): Re
     note: input.note,
     encounter_id: input.encounterId ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 

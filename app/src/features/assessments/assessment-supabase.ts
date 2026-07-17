@@ -33,6 +33,7 @@ function isSupabaseReady(): boolean {
  */
 export function toRow(
   input: AssessmentInput & { id: string; createdAt: Date },
+  actorIdOverride?: string,
 ): Record<string, unknown> {
   if (!input.patientId) throw new Error("客户 ID 不能为空");
   const { id, orgId, patientId, encounterId, type, createdAt, ...payload } = input;
@@ -45,7 +46,7 @@ export function toRow(
     type,
     payload,
     created_at: createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 

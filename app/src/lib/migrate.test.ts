@@ -296,6 +296,41 @@ describe("migrate", () => {
     expect(report.modules[0].errors[0]).toContain("会话不一致");
   });
 
+  it("migrateAllToCloud uses Supabase userId as created_by, not local record createdBy", async () => {
+    setSession("admin");
+    seedLocalStorage("patients", [
+      {
+        id: PID,
+        name: "张伟",
+        sex: "male",
+        birthDate: "1978-04-12",
+        createdAt: new Date().toISOString(),
+        createdBy: "anonymous",
+      },
+    ]);
+    seedLocalStorage("encounters", [
+      {
+        id: EID,
+        patientId: PID,
+        encounterDate: new Date().toISOString(),
+        visitType: "初诊",
+        status: "进行中",
+        createdAt: new Date().toISOString(),
+        createdBy: "anonymous",
+      },
+    ]);
+
+    const report = await migrateAllToCloud();
+    expect(report.ok).toBe(true);
+
+    const patients = store.get("patients") ?? [];
+    const migratedPatient = patients.find((p) => p.id === PID);
+    expect(migratedPatient?.created_by).toBe(USER);
+
+    const encounters = store.get("encounters") ?? [];
+    expect(encounters[0].created_by).toBe(USER);
+  });
+
   it("migrateAllToCloud is idempotent on second run", async () => {
     setSession("admin");
     seedLocalStorage("patients", [

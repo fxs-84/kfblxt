@@ -20,7 +20,7 @@ function isSupabaseReady(): boolean {
 
 /* ---- 治疗计划 ---- */
 
-export function planToRow(input: TreatmentPlanInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function planToRow(input: TreatmentPlanInput & { id: string; createdAt: Date }, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -35,7 +35,7 @@ export function planToRow(input: TreatmentPlanInput & { id: string; createdAt: D
     boundary: input.boundary ?? null,
     notes: input.notes ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 
@@ -115,7 +115,7 @@ export async function deletePlanDual(id: string): Promise<void> {
 
 /* ---- 疗效复评 ---- */
 
-export function noteToRow(input: ProgressNoteInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function noteToRow(input: ProgressNoteInput & { id: string; createdAt: Date }, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -128,7 +128,7 @@ export function noteToRow(input: ProgressNoteInput & { id: string; createdAt: Da
     plan: input.plan,
     vas_current: input.vasCurrent ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 

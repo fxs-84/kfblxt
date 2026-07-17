@@ -10,7 +10,7 @@ function isSupabaseReady(): boolean {
   return getSupabase() !== null;
 }
 
-export function toRow(input: FollowupInput & { id: string; createdAt: Date }): Record<string, unknown> {
+export function toRow(input: FollowupInput & { id: string; createdAt: Date }, actorIdOverride?: string): Record<string, unknown> {
   return {
     id: input.id,
     org_id: input.orgId,
@@ -20,7 +20,7 @@ export function toRow(input: FollowupInput & { id: string; createdAt: Date }): R
     status: input.status || "待复诊",
     completed_encounter_id: input.completedEncounterId ?? null,
     created_at: input.createdAt.toISOString(),
-    created_by: getSession().userId,
+    created_by: actorIdOverride ?? getSession().userId,
   };
 }
 
