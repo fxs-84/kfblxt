@@ -1,7 +1,7 @@
 /**
  * 兑换审核页 — 治疗师审核待兑换订单
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   findAllRedemptions,
   findAllMemberships,
@@ -23,7 +23,7 @@ export function RewardReviewPage() {
 
   useEffect(() => { void reload(); }, []);
 
-  const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
+  const filtered = useMemo(() => filter === "all" ? orders : orders.filter(o => o.status === filter), [filter, orders]);
 
   const handleFulfill = async (id: string) => {
     await fulfillRedemption(id, session?.userId ?? "system");
@@ -52,7 +52,7 @@ export function RewardReviewPage() {
 
       {filtered.length === 0 && <p style={{ color: "var(--color-text-muted)" }}>暂无订单</p>}
 
-      {filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(o => {
+      {useMemo(() => [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [filtered]).map(o => {
         const m = members.find(x => x.patientId === o.patientId);
         return (
           <div key={o.id} style={{

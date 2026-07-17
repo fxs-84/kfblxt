@@ -30,7 +30,7 @@ export function useAllBilling() {
       if (hasSupabaseConfig()) {
         // 没有对应的 findAllDual API,退化为按空 patientId 查询获取全量
         const all = await billingRepository.findAll();
-        return all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return [...all].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       }
       return billingRepository.findAll();
     },

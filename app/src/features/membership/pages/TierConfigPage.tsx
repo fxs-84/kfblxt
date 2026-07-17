@@ -1,7 +1,7 @@
 /**
  * 等级配置页 — 编辑门槛/倍数/折扣
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { findAllTiers, updateTier } from "../rule.repository";
 import type { TierConfig } from "../models";
 
@@ -25,7 +25,7 @@ export function TierConfigPage() {
       </p>
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", marginTop: 16 }}>
-        {tiers.sort((a, b) => a.minTotalSpent - b.minTotalSpent).map(t => (
+        {useMemo(() => [...tiers].sort((a, b) => a.minTotalSpent - b.minTotalSpent), [tiers]).map(t => (
           <TierCard key={t.tier} tier={t} onSave={save} />
         ))}
       </div>

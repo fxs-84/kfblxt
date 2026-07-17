@@ -1,6 +1,7 @@
 /**
  * 积分规则列表页 — 治疗师/管理员可启用/禁用/编辑/复制
  */
+import { useMemo } from "react";
 import { useRules } from "../hooks/useMembership";
 import { ruleRepository } from "../rule.repository";
 import { TRIGGER_LABEL } from "../models";
@@ -63,7 +64,7 @@ export function RulesListPage() {
 
       {rules.length === 0 && <p style={{ color: "var(--color-text-muted)" }}>暂无规则</p>}
 
-      {rules.sort((a, b) => b.priority - a.priority).map(r => (
+      {useMemo(() => [...rules].sort((a, b) => b.priority - a.priority), [rules]).map(r => (
         <div key={r.id} style={{
           padding: 12,
           border: "1px solid var(--color-border)",

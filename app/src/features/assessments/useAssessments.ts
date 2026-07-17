@@ -38,7 +38,7 @@ export function useAllAssessments() {
     queryFn: async () => {
       // 全量当前未提供 Dual 版本,统一用本地仓储(单机模式足够;Supabase 模式按需扩展)
       const all = await assessmentRepository.findAll();
-      return all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return [...all].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     },
   });
 }

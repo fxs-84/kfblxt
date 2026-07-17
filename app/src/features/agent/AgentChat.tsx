@@ -92,7 +92,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
 
   const loadConversations = async () => {
     const all = await conversationRepository.findAll();
-    setConversations(all.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0)));
+    setConversations([...all].sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0)));
   };
 
   // 自动滚动
