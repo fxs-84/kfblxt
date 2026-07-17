@@ -19,12 +19,17 @@ import { patientSchema } from "../features/patients/patient.schema";
 const BATCH_SIZE = 100;
 const MIGRATABLE_ROLES = new Set(["admin", "physician"]);
 
-const patientMigrationSchema = patientSchema
-  .omit({ id: true, orgId: true, createdAt: true })
-  .extend({
-    id: z.string().uuid(),
-    createdAt: z.coerce.date(),
-  });
+const patientMigrationSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().optional(),
+  medicalRecordNo: z.string().max(64).optional().or(z.literal("")),
+  name: z.string().trim().min(1).max(80),
+  sex: z.string().optional(),
+  birthDate: z.coerce.date().optional().or(z.literal("")),
+  phone: z.string().max(20).optional().or(z.literal("")),
+  dominantHand: z.string().optional().or(z.literal("")),
+  createdAt: z.coerce.date(),
+});
 
 function canMigrate(role: string): boolean {
   return MIGRATABLE_ROLES.has(role);
