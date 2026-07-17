@@ -18,7 +18,6 @@ import { PointsHistoryPage } from "../features/membership/pages/PointsHistoryPag
 import { RedeemCreatePage } from "../features/membership/pages/RedeemCreatePage";
 import { CashierPage } from "../features/billing/pages/CashierPage";
 import { PatientMembershipRoutePage } from "../features/membership/pages/PatientMembershipRoutePage";
-import { MigratePage } from "./pages/MigratePage";
 
 const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 
@@ -50,7 +49,6 @@ export const router = createBrowserRouter(
         { path: "patients/:id", element: <PatientDetailPage /> },
         { path: "patients/:id/edit", element: <PatientFormPage /> },
         { path: "cashier", element: <CashierPage /> },
-        { path: "migrate", element: <MigratePage /> },
         { path: "patients/:id/membership", element: <PatientMembershipRoutePage /> },
         { path: "membership/rules", element: <RulesListPage /> },
         { path: "membership/rules/new", element: <RuleEditPage /> },
