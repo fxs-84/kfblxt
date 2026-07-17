@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("../../lib/supabase", () => ({
+  getSupabase: () => null,
+  resetSupabaseClient: vi.fn(),
+  hasSupabaseConfig: () => false,
+}));
 
 const ORG = "00000000-0000-4000-8000-0000000000f0";
 const PATIENT_A = "aaaaaaaa-0000-4000-8000-000000000001";

@@ -16,6 +16,33 @@ import type {
   PointsRule,
   TierConfig,
 } from "./models";
+import { BUILTIN_RULES, DEFAULT_TIERS, REWARD_SEED } from "./builtin-rules";
+import {
+  localFindAllRules,
+  localCreateRule,
+  localUpdateRule,
+  localDeleteRule,
+  localFindAllTiers,
+  localUpdateTier,
+  localGetOrCreateMembership,
+  localUpdateMembership,
+  localFindAllLogs,
+  localAppendLog,
+  localGetRecentLogs,
+  localGetLogsForRule,
+  localMarkMembershipsOrphanedByPatient,
+  localMarkLogsOrphanedByPatient,
+  localMarkRedemptionsOrphanedByPatient,
+  localFindAllRewards,
+  localFindRewardById,
+  localCreateReward,
+  localUpdateReward,
+  localDeleteReward,
+  localFindAllRedemptions,
+  localFindRedemptionsByPatient,
+  localCreateRedemption,
+  localUpdateRedemption,
+} from "./rule.repository";
 
 const LOCAL_PREFIX = "anrm_membership-";
 
@@ -51,6 +78,68 @@ function orgId(): string {
 
 function actorId(): string {
   return getSession().userId;
+}
+
+function canWriteConfig(): boolean {
+  const role = getSession().role;
+  return role === "admin" || role === "physician";
+}
+
+const seedPromises = new Map<string, Promise<void>>();
+
+export async function ensureSeededDual(): Promise<void> {
+  if (!isSupabaseReady()) return;
+  if (!canWriteConfig()) return;
+  const org = orgId();
+  const cached = seedPromises.get(org);
+  if (cached) return cached;
+  const promise = seedConfigTables()
+    .catch((err) => {
+      seedPromises.delete(org);
+      throw err;
+    });
+  seedPromises.set(org, promise);
+  return promise;
+}
+
+async function seedConfigTables(): Promise<void> {
+  const supabase = getSupabase()!;
+  const currentOrg = orgId();
+
+  const { data: ruleRows, error: ruleErr } = await supabase
+    .from("points_rules")
+    .select("id")
+    .eq("org_id", currentOrg);
+  if (ruleErr) throw new Error(`查询积分规则失败: ${ruleErr.message}`);
+  const existingRuleIds = new Set((ruleRows ?? []).map((r) => String(r.id)));
+  const missingRules = BUILTIN_RULES.filter((r) => !existingRuleIds.has(r.id));
+  if (missingRules.length) {
+    const { error } = await supabase.from("points_rules").insert(missingRules.map(ruleToRow));
+    if (error) throw new Error(`初始化积分规则失败: ${error.message}`);
+  }
+
+  const { data: tierRows, error: tierErr } = await supabase
+    .from("tier_configs")
+    .select("tier")
+    .eq("org_id", currentOrg);
+  if (tierErr) throw new Error(`查询会员等级失败: ${tierErr.message}`);
+  const existingTiers = new Set((tierRows ?? []).map((t) => String(t.tier)));
+  const missingTiers = DEFAULT_TIERS.filter((t) => !existingTiers.has(t.tier));
+  if (missingTiers.length) {
+    const { error } = await supabase.from("tier_configs").insert(missingTiers.map(tierToRow));
+    if (error) throw new Error(`初始化会员等级失败: ${error.message}`);
+  }
+
+  const { data: rewardRows, error: rewardErr } = await supabase
+    .from("reward_products")
+    .select("id")
+    .eq("org_id", currentOrg);
+  if (rewardErr) throw new Error(`查询兑换商品失败: ${rewardErr.message}`);
+  // 商品不标记 builtin,与 localStorage 语义保持一致:只在空表时初始化一次,避免用户删除后反复复活
+  if ((rewardRows ?? []).length === 0) {
+    const { error } = await supabase.from("reward_products").insert(REWARD_SEED.map(rewardToRow));
+    if (error) throw new Error(`初始化兑换商品失败: ${error.message}`);
+  }
 }
 
 /* ---- Membership ---- */
@@ -98,6 +187,7 @@ export async function findMembershipByPatientDual(patientId: string): Promise<Pa
     .from("patient_memberships")
     .select("*")
     .eq("patient_id", patientId)
+    .eq("org_id", orgId())
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new Error(`查询客户会员档案失败: ${error.message}`);
@@ -127,8 +217,7 @@ export async function upsertMembershipDual(m: PatientMembership): Promise<Patien
 
 export async function getOrCreateMembershipDual(patientId: string): Promise<PatientMembership> {
   if (!isSupabaseReady()) {
-    const { getOrCreateMembership } = await import("./rule.repository");
-    return getOrCreateMembership(patientId);
+    return localGetOrCreateMembership(patientId);
   }
   const found = await findMembershipByPatientDual(patientId);
   if (found) return found;
@@ -158,7 +247,7 @@ function logToRow(l: PointsLog): Record<string, unknown> {
     trigger_type: l.triggerType ?? null,
     ref_type: l.refType ?? null,
     ref_id: l.refId ?? null,
-    operator_id: l.operatorId || actorId(),
+    operator_id: actorId(),
     created_at: l.createdAt,
     deleted_at: l.deletedAt ?? null,
     created_by: actorId(),
@@ -184,8 +273,7 @@ function logFromRow(row: Record<string, unknown>): PointsLog {
 
 export async function appendLogDual(log: PointsLog): Promise<PointsLog> {
   if (!isSupabaseReady()) {
-    const { appendLog } = await import("./rule.repository");
-    return appendLog(log);
+    return localAppendLog(log);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase.from("points_logs").insert(logToRow(log)).select().maybeSingle();
@@ -194,14 +282,14 @@ export async function appendLogDual(log: PointsLog): Promise<PointsLog> {
 }
 
 export async function getRecentLogsDual(patientId: string, limit = 20): Promise<PointsLog[]> {
-  const { getRecentLogs } = await import("./rule.repository");
-  const local = await getRecentLogs(patientId, limit);
+  const local = localGetRecentLogs(patientId, limit);
   if (!isSupabaseReady()) return local;
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("points_logs")
     .select("*")
     .eq("patient_id", patientId)
+    .eq("org_id", orgId())
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -227,7 +315,7 @@ function redemptionToRow(r: Redemption): Record<string, unknown> {
     points_cost: r.pointsCost,
     status: r.status,
     notes: r.notes ?? null,
-    operator_id: r.operatorId || actorId(),
+    operator_id: actorId(),
     created_at: r.createdAt,
     fulfilled_at: r.fulfilledAt ?? null,
     cancelled_at: r.cancelledAt ?? null,
@@ -254,14 +342,14 @@ function redemptionFromRow(row: Record<string, unknown>): Redemption {
 }
 
 export async function findRedemptionsByPatientDual(patientId: string): Promise<Redemption[]> {
-  const { findRedemptionsByPatient } = await import("./rule.repository");
-  const local = await findRedemptionsByPatient(patientId);
+  const local = localFindRedemptionsByPatient(patientId);
   if (!isSupabaseReady()) return local;
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("redemptions")
     .select("*")
     .eq("patient_id", patientId)
+    .eq("org_id", orgId())
     .is("deleted_at", null);
   if (error) throw new Error(`查询兑换订单失败: ${error.message}`);
   const remote = (data ?? []).map(redemptionFromRow);
@@ -274,13 +362,13 @@ export async function findRedemptionsByPatientDual(patientId: string): Promise<R
 }
 
 export async function findAllRedemptionsDual(): Promise<Redemption[]> {
-  const { findAllRedemptions } = await import("./rule.repository");
-  const local = await findAllRedemptions();
+  const local = localFindAllRedemptions();
   if (!isSupabaseReady()) return local;
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("redemptions")
     .select("*")
+    .eq("org_id", orgId())
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(`查询兑换订单失败: ${error.message}`);
@@ -295,8 +383,7 @@ export async function findAllRedemptionsDual(): Promise<Redemption[]> {
 
 export async function createRedemptionDual(r: Redemption): Promise<Redemption> {
   if (!isSupabaseReady()) {
-    const { createRedemption } = await import("./rule.repository");
-    return createRedemption(r);
+    return localCreateRedemption(r);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase.from("redemptions").insert(redemptionToRow(r)).select().maybeSingle();
@@ -306,8 +393,7 @@ export async function createRedemptionDual(r: Redemption): Promise<Redemption> {
 
 export async function updateRedemptionDual(id: string, patch: Partial<Redemption>): Promise<Redemption | null> {
   if (!isSupabaseReady()) {
-    const { updateRedemption } = await import("./rule.repository");
-    return updateRedemption(id, patch);
+    return localUpdateRedemption(id, patch);
   }
   const supabase = getSupabase()!;
   const row: Record<string, unknown> = {};
@@ -316,7 +402,7 @@ export async function updateRedemptionDual(id: string, patch: Partial<Redemption
   if (patch.cancelledAt !== undefined) row.cancelled_at = patch.cancelledAt;
   if (patch.notes !== undefined) row.notes = patch.notes;
   if (patch.deletedAt !== undefined) row.deleted_at = patch.deletedAt;
-  const { data, error } = await supabase.from("redemptions").update(row).eq("id", id).select().maybeSingle();
+  const { data, error } = await supabase.from("redemptions").update(row).eq("id", id).eq("org_id", orgId()).select().maybeSingle();
   if (error || !data) return null;
   return redemptionFromRow(data);
 }
@@ -355,11 +441,15 @@ function rewardFromRow(row: Record<string, unknown>): RewardProduct {
 }
 
 export async function findAllRewardsDual(): Promise<RewardProduct[]> {
-  const { findAllRewards } = await import("./rule.repository");
-  const local = await findAllRewards();
+  const local = localFindAllRewards();
   if (!isSupabaseReady()) return local;
+  await ensureSeededDual();
   const supabase = getSupabase()!;
-  const { data, error } = await supabase.from("reward_products").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("reward_products")
+    .select("*")
+    .eq("org_id", orgId())
+    .order("created_at", { ascending: false });
   if (error) throw new Error(`查询兑换商品失败: ${error.message}`);
   const remote = (data ?? []).map(rewardFromRow);
   const merged = new Map<string, RewardProduct>();
@@ -377,8 +467,7 @@ export async function findRewardByIdDual(id: string): Promise<RewardProduct | nu
 
 export async function createRewardDual(r: RewardProduct): Promise<RewardProduct> {
   if (!isSupabaseReady()) {
-    const { createReward } = await import("./rule.repository");
-    return createReward(r);
+    return localCreateReward(r);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase.from("reward_products").insert(rewardToRow(r)).select().maybeSingle();
@@ -388,8 +477,7 @@ export async function createRewardDual(r: RewardProduct): Promise<RewardProduct>
 
 export async function updateRewardDual(id: string, patch: Partial<RewardProduct>): Promise<RewardProduct | null> {
   if (!isSupabaseReady()) {
-    const { updateReward } = await import("./rule.repository");
-    return updateReward(id, patch);
+    return localUpdateReward(id, patch);
   }
   const supabase = getSupabase()!;
   const row: Record<string, unknown> = {};
@@ -401,18 +489,17 @@ export async function updateRewardDual(id: string, patch: Partial<RewardProduct>
   if (patch.stock !== undefined) row.stock = patch.stock;
   if (patch.tierRequired !== undefined) row.tier_required = patch.tierRequired;
   if (patch.enabled !== undefined) row.enabled = patch.enabled;
-  const { data, error } = await supabase.from("reward_products").update(row).eq("id", id).select().maybeSingle();
+  const { data, error } = await supabase.from("reward_products").update(row).eq("id", id).eq("org_id", orgId()).select().maybeSingle();
   if (error || !data) return null;
   return rewardFromRow(data);
 }
 
 export async function deleteRewardDual(id: string): Promise<void> {
   if (!isSupabaseReady()) {
-    const { deleteReward } = await import("./rule.repository");
-    return deleteReward(id);
+    return localDeleteReward(id);
   }
   const supabase = getSupabase()!;
-  const { error } = await supabase.from("reward_products").delete().eq("id", id);
+  const { error } = await supabase.from("reward_products").delete().eq("id", id).eq("org_id", orgId());
   if (error) throw new Error(`删除兑换商品失败: ${error.message}`);
 }
 
@@ -457,11 +544,15 @@ function ruleFromRow(row: Record<string, unknown>): PointsRule {
 }
 
 export async function findAllRulesDual(): Promise<PointsRule[]> {
-  const { findAllRules } = await import("./rule.repository");
-  const local = await findAllRules();
+  const local = localFindAllRules();
   if (!isSupabaseReady()) return local;
+  await ensureSeededDual();
   const supabase = getSupabase()!;
-  const { data, error } = await supabase.from("points_rules").select("*").order("order_index", { ascending: true });
+  const { data, error } = await supabase
+    .from("points_rules")
+    .select("*")
+    .eq("org_id", orgId())
+    .order("order_index", { ascending: true });
   if (error) throw new Error(`查询积分规则失败: ${error.message}`);
   const remote = (data ?? []).map(ruleFromRow);
   const merged = new Map<string, PointsRule>();
@@ -477,8 +568,7 @@ export async function findRuleByIdDual(id: string): Promise<PointsRule | null> {
 
 export async function createRuleDual(rule: PointsRule): Promise<PointsRule> {
   if (!isSupabaseReady()) {
-    const { createRule } = await import("./rule.repository");
-    return createRule(rule);
+    return localCreateRule(rule);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase.from("points_rules").insert(ruleToRow(rule)).select().maybeSingle();
@@ -488,8 +578,7 @@ export async function createRuleDual(rule: PointsRule): Promise<PointsRule> {
 
 export async function updateRuleDual(id: string, patch: Partial<PointsRule>): Promise<PointsRule | null> {
   if (!isSupabaseReady()) {
-    const { updateRule } = await import("./rule.repository");
-    return updateRule(id, patch);
+    return localUpdateRule(id, patch);
   }
   const supabase = getSupabase()!;
   const row: Record<string, unknown> = {};
@@ -504,18 +593,17 @@ export async function updateRuleDual(id: string, patch: Partial<PointsRule>): Pr
   if (patch.order !== undefined) row.order_index = patch.order;
   if (patch.validFrom !== undefined) row.valid_from = patch.validFrom;
   if (patch.validUntil !== undefined) row.valid_until = patch.validUntil;
-  const { data, error } = await supabase.from("points_rules").update(row).eq("id", id).select().maybeSingle();
+  const { data, error } = await supabase.from("points_rules").update(row).eq("id", id).eq("org_id", orgId()).select().maybeSingle();
   if (error || !data) return null;
   return ruleFromRow(data);
 }
 
 export async function deleteRuleDual(id: string): Promise<void> {
   if (!isSupabaseReady()) {
-    const { deleteRule } = await import("./rule.repository");
-    return deleteRule(id);
+    return localDeleteRule(id);
   }
   const supabase = getSupabase()!;
-  const { error } = await supabase.from("points_rules").delete().eq("id", id);
+  const { error } = await supabase.from("points_rules").delete().eq("id", id).eq("org_id", orgId());
   if (error) throw new Error(`删除积分规则失败: ${error.message}`);
 }
 
@@ -548,11 +636,11 @@ function tierFromRow(row: Record<string, unknown>): TierConfig {
 }
 
 export async function findAllTiersDual(): Promise<TierConfig[]> {
-  const { findAllTiers } = await import("./rule.repository");
-  const local = await findAllTiers();
+  const local = localFindAllTiers();
   if (!isSupabaseReady()) return local;
+  await ensureSeededDual();
   const supabase = getSupabase()!;
-  const { data, error } = await supabase.from("tier_configs").select("*");
+  const { data, error } = await supabase.from("tier_configs").select("*").eq("org_id", orgId());
   if (error) throw new Error(`查询会员等级失败: ${error.message}`);
   const remote = (data ?? []).map(tierFromRow);
   const merged = new Map<string, TierConfig>();
@@ -563,8 +651,7 @@ export async function findAllTiersDual(): Promise<TierConfig[]> {
 
 export async function updateTierDual(tier: TierConfig["tier"], patch: Partial<TierConfig>): Promise<TierConfig | null> {
   if (!isSupabaseReady()) {
-    const { updateTier } = await import("./rule.repository");
-    return updateTier(tier, patch);
+    return localUpdateTier(tier, patch);
   }
   const supabase = getSupabase()!;
   const row: Record<string, unknown> = {};
@@ -574,7 +661,7 @@ export async function updateTierDual(tier: TierConfig["tier"], patch: Partial<Ti
   if (patch.minTotalSpent !== undefined) row.min_total_spent = patch.minTotalSpent;
   if (patch.pointMultiplier !== undefined) row.point_multiplier = patch.pointMultiplier;
   if (patch.discountOnRedeem !== undefined) row.discount_on_redeem = patch.discountOnRedeem;
-  const { data, error } = await supabase.from("tier_configs").update(row).eq("tier", tier).select().maybeSingle();
+  const { data, error } = await supabase.from("tier_configs").update(row).eq("tier", tier).eq("org_id", orgId()).select().maybeSingle();
   if (error || !data) return null;
   return tierFromRow(data);
 }
@@ -583,14 +670,14 @@ export async function updateTierDual(tier: TierConfig["tier"], patch: Partial<Ti
 
 export async function markMembershipsOrphanedByPatientDual(patientId: string): Promise<number> {
   if (!isSupabaseReady()) {
-    const { markMembershipsOrphanedByPatient } = await import("./rule.repository");
-    return markMembershipsOrphanedByPatient(patientId);
+    return localMarkMembershipsOrphanedByPatient(patientId);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("patient_memberships")
     .update({ deleted_at: new Date().toISOString() })
     .eq("patient_id", patientId)
+    .eq("org_id", orgId())
     .is("deleted_at", null)
     .select("patient_id");
   if (error) throw new Error(`级联标记 membership 失败: ${error.message}`);
@@ -599,14 +686,14 @@ export async function markMembershipsOrphanedByPatientDual(patientId: string): P
 
 export async function markLogsOrphanedByPatientDual(patientId: string): Promise<number> {
   if (!isSupabaseReady()) {
-    const { markLogsOrphanedByPatient } = await import("./rule.repository");
-    return markLogsOrphanedByPatient(patientId);
+    return localMarkLogsOrphanedByPatient(patientId);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("points_logs")
     .update({ deleted_at: new Date().toISOString() })
     .eq("patient_id", patientId)
+    .eq("org_id", orgId())
     .is("deleted_at", null)
     .select("id");
   if (error) throw new Error(`级联标记 logs 失败: ${error.message}`);
@@ -615,14 +702,14 @@ export async function markLogsOrphanedByPatientDual(patientId: string): Promise<
 
 export async function markRedemptionsOrphanedByPatientDual(patientId: string): Promise<number> {
   if (!isSupabaseReady()) {
-    const { markRedemptionsOrphanedByPatient } = await import("./rule.repository");
-    return markRedemptionsOrphanedByPatient(patientId);
+    return localMarkRedemptionsOrphanedByPatient(patientId);
   }
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("redemptions")
     .update({ deleted_at: new Date().toISOString() })
     .eq("patient_id", patientId)
+    .eq("org_id", orgId())
     .is("deleted_at", null)
     .select("id");
   if (error) throw new Error(`级联标记 redemptions 失败: ${error.message}`);

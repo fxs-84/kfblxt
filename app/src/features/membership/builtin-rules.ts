@@ -1,7 +1,7 @@
 /**
  * 8 个预设积分规则 — 首次加载时注入,builtin=true(可改不可删)
  */
-import type { PointsRule, TierConfig } from "./models";
+import type { PointsRule, TierConfig, RewardProduct } from "./models";
 
 export const BUILTIN_RULES: PointsRule[] = [
   {
@@ -161,4 +161,15 @@ export const DEFAULT_TIERS: TierConfig[] = [
   { tier: "silver", name: "银卡", color: "#C0C0C0", icon: "🥈", minTotalSpent: 2000, pointMultiplier: 1.2, discountOnRedeem: 1 },
   { tier: "gold", name: "金卡", color: "#FFD700", icon: "🥇", minTotalSpent: 8000, pointMultiplier: 1.5, discountOnRedeem: 1 },
   { tier: "diamond", name: "钻石", color: "#B9F2FF", icon: "💎", minTotalSpent: 20000, pointMultiplier: 2, discountOnRedeem: 1 },
+];
+
+export const REWARD_SEED: RewardProduct[] = [
+  { id: "reward_elastics", name: "弹力带训练包", description: "含 5 条不同阻力的弹力带 + 训练手册", category: "training", pointsCost: 300, imageEmoji: "🩰", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_balance_disc", name: "平衡训练光盘", description: "12 节平衡训练高清视频", category: "training", pointsCost: 500, imageEmoji: "💿", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_phone_followup", name: "电话回访 1 次", description: "治疗师主动电话回访 30 分钟", category: "service", pointsCost: 800, imageEmoji: "📞", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_online_qa", name: "在线答疑 30 分钟", description: "治疗师在线视频答疑", category: "consult", pointsCost: 1000, imageEmoji: "💬", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_discount_90", name: "9 折就诊券", description: "下次就诊 9 折优惠", category: "discount", pointsCost: 500, imageEmoji: "🎟️", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_free_visit", name: "免费复诊券", description: "下次复诊免费一次", category: "service", pointsCost: 2000, imageEmoji: "🎫", stock: -1, tierRequired: "gold", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_expert", name: "三甲专家会诊咨询", description: "三甲康复专家 30 分钟会诊咨询", category: "consult", pointsCost: 5000, imageEmoji: "👨‍⚕️", stock: 5, tierRequired: "diamond", enabled: true, createdAt: new Date().toISOString() },
+  { id: "reward_plan", name: "个性化训练计划定制", description: "治疗师 1 对 1 定制 4 周训练计划", category: "training", pointsCost: 2000, imageEmoji: "📋", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
 ];

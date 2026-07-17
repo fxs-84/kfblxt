@@ -2,8 +2,9 @@
  * 规则 + 等级 + 客户会员档案 + 积分流水 + 兑换商品 + 兑换订单
  * 统一 dual 分发层:Supabase ready 时走云端,否则落回 localStorage。
  */
+import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
-import { BUILTIN_RULES, DEFAULT_TIERS } from "./builtin-rules";
+import { BUILTIN_RULES, DEFAULT_TIERS, REWARD_SEED } from "./builtin-rules";
 import {
   ruleSchema,
   tierConfigSchema,
@@ -71,7 +72,7 @@ async function dual<T>(supabaseFn: () => Promise<T>, localFn: () => Promise<T> |
 ensureSeeded("rules", BUILTIN_RULES);
 ensureSeeded("tiers", DEFAULT_TIERS);
 
-function localFindAllRules(): PointsRule[] {
+export function localFindAllRules(): PointsRule[] {
   return load<PointsRule>("rules");
 }
 
@@ -79,7 +80,7 @@ function localFindRuleById(id: string): PointsRule | null {
   return load<PointsRule>("rules").find(r => r.id === id) ?? null;
 }
 
-function localCreateRule(rule: PointsRule): PointsRule {
+export function localCreateRule(rule: PointsRule): PointsRule {
   ruleSchema.parse(rule);
   const all = load<PointsRule>("rules");
   all.push(rule);
@@ -87,7 +88,7 @@ function localCreateRule(rule: PointsRule): PointsRule {
   return rule;
 }
 
-function localUpdateRule(id: string, patch: Partial<PointsRule>): PointsRule | null {
+export function localUpdateRule(id: string, patch: Partial<PointsRule>): PointsRule | null {
   const all = load<PointsRule>("rules");
   const idx = all.findIndex(r => r.id === id);
   if (idx === -1) return null;
@@ -96,7 +97,7 @@ function localUpdateRule(id: string, patch: Partial<PointsRule>): PointsRule | n
   return all[idx];
 }
 
-function localDeleteRule(id: string): void {
+export function localDeleteRule(id: string): void {
   save("rules", load<PointsRule>("rules").filter(r => r.id !== id));
 }
 
@@ -136,11 +137,11 @@ export async function deleteRule(id: string): Promise<void> {
 }
 
 /** ===== 等级 ===== */
-function localFindAllTiers(): TierConfig[] {
+export function localFindAllTiers(): TierConfig[] {
   return load<TierConfig>("tiers");
 }
 
-function localUpdateTier(tier: TierConfig["tier"], patch: Partial<TierConfig>): TierConfig | null {
+export function localUpdateTier(tier: TierConfig["tier"], patch: Partial<TierConfig>): TierConfig | null {
   const all = load<TierConfig>("tiers");
   const idx = all.findIndex(t => t.tier === tier);
   if (idx === -1) return null;
@@ -164,11 +165,11 @@ export async function updateTier(tier: TierConfig["tier"], patch: Partial<TierCo
 }
 
 /** ===== 客户会员档案 ===== */
-function localFindAllMemberships(): PatientMembership[] {
+export function localFindAllMemberships(): PatientMembership[] {
   return load<PatientMembership>("memberships").filter(m => !m.deletedAt);
 }
 
-function localGetOrCreateMembership(patientId: string): PatientMembership {
+export function localGetOrCreateMembership(patientId: string): PatientMembership {
   const all = load<PatientMembership>("memberships");
   const existing = all.find(m => m.patientId === patientId && !m.deletedAt);
   if (existing) return existing;
@@ -187,7 +188,7 @@ function localGetOrCreateMembership(patientId: string): PatientMembership {
   return fresh;
 }
 
-function localUpdateMembership(
+export function localUpdateMembership(
   patientId: string,
   patch: Partial<PatientMembership>,
 ): PatientMembership | null {
@@ -245,11 +246,11 @@ export async function updateMembership(
 }
 
 /** ===== 积分流水 ===== */
-function localFindAllLogs(): PointsLog[] {
+export function localFindAllLogs(): PointsLog[] {
   return load<PointsLog>("logs").filter(l => !l.deletedAt);
 }
 
-function localAppendLog(log: PointsLog): PointsLog {
+export function localAppendLog(log: PointsLog): PointsLog {
   pointsLogSchema.parse(log);
   const all = load<PointsLog>("logs");
   all.push(log);
@@ -257,14 +258,14 @@ function localAppendLog(log: PointsLog): PointsLog {
   return log;
 }
 
-function localGetRecentLogs(patientId: string, limit = 20): PointsLog[] {
+export function localGetRecentLogs(patientId: string, limit = 20): PointsLog[] {
   return load<PointsLog>("logs")
     .filter(l => l.patientId === patientId && !l.deletedAt)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, limit);
 }
 
-function localGetLogsForRule(ruleId: string, patientId?: string): PointsLog[] {
+export function localGetLogsForRule(ruleId: string, patientId?: string): PointsLog[] {
   return load<PointsLog>("logs").filter(
     l => l.ruleId === ruleId && !l.deletedAt && (!patientId || l.patientId === patientId),
   );
@@ -313,7 +314,12 @@ export async function getLogsForRule(ruleId: string, patientId?: string): Promis
   return dual(
     async () => {
       const supabase = getSupabase()!;
-      let q = supabase.from("points_logs").select("*").eq("rule_id", ruleId).is("deleted_at", null);
+      let q = supabase
+        .from("points_logs")
+        .select("*")
+        .eq("rule_id", ruleId)
+        .eq("org_id", getSession().orgId)
+        .is("deleted_at", null);
       if (patientId) q = q.eq("patient_id", patientId);
       const { data, error } = await q;
       if (error) throw new Error(`查询积分流水失败: ${error.message}`);
@@ -339,7 +345,7 @@ export async function getLogsForRule(ruleId: string, patientId?: string): Promis
 /**
  * 级联软删:客户被删除时,把指向该 patientId 的记录打 deletedAt 标记。
  */
-function localMarkMembershipsOrphanedByPatient(patientId: string): number {
+export function localMarkMembershipsOrphanedByPatient(patientId: string): number {
   const all = load<PatientMembership>("memberships");
   const ts = new Date().toISOString();
   let n = 0;
@@ -353,7 +359,7 @@ function localMarkMembershipsOrphanedByPatient(patientId: string): number {
   return n;
 }
 
-function localMarkLogsOrphanedByPatient(patientId: string): number {
+export function localMarkLogsOrphanedByPatient(patientId: string): number {
   const all = load<PointsLog>("logs");
   const ts = new Date().toISOString();
   let n = 0;
@@ -367,7 +373,7 @@ function localMarkLogsOrphanedByPatient(patientId: string): number {
   return n;
 }
 
-function localMarkRedemptionsOrphanedByPatient(patientId: string): number {
+export function localMarkRedemptionsOrphanedByPatient(patientId: string): number {
   const all = load<Redemption>("redemptions");
   const ts = new Date().toISOString();
   let n = 0;
@@ -429,32 +435,22 @@ void tierRepository;
 void patientMembershipRepository;
 
 /** ===== 兑换商品 ===== */
-const REWARD_SEED: RewardProduct[] = [
-  { id: "reward_elastics", name: "弹力带训练包", description: "含 5 条不同阻力的弹力带 + 训练手册", category: "training", pointsCost: 300, imageEmoji: "🩰", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_balance_disc", name: "平衡训练光盘", description: "12 节平衡训练高清视频", category: "training", pointsCost: 500, imageEmoji: "💿", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_phone_followup", name: "电话回访 1 次", description: "治疗师主动电话回访 30 分钟", category: "service", pointsCost: 800, imageEmoji: "📞", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_online_qa", name: "在线答疑 30 分钟", description: "治疗师在线视频答疑", category: "consult", pointsCost: 1000, imageEmoji: "💬", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_discount_90", name: "9 折就诊券", description: "下次就诊 9 折优惠", category: "discount", pointsCost: 500, imageEmoji: "🎟️", stock: -1, tierRequired: null, enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_free_visit", name: "免费复诊券", description: "下次复诊免费一次", category: "service", pointsCost: 2000, imageEmoji: "🎫", stock: -1, tierRequired: "gold", enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_expert", name: "三甲专家会诊咨询", description: "三甲康复专家 30 分钟会诊咨询", category: "consult", pointsCost: 5000, imageEmoji: "👨‍⚕️", stock: 5, tierRequired: "diamond", enabled: true, createdAt: new Date().toISOString() },
-  { id: "reward_plan", name: "个性化训练计划定制", description: "治疗师 1 对 1 定制 4 周训练计划", category: "training", pointsCost: 2000, imageEmoji: "📋", stock: -1, tierRequired: "silver", enabled: true, createdAt: new Date().toISOString() },
-];
 ensureSeeded("reward-products", REWARD_SEED);
 
-function localFindAllRewards(): RewardProduct[] {
+export function localFindAllRewards(): RewardProduct[] {
   return load<RewardProduct>("reward-products");
 }
-function localFindRewardById(id: string): RewardProduct | null {
+export function localFindRewardById(id: string): RewardProduct | null {
   return load<RewardProduct>("reward-products").find(r => r.id === id) ?? null;
 }
-function localCreateReward(r: RewardProduct): RewardProduct {
+export function localCreateReward(r: RewardProduct): RewardProduct {
   rewardProductSchema.parse(r);
   const all = load<RewardProduct>("reward-products");
   all.push(r);
   save("reward-products", all);
   return r;
 }
-function localUpdateReward(id: string, patch: Partial<RewardProduct>): RewardProduct | null {
+export function localUpdateReward(id: string, patch: Partial<RewardProduct>): RewardProduct | null {
   const all = load<RewardProduct>("reward-products");
   const idx = all.findIndex(r => r.id === id);
   if (idx === -1) return null;
@@ -462,7 +458,7 @@ function localUpdateReward(id: string, patch: Partial<RewardProduct>): RewardPro
   save("reward-products", all);
   return all[idx];
 }
-function localDeleteReward(id: string): void {
+export function localDeleteReward(id: string): void {
   save("reward-products", load<RewardProduct>("reward-products").filter(r => r.id !== id));
 }
 
@@ -502,20 +498,20 @@ export async function deleteReward(id: string): Promise<void> {
 }
 
 /** ===== 兑换订单 ===== */
-function localFindAllRedemptions(): Redemption[] {
+export function localFindAllRedemptions(): Redemption[] {
   return load<Redemption>("redemptions").filter(r => !r.deletedAt);
 }
-function localFindRedemptionsByPatient(patientId: string): Redemption[] {
+export function localFindRedemptionsByPatient(patientId: string): Redemption[] {
   return load<Redemption>("redemptions").filter(r => r.patientId === patientId && !r.deletedAt);
 }
-function localCreateRedemption(r: Redemption): Redemption {
+export function localCreateRedemption(r: Redemption): Redemption {
   redemptionSchema.parse(r);
   const all = load<Redemption>("redemptions");
   all.push(r);
   save("redemptions", all);
   return r;
 }
-function localUpdateRedemption(id: string, patch: Partial<Redemption>): Redemption | null {
+export function localUpdateRedemption(id: string, patch: Partial<Redemption>): Redemption | null {
   const all = load<Redemption>("redemptions");
   const idx = all.findIndex(r => r.id === id);
   if (idx === -1) return null;

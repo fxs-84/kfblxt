@@ -59,7 +59,7 @@ create index if not exists points_logs_created_at_idx on public.points_logs (cre
 -- 3. 兑换商品
 -- ============================================================
 create table if not exists public.reward_products (
-  id text primary key,
+  id text not null,
   org_id uuid not null references public.organizations (id) on delete restrict,
   name text not null,
   description text not null default '',
@@ -72,7 +72,8 @@ create table if not exists public.reward_products (
   created_at timestamptz not null default now(),
   created_by uuid references public.profiles (id),
   updated_at timestamptz not null default now(),
-  updated_by uuid references public.profiles (id)
+  updated_by uuid references public.profiles (id),
+  primary key (org_id, id)
 );
 
 create index if not exists reward_products_org_id_idx on public.reward_products (org_id);
@@ -89,7 +90,7 @@ create table if not exists public.redemptions (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations (id) on delete restrict,
   patient_id uuid not null references public.patients (id) on delete restrict,
-  reward_id text not null references public.reward_products (id) on delete restrict,
+  reward_id text not null,
   reward_name text not null,
   points_cost integer not null,
   status text not null default 'pending',
@@ -100,7 +101,8 @@ create table if not exists public.redemptions (
   fulfilled_at timestamptz,
   cancelled_at timestamptz,
   deleted_at timestamptz,
-  deleted_by uuid references public.profiles (id)
+  deleted_by uuid references public.profiles (id),
+  foreign key (org_id, reward_id) references public.reward_products (org_id, id) on delete restrict
 );
 
 create index if not exists redemptions_org_id_idx on public.redemptions (org_id);
@@ -115,7 +117,7 @@ create trigger redemptions_touch_audit
 -- 5. 积分规则
 -- ============================================================
 create table if not exists public.points_rules (
-  id text primary key,
+  id text not null,
   org_id uuid not null references public.organizations (id) on delete restrict,
   name text not null,
   enabled boolean not null default true,
@@ -132,7 +134,8 @@ create table if not exists public.points_rules (
   created_at timestamptz not null default now(),
   created_by uuid references public.profiles (id),
   updated_at timestamptz not null default now(),
-  updated_by uuid references public.profiles (id)
+  updated_by uuid references public.profiles (id),
+  primary key (org_id, id)
 );
 
 create index if not exists points_rules_org_id_idx on public.points_rules (org_id);
@@ -146,7 +149,7 @@ create trigger points_rules_touch_audit
 -- 6. 会员等级配置
 -- ============================================================
 create table if not exists public.tier_configs (
-  tier text primary key,
+  tier text not null,
   org_id uuid not null references public.organizations (id) on delete restrict,
   name text not null,
   color text not null default '#888888',
@@ -157,7 +160,8 @@ create table if not exists public.tier_configs (
   created_at timestamptz not null default now(),
   created_by uuid references public.profiles (id),
   updated_at timestamptz not null default now(),
-  updated_by uuid references public.profiles (id)
+  updated_by uuid references public.profiles (id),
+  primary key (org_id, tier)
 );
 
 create index if not exists tier_configs_org_id_idx on public.tier_configs (org_id);
