@@ -41,10 +41,11 @@ export function regionLabel(region: BodyRegion): string {
 export interface OverlayShape { region: ExtraRegion; points: string; }
 
 export const OVERLAY_ANTERIOR: readonly OverlayShape[] = [
-  { region:"left-hand",  points:"0,100 6.94,101.22 7.3,113 5,116 2,116 0,113" },
-  { region:"right-hand", points:"94.69,99.59 100,100.41 100,113 98,116 95,116 92.8,113" },
-  { region:"left-foot",  points:"20.82,195.51 24.90,194.69 28,201 26,204 22,204 18,201" },
-  { region:"right-foot", points:"74.69,195.51 79.59,195.51 82,201 80,204 76,204 72,201" },
+  // 前视 cx<50 是患者的右侧，cx≥50 是患者的左侧，因此左右标签与图像左右相反
+  { region:"right-hand", points:"0,100 6.94,101.22 7.3,113 5,116 2,116 0,113" },
+  { region:"left-hand",  points:"94.69,99.59 100,100.41 100,113 98,116 95,116 92.8,113" },
+  { region:"right-foot", points:"20.82,195.51 24.90,194.69 28,201 26,204 22,204 18,201" },
+  { region:"left-foot",  points:"74.69,195.51 79.59,195.51 82,201 80,204 76,204 72,201" },
 ];
 
 export const OVERLAY_POSTERIOR: readonly OverlayShape[] = [
