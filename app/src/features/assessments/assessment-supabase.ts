@@ -18,7 +18,7 @@ import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import {
   assessmentRepository,
-  type AssessmentRecordRow,
+  type StoredAssessmentRow,
 } from "./assessment.repository";
 import type { AssessmentInput } from "./assessment.types";
 
@@ -55,7 +55,7 @@ export function toRow(
  * payload 中的字段先展开,再用顶部列(id/orgId/patientId/encounterId/createdAt)
  * 覆盖,保证类型与 DB 列完全一致。
  */
-function fromRow(row: Record<string, unknown>): AssessmentRecordRow {
+function fromRow(row: Record<string, unknown>): StoredAssessmentRow {
   const payload = (row.payload as Record<string, unknown> | null) ?? {};
   const createdStr = String(row.created_at);
   const merged = { ...payload } as Record<string, unknown>;
@@ -71,10 +71,10 @@ function fromRow(row: Record<string, unknown>): AssessmentRecordRow {
   merged.updatedBy = null;
   merged.deletedAt = null;
   merged.deletedBy = null;
-  return merged as unknown as AssessmentRecordRow;
+  return merged as unknown as StoredAssessmentRow;
 }
 
-export async function findAssessmentsByPatientDual(patientId: string): Promise<AssessmentRecordRow[]> {
+export async function findAssessmentsByPatientDual(patientId: string): Promise<StoredAssessmentRow[]> {
   const local = await assessmentRepository.findAll();
   const localList = local
     .filter((a) => a.patientId === patientId && !a.deletedAt)
@@ -89,13 +89,13 @@ export async function findAssessmentsByPatientDual(patientId: string): Promise<A
     .order("created_at", { ascending: false });
   if (error) throw new Error(`查询量表失败: ${error.message}`);
   const remoteList = (data ?? []).map(fromRow);
-  const merged = new Map<string, AssessmentRecordRow>();
+  const merged = new Map<string, StoredAssessmentRow>();
   for (const r of remoteList) merged.set(r.id, r);
   for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
   return [...merged.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-export async function findAssessmentsByEncounterDual(encounterId: string, patientId?: string): Promise<AssessmentRecordRow[]> {
+export async function findAssessmentsByEncounterDual(encounterId: string, patientId?: string): Promise<StoredAssessmentRow[]> {
   const local = await assessmentRepository.findAll();
   const localList = local
     .filter((a) => {
@@ -129,13 +129,13 @@ export async function findAssessmentsByEncounterDual(encounterId: string, patien
   const remoteList = [...(byEncounter.data ?? []), ...(byPatient.data ?? [])].map((row) =>
     fromRow(row as Record<string, unknown>)
   );
-  const merged = new Map<string, AssessmentRecordRow>();
+  const merged = new Map<string, StoredAssessmentRow>();
   for (const r of remoteList) merged.set(r.id, r);
   for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
   return [...merged.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-export async function createAssessmentDual(input: AssessmentInput): Promise<AssessmentRecordRow> {
+export async function createAssessmentDual(input: AssessmentInput): Promise<StoredAssessmentRow> {
   if (!isSupabaseReady()) return assessmentRepository.create(input);
   const supabase = getSupabase()!;
   const id = crypto.randomUUID();
@@ -150,9 +150,11 @@ export async function createAssessmentDual(input: AssessmentInput): Promise<Asse
 export async function updateAssessmentDual(
   id: string,
   patch: Partial<AssessmentInput>,
-): Promise<AssessmentRecordRow> {
+): Promise<StoredAssessmentRow> {
   if (!isSupabaseReady()) {
-    return assessmentRepository.update(id, patch as Parameters<typeof assessmentRepository.update>[1]);
+    const updated = await assessmentRepository.update(id, patch as Parameters<typeof assessmentRepository.update>[1]);
+    if (!updated) throw new Error("量表记录不存在");
+    return updated;
   }
   const supabase = getSupabase()!;
   const now = new Date().toISOString();

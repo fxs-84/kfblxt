@@ -35,6 +35,9 @@ export interface UserInput {
 
 export type UserRecord = Omit<UserAccount, "passwordHash"> & Entity & { passwordHash: string };
 
+/** 不含密码哈希的用户信息 — 登录/注册接口对外返回类型 */
+export type SafeUserRecord = Omit<UserRecord, "passwordHash">;
+
 const validateUserInput = (input: { username?: string; fullName?: string; passwordHash?: string }): UserInput => {
   if (!input.username || input.username.length < 2) throw new Error("用户名至少 2 个字符");
   if (!input.fullName || !input.fullName.trim()) throw new Error("请输入姓名");

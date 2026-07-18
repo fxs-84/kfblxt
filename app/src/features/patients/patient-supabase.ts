@@ -13,7 +13,8 @@
 import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { patientRepository } from "./patient.repository";
-import type { PatientRecord, PatientInput } from "./patient.repository";
+import type { PatientRecord } from "./patient.repository";
+import type { PatientInput } from "./patient.schema";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
@@ -56,9 +57,9 @@ function fromRow(row: Record<string, unknown>): PatientRecord {
     createdAt: new Date(createdStr),
     createdBy: (row.created_by as string) ?? null,
     updatedAt: new Date(createdStr),
-    updatedBy: null,
-    deletedAt: null,
-    deletedBy: null,
+    updatedBy: undefined,
+    deletedAt: undefined,
+    deletedBy: undefined,
   };
 }
 

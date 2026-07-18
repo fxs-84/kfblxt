@@ -115,6 +115,8 @@ export const patientMembershipSchema = z.object({
   note: z.string().nullable().default(null),
   /** 软删标记 — 客户被删除后由 useDeletePatient 级联置位,findAll* 自动过滤 */
   deletedAt: z.string().nullable().default(null),
+  /** 软删操作者 */
+  deletedBy: z.string().nullable().default(null),
 });
 export type PatientMembership = z.infer<typeof patientMembershipSchema>;
 

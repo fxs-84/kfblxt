@@ -256,6 +256,8 @@ export async function getOrCreateMembershipDual(patientId: string): Promise<Pati
     totalSpent: 0,
     registeredAt: new Date().toISOString(),
     note: null,
+    deletedAt: null,
+    deletedBy: null,
   };
   return upsertMembershipDual(fresh);
 }
@@ -464,7 +466,7 @@ function rewardFromRow(row: Record<string, unknown>): RewardProduct {
     pointsCost: Number(row.points_cost),
     imageEmoji: String(row.image_emoji ?? "🎁"),
     stock: Number(row.stock),
-    tierRequired: (row.tier_required as string | null) ?? null,
+    tierRequired: (row.tier_required as RewardProduct["tierRequired"]) ?? null,
     enabled: Boolean(row.enabled),
     createdAt: String(row.created_at),
   };

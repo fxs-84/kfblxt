@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * 跨测试套件环境清理 — Supabase 双模式分发器的"无 env 走 fallback"假设。
  *

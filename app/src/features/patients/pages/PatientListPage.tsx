@@ -140,7 +140,7 @@ export function PatientListPage() {
                     <td>{SEX_LABELS[p.sex]}</td>
                     <td>{calcAge(p.birthDate)} 岁</td>
                     <td>{p.phone || "—"}</td>
-                    <td>{formatDate(p.createdAt)}</td>
+                    <td>{p.createdAt ? formatDate(p.createdAt) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

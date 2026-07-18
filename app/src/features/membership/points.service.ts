@@ -41,6 +41,7 @@ export async function awardPoints(p: AwardParams): Promise<{ ok: boolean; balanc
     refId: p.refId ?? null,
     operatorId: p.operatorId,
     createdAt: new Date().toISOString(),
+    deletedAt: null,
   };
 
   await appendLog(log);

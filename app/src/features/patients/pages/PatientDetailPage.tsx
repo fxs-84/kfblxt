@@ -268,7 +268,7 @@ export function PatientDetailPage() {
                 ? <ExamResultSummary session={sessionByEncounter.get(examEncounterId)!} />
                 : <ExamForm encounterId={examEncounterId} patientId={patient.id} onDone={() => setExamEncounterId(null)} />}
               <DiagnosisPanel key={examEncounterId} encounterId={examEncounterId} />
-              <AttachmentPanel encounterId={examEncounterId} />
+              <AttachmentPanel encounterId={examEncounterId} patientId={patient.id} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
 
               {/* 结束就诊按钮 */}

@@ -11,7 +11,7 @@ import type {
 import type { BrainRegionResponses, BrainRegionScore, PhoneEarPreference } from "./scales/brain-region";
 
 /** 仓储内部持久化结构(覆盖所有字段) */
-type StoredAssessmentRow = (BrainAssessmentRecordRow | PainAssessmentRecordRow) & Entity;
+export type StoredAssessmentRow = (BrainAssessmentRecordRow | PainAssessmentRecordRow) & Entity;
 
 function validate(input: AssessmentInput): AssessmentInput {
   if (!input.patientId) throw new Error("客户 ID 不能为空");
@@ -85,10 +85,19 @@ async function removeAcross(id: string): Promise<void> {
 /**
  * 统一对外 API — 兼容旧 assessmentRepository 调用。
  */
+/** 局部更新(按 type 分发到子仓储) */
+async function updateAcross(id: string, patch: Partial<AssessmentInput>): Promise<StoredAssessmentRow | null> {
+  const found = await findByIdAcross(id);
+  if (!found) return null;
+  if (found.type === "brain_region") return brainAssessmentRepository.update(id, patch as never);
+  return painAssessmentRepository.update(id, patch as never);
+}
+
 export const assessmentRepository = {
   findAll: findAllAcross,
   findById: findByIdAcross,
   create: createAcross,
+  update: updateAcross,
   remove: removeAcross,
 };
 

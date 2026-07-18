@@ -181,6 +181,8 @@ export function localGetOrCreateMembership(patientId: string): PatientMembership
     totalSpent: 0,
     registeredAt: new Date().toISOString(),
     note: null,
+    deletedAt: null,
+    deletedBy: null,
   };
   patientMembershipSchema.parse(fresh);
   all.push(fresh);
@@ -217,6 +219,7 @@ export async function findAllMemberships(): Promise<PatientMembership[]> {
         registeredAt: String(row.registered_at),
         note: (row.note as string | null) ?? null,
         deletedAt: (row.deleted_at as string | null) ?? null,
+        deletedBy: (row.deleted_by as string | null) ?? null,
       }));
     },
     localFindAllMemberships,

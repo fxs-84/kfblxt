@@ -9,6 +9,7 @@ import {
 
 const ORG = "00000000-0000-4000-8000-0000000000f0";
 const ENC = "eeeeeeee-0000-4000-8000-000000000001";
+const PAT = "pppppppp-0000-4000-8000-000000000001";
 
 async function clearLocal() {
   const all = await attachmentRepository.findAll();
@@ -18,6 +19,7 @@ async function clearLocal() {
 const baseInput = (overrides: Partial<Parameters<typeof createAttachmentDual>[0]> = {}) => ({
   orgId: ORG,
   encounterId: ENC,
+  patientId: PAT,
   category: "疗效对比" as const,
   fileName: "test.png",
   mimeType: "image/png",

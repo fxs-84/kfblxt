@@ -24,7 +24,7 @@ const inputA = (encId: string): ExamSessionInput => ({
   orgId: ORG,
   patientId: PAT_A,
   encounterId: encId,
-  results: { "vor-test": { gain: 0.85, side: "left", note: "略低于正常" } },
+  results: { "vor-test": { value: 0.85, note: "略低于正常" } },
 });
 
 describe("exam dual-mode dispatcher (no Supabase env → fallback)", () => {
@@ -66,8 +66,8 @@ describe("exam dual-mode dispatcher (no Supabase env → fallback)", () => {
       createExamSessionDual({
         orgId: ORG,
         encounterId: ENC_A,
-        results: { "vor-test": { gain: 0.85 } },
-        // @ts-expect-error - 故意测试运行时缺失 patientId
+        results: { "vor-test": { value: 0.85 } },
+        // 故意测试运行时缺失 patientId
         patientId: undefined,
       } as unknown as ExamSessionInput),
     ).rejects.toThrow(/客户 ID|patientId/);

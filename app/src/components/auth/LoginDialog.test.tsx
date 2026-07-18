@@ -25,8 +25,9 @@ vi.mock("../../features/auth/user-supabase", () => ({
 }));
 
 import { loginByPasswordDual } from "../../features/auth/user-supabase";
+import type { Session } from "../../lib/session";
 
-const DUMMY_SESSION = {
+const DUMMY_SESSION: Session = {
   userId: "",
   orgId: "",
   fullName: "未登录",

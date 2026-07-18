@@ -23,13 +23,14 @@ async function clearLocal() {
 const basePlanInput = {
   orgId: ORG,
   encounterId: ENC_A,
+  patientId: "patient-001",
   phase: "恢复期" as const,
   frequency: "3次/周",
   duration: "4周",
   interventionIds: ["vor-training"],
   interventionDoses: { "vor-training": { durationMin: 10, sets: 3, intensity: "中度" as const } },
   goals: [{ term: "short" as const, description: "VOR 改善", metric: "<10%" }],
-  boundaries: undefined,
+  boundary: undefined,
 };
 
 const baseNoteInput = (planId: string) => ({

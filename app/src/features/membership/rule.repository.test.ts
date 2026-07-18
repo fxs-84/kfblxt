@@ -70,6 +70,7 @@ describe("patient 删除级联软删 — display 侧自动消失", () => {
       refId: null,
       operatorId: "u1",
       createdAt: ts,
+      deletedAt: null,
       ...overrides,
     });
     await appendLog(make({ patientId: PATIENT_KEEP, id: "log_keep_1" }));
@@ -101,6 +102,7 @@ describe("patient 删除级联软删 — display 侧自动消失", () => {
       createdAt: new Date().toISOString(),
       fulfilledAt: null,
       cancelledAt: null,
+      deletedAt: null,
     };
     await createRedemption({ ...baseRedemption, id: "r_keep", patientId: PATIENT_KEEP });
     await createRedemption({ ...baseRedemption, id: "r_del_1" });

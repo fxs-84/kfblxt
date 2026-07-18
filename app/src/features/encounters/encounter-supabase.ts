@@ -7,7 +7,8 @@
 import { getSession } from "../../lib/session";
 import { getSupabase } from "../../lib/supabase";
 import { encounterRepository } from "./encounter.repository";
-import type { EncounterRecord, EncounterInput } from "./encounter.repository";
+import type { EncounterRecord } from "./encounter.repository";
+import type { EncounterInput } from "./encounter.schema";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
@@ -43,9 +44,9 @@ function fromRow(row: Record<string, unknown>): EncounterRecord {
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
     createdBy: (row.created_by as string) ?? null,
     updatedAt: new Date(typeof crt === "string" ? crt : String(crt)),
-    updatedBy: null,
-    deletedAt: null,
-    deletedBy: null,
+    updatedBy: undefined,
+    deletedAt: undefined,
+    deletedBy: undefined,
   };
 }
 

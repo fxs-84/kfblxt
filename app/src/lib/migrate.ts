@@ -103,7 +103,7 @@ async function fetchCloudIds(table: string, keyColumn: string): Promise<Set<stri
   const supabase = getSupabase()!;
   const { data, error } = await supabase.from(table).select(keyColumn).eq("org_id", currentOrg());
   if (error) throw new Error(`读取 ${table} 失败: ${error.message}`);
-  return new Set((data ?? []).map((r) => String(r[keyColumn])));
+  return new Set(((data ?? []) as unknown as Array<Record<string, unknown>>).map((r) => String(r[keyColumn])));
 }
 
 async function insertBatch(
@@ -161,7 +161,7 @@ function buildRowsForInsert<T>(
       }
     }
     const rec = opts?.transform ? opts.transform(raw) : raw;
-    const recWithOrg = { ...(rec as unknown as Record<string, unknown>), orgId: currentOrg() };
+    const recWithOrg: Record<string, unknown> = { ...(rec as unknown as Record<string, unknown>), orgId: currentOrg() };
     const id = String(recWithOrg[keyColumn]);
     report.total++;
     if (cloudIds.has(id)) {

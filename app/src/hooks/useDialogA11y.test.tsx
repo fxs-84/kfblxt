@@ -23,6 +23,7 @@ interface FakeDialog extends HTMLElement {
 function installFakeDialog(): {
   modalSpy: ReturnType<typeof vi.fn>;
   closeSpy: ReturnType<typeof vi.fn>;
+  restore: () => void;
 } {
   const modalSpy = vi.fn();
   const closeSpy = vi.fn();
@@ -63,7 +64,7 @@ describe("useDialogA11y", () => {
     });
     // 直接拉真实 DOM 验证
     const d = document.getElementById("dlg");
-    if (d) d.showModal();
+    if (d) (d as HTMLDialogElement).showModal();
     expect((d as unknown as FakeDialog).showModal).toBeDefined();
     expect(spies.modalSpy).toBeDefined();
   });

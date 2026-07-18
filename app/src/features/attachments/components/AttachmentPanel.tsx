@@ -4,7 +4,7 @@ import { ATTACHMENT_CATEGORIES, type AttachmentCategory } from "../attachment.ty
 import type { AttachmentRecord } from "../attachment.repository";
 import { formatDate } from "../../../lib/format";
 
-interface AttachmentPanelProps { encounterId: string }
+interface AttachmentPanelProps { encounterId: string; patientId: string }
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -23,7 +23,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function AttachmentPanel({ encounterId }: AttachmentPanelProps) {
+export function AttachmentPanel({ encounterId, patientId }: AttachmentPanelProps) {
   const { data: attachments = [] } = useAttachments(encounterId);
   const createAttachment = useCreateAttachment();
   const deleteAttachment = useDeleteAttachment();
@@ -42,7 +42,7 @@ export function AttachmentPanel({ encounterId }: AttachmentPanelProps) {
       for (const file of Array.from(files)) {
         const dataUrl = await readFileAsDataUrl(file);
         await createAttachment.mutateAsync({
-          encounterId, category, fileName: file.name, mimeType: file.type,
+          encounterId, patientId, category, fileName: file.name, mimeType: file.type,
           dataUrl, sizeBytes: file.size,
           note: note.trim() || undefined,
           timeline: category === "疗效对比" ? timeline : undefined,

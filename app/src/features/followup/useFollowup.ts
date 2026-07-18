@@ -48,9 +48,8 @@ export function useCreateFollowup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<FollowupInput, "orgId">) => {
-      const fullInput: FollowupInput = hasSupabaseConfig()
-        ? { ...input }
-        : { ...input, orgId: getSession().orgId };
+      // 两个分支都必须带 orgId — 此前 Supabase 分支漏注,云端写入会丢机构字段
+      const fullInput: FollowupInput = { ...input, orgId: getSession().orgId };
       return createFollowupDual(fullInput);
     },
     onSuccess: (_, vars) => {

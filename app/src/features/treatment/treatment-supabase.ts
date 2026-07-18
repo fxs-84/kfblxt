@@ -57,9 +57,9 @@ function planFromRow(row: Record<string, unknown>): TreatmentPlanRecord {
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
     createdBy: (row.created_by as string) ?? null,
     updatedAt: new Date(typeof crt === "string" ? crt : String(crt)),
-    updatedBy: null,
-    deletedAt: null,
-    deletedBy: null,
+    updatedBy: undefined,
+    deletedAt: undefined,
+    deletedBy: undefined,
   };
 }
 
@@ -155,9 +155,9 @@ function noteFromRow(row: Record<string, unknown>): ProgressNoteRecord {
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
     createdBy: (row.created_by as string) ?? null,
     updatedAt: new Date(typeof crt === "string" ? crt : String(crt)),
-    updatedBy: null,
-    deletedAt: null,
-    deletedBy: null,
+    updatedBy: undefined,
+    deletedAt: undefined,
+    deletedBy: undefined,
   };
 }
 

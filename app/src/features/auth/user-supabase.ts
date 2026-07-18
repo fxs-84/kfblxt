@@ -12,7 +12,8 @@
  */
 
 import { getSupabase } from "../../lib/supabase";
-import { hashPassword, userRepository, isUsernameTaken, type UserRole, type UserRecord } from "./user.repository";
+import { hashPassword, userRepository, isUsernameTaken, type SafeUserRecord } from "./user.repository";
+import type { UserRole } from "../../lib/rbac";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
@@ -162,7 +163,7 @@ export async function registerUserDual(input: {
   role: UserRole;
   /** 保留以兼容现有 caller;Supabase 模式下被忽略(从 profile 读) */
   orgId?: string;
-}): Promise<UserRecord> {
+}): Promise<SafeUserRecord> {
   if (!isSupabaseReady()) {
     return userRepository.create({
       username: input.username,
@@ -170,7 +171,7 @@ export async function registerUserDual(input: {
       role: input.role,
       orgId: input.orgId ?? "00000000-0000-4000-8000-0000000000f0",
       passwordHash: await hashPassword(input.password),
-    }) as Promise<UserRecord>;
+    }) as Promise<SafeUserRecord>;
   }
   const supabase = getSupabase()!;
 
@@ -239,7 +240,7 @@ export async function registerUserDual(input: {
 export async function loginByPasswordDual(
   username: string,
   password: string,
-): Promise<UserRecord> {
+): Promise<SafeUserRecord> {
   if (!isSupabaseReady()) {
     const all = await userRepository.findAll();
     const user = all.find((u) => u.username.toLowerCase() === username.toLowerCase());

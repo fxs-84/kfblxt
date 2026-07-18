@@ -149,7 +149,7 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
       {/* 检查报告 */}
       <FoldSection title="📎 检查报告" open={!!expanded.attachment} onToggle={() => toggle("attachment")}>
         <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
-          <AttachmentPanel encounterId={encounterId} />
+          <AttachmentPanel encounterId={encounterId} patientId={patientId} />
         </div>
       </FoldSection>
 

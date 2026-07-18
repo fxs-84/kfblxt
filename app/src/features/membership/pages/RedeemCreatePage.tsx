@@ -69,7 +69,7 @@ export function RedeemCreatePage() {
   }, [membership]);
 
   const insufficientPoints = !!selectedReward && !!membership && membership.points < selectedReward.pointsCost;
-  const tierBlocked = !!selectedReward && !!selectedReward.tierRequired && tier !== selectedReward.tier;
+  const tierBlocked = !!selectedReward && !!selectedReward.tierRequired && tier !== selectedReward.tierRequired;
   const stockExhausted = !!selectedReward && selectedReward.stock === 0;
   const canSubmit = !!selectedReward && !insufficientPoints && !tierBlocked && !stockExhausted && !submitting;
 
@@ -93,6 +93,7 @@ export function RedeemCreatePage() {
         createdAt: new Date().toISOString(),
         fulfilledAt: null,
         cancelledAt: null,
+        deletedAt: null,
       };
       await createRedemption(redemption);
 
@@ -115,6 +116,7 @@ export function RedeemCreatePage() {
         refId: redemption.id,
         operatorId: session.userId,
         createdAt: new Date().toISOString(),
+        deletedAt: null,
       };
       await appendLog(log);
 

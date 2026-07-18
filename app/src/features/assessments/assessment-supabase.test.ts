@@ -5,7 +5,12 @@ import {
   findAssessmentsByPatientDual,
   findAssessmentsByEncounterDual,
 } from "./assessment-supabase";
-import type { PainAssessmentInput } from "./assessment.types";
+import type {
+  BrainAssessmentInput,
+  BrainRegionScore,
+  PainAssessmentInput,
+  PainAssessmentRecordRow,
+} from "./assessment.types";
 
 describe("assessment dual-mode dispatcher (no Supabase env → fallback)", () => {
   it("findAssessmentsByPatientDual 落回 localStorage 仓储", async () => {
@@ -20,16 +25,23 @@ describe("assessment dual-mode dispatcher (no Supabase env → fallback)", () =>
 
   it("createAssessmentDual 落回 localStorage (assessmentRepository.create)", async () => {
     const before = (await assessmentRepository.findAll()).length;
-    await assessmentRepository.create({
-      // @ts-expect-error - 简化:任意类型在测试中可被存储层接受
+    const brainInput: BrainAssessmentInput = {
       type: "brain_region",
       patientId: "aaaaaaaa-0000-4000-8000-000000000001",
       orgId: "00000000-0000-4000-8000-0000000000f0",
       encounterId: undefined,
-      responses: {},
-      scores: {},
+      responses: { items: {}, phoneEar: null },
+      score: {
+        byRegion: {} as BrainRegionScore["byRegion"],
+        total: 0,
+        percent: 0,
+        affectedRegions: [],
+        severityByRegion: {} as BrainRegionScore["severityByRegion"],
+      },
+      phoneEar: null,
       note: "test",
-    } as Parameters<typeof assessmentRepository.create>[0]);
+    };
+    await assessmentRepository.create(brainInput);
     const after = (await assessmentRepository.findAll()).length;
     expect(after).toBe(before + 1);
   });
@@ -53,14 +65,15 @@ describe("assessment dual-mode dispatcher (no Supabase env → fallback)", () =>
     };
 
     const created = await createAssessmentDual(input);
+    const createdPain = created as PainAssessmentRecordRow;
 
     expect(created.type).toBe("pain_assessment");
     expect(created.patientId).toBe(input.patientId);
     expect(created.encounterId).toBe(input.encounterId);
-    expect(created.csi.total).toBe(5);
-    expect(created.csi.severity).toBe("normal");
-    expect(created.slanss.total).toBe(5);
-    expect(created.slanss.positive).toBe(false);
+    expect(createdPain.csi.total).toBe(5);
+    expect(createdPain.csi.severity).toBe("normal");
+    expect(createdPain.slanss.total).toBe(5);
+    expect(createdPain.slanss.positive).toBe(false);
 
     const byPatient = await findAssessmentsByPatientDual(input.patientId);
     expect(byPatient.some((r) => r.id === created.id)).toBe(true);
@@ -74,7 +87,6 @@ describe("assessment dual-mode dispatcher (no Supabase env → fallback)", () =>
     await expect(
       createAssessmentDual({
         type: "pain_assessment",
-        // @ts-expect-error - 故意测试运行时缺失 patientId
         patientId: undefined,
         orgId: "00000000-0000-4000-8000-0000000000f0",
         encounterId: "enc-pain-002",

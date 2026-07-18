@@ -38,9 +38,9 @@ function fromRow(row: Record<string, unknown>): FollowupRecord {
     createdAt: new Date(typeof crt === "string" ? crt : String(crt)),
     createdBy: (row.created_by as string) ?? null,
     updatedAt: new Date(typeof crt === "string" ? crt : String(crt)),
-    updatedBy: null,
-    deletedAt: null,
-    deletedBy: null,
+    updatedBy: undefined,
+    deletedAt: undefined,
+    deletedBy: undefined,
   };
 }
 

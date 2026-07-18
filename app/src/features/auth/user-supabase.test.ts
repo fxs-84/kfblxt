@@ -7,7 +7,6 @@ import {
 } from "./user-supabase";
 
 const ORG = "00000000-0000-4000-8000-0000000000f0";
-const ORG_NAME = "测试诊所";
 
 async function clearLocal() {
   const all = await userRepository.findAll();
@@ -30,7 +29,6 @@ describe("user auth dual-mode dispatcher (no Supabase env → fallback)", () => 
       fullName: "测试治疗师",
       role: "therapist",
       orgId: ORG,
-      orgName: ORG_NAME,
     });
     expect(user.username).toBe("test-therapist");
     expect(user.fullName).toBe("测试治疗师");
@@ -47,9 +45,8 @@ describe("user auth dual-mode dispatcher (no Supabase env → fallback)", () => 
       fullName: "登录人",
       role: "physician",
       orgId: ORG,
-      orgName: ORG_NAME,
     });
-    const u = await loginByPasswordDual("loginer", "secret123", ORG_NAME);
+    const u = await loginByPasswordDual("loginer", "secret123");
     expect(u.username).toBe("loginer");
     expect(u.role).toBe("physician");
   });
@@ -61,16 +58,15 @@ describe("user auth dual-mode dispatcher (no Supabase env → fallback)", () => 
       fullName: "X",
       role: "therapist",
       orgId: ORG,
-      orgName: ORG_NAME,
     });
     await expect(
-      loginByPasswordDual("wrong-pw-user", "wrong-pw", ORG_NAME),
+      loginByPasswordDual("wrong-pw-user", "wrong-pw"),
     ).rejects.toThrow(/用户名或密码错误/);
   });
 
   it("loginByPasswordDual 未知用户名抛错", async () => {
     await expect(
-      loginByPasswordDual("nobody", "anything", ORG_NAME),
+      loginByPasswordDual("nobody", "anything"),
     ).rejects.toThrow(/用户名或密码错误/);
   });
 });

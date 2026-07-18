@@ -73,10 +73,13 @@ class MockQuery {
   }
 
   maybeSingle(): Promise<{ data: Record<string, unknown> | null; error: null }> {
-    return Promise.resolve(this.execute()).then(({ data }) => ({
-      data: data && data.length > 0 ? data[0] : null,
-      error: null,
-    }));
+    return Promise.resolve(this.execute()).then(({ data }) => {
+      const rows = data as Record<string, unknown>[] | null;
+      return {
+        data: rows && rows.length > 0 ? rows[0] : null,
+        error: null,
+      };
+    });
   }
 
   single(): Promise<{ data: Record<string, unknown> | null; error: null }> {
@@ -164,8 +167,8 @@ class MockSupabaseClient {
   }
 }
 
-function createMockClient(): SupabaseClient {
-  return new MockSupabaseClient() as unknown as SupabaseClient;
+function createMockClient(): MockSupabaseClient {
+  return new MockSupabaseClient();
 }
 
 let mockClient = createMockClient();

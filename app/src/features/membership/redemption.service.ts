@@ -76,6 +76,7 @@ export async function requestRedemption(p: RedeemParams, operatorId = "system"):
     createdAt: new Date().toISOString(),
     fulfilledAt: null,
     cancelledAt: null,
+    deletedAt: null,
   };
   await createRedemption(redemption);
   return { ok: true, redemption };
