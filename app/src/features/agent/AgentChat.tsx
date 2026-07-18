@@ -12,14 +12,6 @@ import { useSession } from "../../components/auth/useSession";
 import { isLLMConfigured, getLLMConfig, saveLLMConfig, clearLLMConfig, pingLLM } from "../ai/llm-engine";
 import { LLMCallError, type PingResult } from "../ai/llm-client";
 import {
-  getMCPServers,
-  addMCPServer,
-  updateMCPServer,
-  deleteMCPServer,
-  testMCPConnection,
-  type MCPServerConfig,
-} from "./tools/mcp-manager";
-import {
   getSkills,
   addSkill as addSkillFn,
   updateSkill as updateSkillFn,
@@ -55,7 +47,6 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [trace, setTrace] = useState<Array<{ type: string; text?: string; name?: string; input?: unknown; output?: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showMCP, setShowMCP] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const [llmForm, setLlmForm] = useState({ apiUrl: "", apiKey: "", model: "", corsProxy: "" });
   const [llmSaveMsg, setLlmSaveMsg] = useState<string | null>(null);
@@ -65,11 +56,6 @@ export function AgentChat({ onClose }: AgentChatProps) {
   const [configured, setConfigured] = useState(isLLMConfigured());
   // 搜索配置
   const [extCfg, setExtCfg] = useState<ExtConfig>(getExtConfig);
-  // MCP
-  const [mcpServers, setMcpServers] = useState<MCPServerConfig[]>(getMCPServers);
-  const [mcpAddForm, setMcpAddForm] = useState({ name: "", type: "http" as "http" | "stdio", url: "", command: "", args: "" });
-  const [mcpTesting, setMcpTesting] = useState<string | null>(null);
-  const [mcpTestResult, setMcpTestResult] = useState<{ id: string; ok: boolean; serverName?: string; toolCount?: number; error?: string } | null>(null);
   // Skills
   const [skills, setSkills] = useState<SkillConfig[]>(getSkills);
   const [showSkillForm, setShowSkillForm] = useState(false);
@@ -270,9 +256,8 @@ export function AgentChat({ onClose }: AgentChatProps) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
           <button type="button" onClick={openSettings} title="LLM 配置" style={btnGhost}>🔑 配置</button>
-          <button type="button" onClick={() => { setShowMCP(true); setShowHistory(false); setShowSkills(false); }} title="MCP 插件" style={btnGhost}>🔌 插件</button>
-          <button type="button" onClick={() => { setShowSkills(true); setShowMCP(false); setShowHistory(false); }} title="技能管理" style={btnGhost}>🧩 技能</button>
-          <button type="button" onClick={() => { setShowHistory((v) => !v); setShowMCP(false); setShowSkills(false); }} title="历史对话" style={btnGhost}>📚 历史</button>
+          <button type="button" onClick={() => { setShowSkills(true); setShowHistory(false); }} title="技能管理" style={btnGhost}>🧩 技能</button>
+          <button type="button" onClick={() => { setShowHistory((v) => !v); setShowSkills(false); }} title="历史对话" style={btnGhost}>📚 历史</button>
           <button type="button" onClick={startNew} title="新对话" style={btnGhost}>➕ 新对话</button>
         </div>
       </header>
@@ -554,94 +539,6 @@ export function AgentChat({ onClose }: AgentChatProps) {
         </div>
       )}
 
-      {/* MCP 管理面板 */}
-      {showMCP && (
-        <div style={{ position: "absolute", top: 49, left: 0, right: 0, bottom: 0, background: "var(--color-surface)", zIndex: 5, padding: 16, overflowY: "auto" }}>
-          <h4 style={{ margin: "0 0 12px" }}>🔌 MCP 服务器管理</h4>
-          <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 12 }}>
-            MCP (Model Context Protocol) 让 Agent 连接外部工具。添加 HTTP 服务器或本地命令,Agent 自动发现并调用其工具。
-          </p>
-
-          {/* 添加服务器表单 */}
-          <div style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 12, background: "var(--color-surface-sunken, #f5f7fa)" }}>
-            <strong style={{ fontSize: 13 }}>添加服务器</strong>
-            <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
-              <select value={mcpAddForm.type} onChange={e => setMcpAddForm(f => ({ ...f, type: e.target.value as "http" | "stdio" }))} style={{ padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }}>
-                <option value="http">HTTP</option>
-                <option value="stdio">stdio (本地)</option>
-              </select>
-              <input value={mcpAddForm.name} onChange={e => setMcpAddForm(f => ({ ...f, name: e.target.value }))} placeholder="名称" style={{ flex: 1, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
-            </div>
-            {mcpAddForm.type === "http" ? (
-              <input value={mcpAddForm.url} onChange={e => setMcpAddForm(f => ({ ...f, url: e.target.value }))} placeholder="MCP 端点 URL,如 https://mcp.example.com/mcp" style={{ width: "100%", marginTop: 6, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
-            ) : (
-              <>
-                <input value={mcpAddForm.command} onChange={e => setMcpAddForm(f => ({ ...f, command: e.target.value }))} placeholder="命令,如 npx -y @modelcontextprotocol/server-filesystem" style={{ width: "100%", marginTop: 6, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
-                <input value={mcpAddForm.args} onChange={e => setMcpAddForm(f => ({ ...f, args: e.target.value }))} placeholder="参数(空格分隔)" style={{ width: "100%", marginTop: 6, padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid var(--color-border)" }} />
-              </>
-            )}
-            <button type="button" onClick={() => {
-              if (!mcpAddForm.name) return;
-              const srv = addMCPServer({
-                name: mcpAddForm.name,
-                type: mcpAddForm.type,
-                url: mcpAddForm.type === "http" ? mcpAddForm.url : undefined,
-                command: mcpAddForm.type === "stdio" ? mcpAddForm.command : undefined,
-                args: mcpAddForm.type === "stdio" ? mcpAddForm.args : undefined,
-                enabled: true,
-              });
-              setMcpServers([...getMCPServers()]);
-              setMcpAddForm({ name: "", type: "http", url: "", command: "", args: "" });
-            }} style={{ ...btnPrimary, marginTop: 8, fontSize: 11 }}>添加</button>
-          </div>
-
-          {/* 服务器列表 */}
-          {mcpServers.length === 0 && <p style={{ fontSize: 12, color: "var(--color-text-muted)" }}>暂无 MCP 服务器。添加 HTTP 或本地 stdio 服务器来扩展 Agent 能力。</p>}
-          {mcpServers.map(srv => {
-            const testResult = mcpTestResult?.id === srv.id ? mcpTestResult : null;
-            return (
-              <div key={srv.id} style={{ padding: 10, border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <strong style={{ fontSize: 13 }}>{srv.name}</strong>
-                    <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: 8 }}>{srv.type === "http" ? "HTTP" : "stdio"}</span>
-                    <span style={{ fontSize: 10, marginLeft: 6, color: srv.enabled ? "var(--color-normal)" : "var(--color-text-muted)" }}>
-                      {srv.enabled ? "●" : "○"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button type="button" onClick={async () => {
-                      setMcpTesting(srv.id);
-                      const r = await testMCPConnection(srv);
-                      setMcpTestResult({ id: srv.id, ...r });
-                      setMcpTesting(null);
-                    }} style={{ ...btnGhost, fontSize: 10 }}>
-                      {mcpTesting === srv.id ? "测试中…" : "测试"}
-                    </button>
-                    <button type="button" onClick={() => {
-                      updateMCPServer(srv.id, { enabled: !srv.enabled });
-                      setMcpServers([...getMCPServers()]);
-                    }} style={{ ...btnGhost, fontSize: 10 }}>{srv.enabled ? "禁用" : "启用"}</button>
-                    <button type="button" onClick={() => {
-                      deleteMCPServer(srv.id);
-                      setMcpServers([...getMCPServers()]);
-                    }} style={{ ...btnGhost, fontSize: 10, color: "var(--color-abnormal)" }}>删除</button>
-                  </div>
-                </div>
-                <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginTop: 4 }}>
-                  {srv.url || srv.command}
-                </div>
-                {testResult && (
-                  <div style={{ fontSize: 11, marginTop: 4, color: testResult.ok ? "var(--color-normal)" : "var(--color-abnormal)" }}>
-                    {testResult.ok ? `✅ ${testResult.serverName} — ${testResult.toolCount} 个工具` : `❌ ${testResult.error}`}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          <button type="button" onClick={() => setShowMCP(false)} style={{ ...btnGhost, marginTop: 8 }}>关闭</button>
-        </div>
-      )}
 
       {/* 技能管理面板 */}
       {showSkills && (

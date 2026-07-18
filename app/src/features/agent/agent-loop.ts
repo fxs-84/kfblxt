@@ -17,8 +17,6 @@ import {
   type ChatMessage,
   type ToolDescriptor,
 } from "../ai/llm-client";
-import { getTool } from "./tools/registry";
-import { MCPBridge } from "./tools/mcp-bridge";
 import { buildSkillPrompt } from "./tools/skill-system";
 import type { ToolContext, AgentTool } from "./tools/schemas";
 
@@ -135,13 +133,9 @@ export async function runAgent(
   const skillPrompt = buildSkillPrompt(userMessage);
   const systemMessage: ChatMessage = { role: "system", content: SYSTEM_PROMPT + skillPrompt };
 
-  // 加载工具(静态 + MCP)
-  const [mcpTools, staticToolsModule] = await Promise.all([
-    new MCPBridge(ctx).getTools(),
-    import("./tools/registry"),
-  ]);
-  const staticAgentTools = staticToolsModule.agentTools;
-  const allAgentTools: AgentTool[] = [...staticAgentTools, ...mcpTools];
+  // 加载工具(静态注册表;MCP 已移除)
+  const staticToolsModule = await import("./tools/registry");
+  const allAgentTools: AgentTool[] = staticToolsModule.agentTools;
   const toolMap = new Map<string, AgentTool>();
   for (const t of allAgentTools) toolMap.set(t.name, t);
 
@@ -259,7 +253,7 @@ function toChatMessage(m: AgentMessage): ChatMessage {
 }
 
 /* ============================================================
- *  MCP 工具 schema 转换(只在 agent-loop 内部用)
+ *  Zod → JSON Schema 转换(只在 agent-loop 内部用)
  * ============================================================ */
 function zodToJsonSchema(t: AgentTool): Record<string, unknown> {
   const schema: Record<string, unknown> = { type: "object", properties: {} };
