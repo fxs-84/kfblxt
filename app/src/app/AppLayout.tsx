@@ -51,6 +51,7 @@ const ROLE_LABEL: Record<string, string> = {
 export function AppLayout() {
   const session = useSession();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleLogout = useCallback(async () => {
     // Supabase 登出(清除服务器 session)
@@ -61,11 +62,30 @@ export function AppLayout() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {/* 移动端汉堡按钮 — 仅 < 768px 显示 */}
+      <button
+        type="button"
+        className="sidebar-toggle"
+        onClick={() => setDrawerOpen((v) => !v)}
+        aria-label={drawerOpen ? "关闭菜单" : "打开菜单"}
+        aria-expanded={drawerOpen}
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+      </button>
+
+      {drawerOpen && (
+        <div className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
+      )}
+
+      <aside className={`sidebar${drawerOpen ? " is-open" : ""}`}>
         <div className="sidebar__brand">神经科学康复</div>
         <nav className="nav" aria-label="主导航">
           {NAV.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end}>
+            <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setDrawerOpen(false)}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={item.icon} />
               </svg>

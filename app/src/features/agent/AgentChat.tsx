@@ -266,7 +266,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
           <span style={{ marginLeft: "auto", fontSize: 11, color: configured ? "var(--color-normal)" : "var(--color-abnormal)" }}>
             {configured ? "● 已连接 LLM" : "● 未配置"}
           </span>
-          <button type="button" onClick={onClose} title="关闭" style={btnGhost}>✕</button>
+          <button type="button" onClick={onClose} title="关闭" aria-label="关闭对话" style={btnGhost}>✕</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
           <button type="button" onClick={openSettings} title="LLM 配置" style={btnGhost}>🔑 配置</button>
@@ -283,7 +283,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
           <h4 style={{ margin: "0 0 12px" }}>对话历史</h4>
           {conversations.length === 0 && <p style={{ color: "var(--color-text-muted)" }}>暂无历史对话</p>}
           {conversations.map(c => (
-            <button key={c.id} type="button" onClick={() => loadConversation(c)} style={{
+            <button type="button" key={c.id} onClick={() => loadConversation(c)} style={{
               display: "block", width: "100%", textAlign: "left",
               padding: "10px 12px", marginBottom: 4, border: "1px solid var(--color-border)",
               borderRadius: 6, background: currentId === c.id ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
@@ -354,7 +354,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
               { label: "🟠 Groq", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", region: "海外" },
               { label: "🟠 OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", model: "anthropic/claude-3.5-sonnet", region: "海外" },
             ].map(p => (
-              <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: llmForm.corsProxy })} title={`${p.region} · ${p.model}`} style={{
+              <button type="button" key={p.label} onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: llmForm.corsProxy })} title={`${p.region} · ${p.model}`} style={{
                 padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
                 background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
                 cursor: "pointer",
@@ -397,7 +397,7 @@ export function AgentChat({ onClose }: AgentChatProps) {
               { label: "🌐 allorigins", url: "https://api.allorigins.win/raw?url=" },
               { label: "🌐 cors.sh", url: "https://proxy.cors.sh/" },
             ].map(p => (
-              <button key={p.label} type="button" onClick={() => setLlmForm(f => ({ ...f, corsProxy: p.url }))} title={p.url || "直连"} style={{
+              <button type="button" key={p.label} onClick={() => setLlmForm(f => ({ ...f, corsProxy: p.url }))} title={p.url || "直连"} style={{
                 padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
                 background: llmForm.corsProxy === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
                 cursor: "pointer",
