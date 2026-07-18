@@ -66,6 +66,23 @@
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 人体图配色 — 通过 CSS 变量驱动，便于主题化 */
+  --bodymap-base: #dfe4ea;
+  --bodymap-selected: #2f7db0;
+  --bodymap-intensity-low: #5cb894;
+  --bodymap-intensity-mid: #e0b13c;
+  --bodymap-intensity-high: #d9573f;
+  --bodymap-face-stroke: #8b97a1;
+  --bodymap-face-fill: #40525f;
+
+  /* z-index 层级约定 — 单一来源 */
+  --z-sticky: 10;        /* 黏性定位的卡片 */
+  --z-overlay: 100;      /* 浮层 / FAB / 通用 overlay */
+  --z-drawer: 200;       /* 抽屉面板 */
+  --z-modal: 300;        /* 普通模态框 */
+  --z-toast: 400;        /* Toast 通知(高于所有模态) */
+  --z-system: 1000;      /* 系统级(浏览器警告条等) */
 }
 
 /* 关爱对动态效果敏感的用户（WCAG 2.3.3） */

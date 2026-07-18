@@ -9,16 +9,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { VasPoint } from "../encounter.select";
+import { vasColor } from "../../../lib/vas-colors";
 
 interface VasTrendChartProps {
   data: VasPoint[];
-}
-
-/** VAS 值对应的语义色(绿→黄→橙→红),上色点用 */
-function vasColor(v: number): string {
-  if (v <= 3) return "#2d9d5a"; // 绿(轻)
-  if (v <= 6) return "#e68a00"; // 橙(中)
-  return "#c62828";             // 深红(重)
 }
 
 export function VasTrendChart({ data }: VasTrendChartProps) {
@@ -29,9 +23,9 @@ export function VasTrendChart({ data }: VasTrendChartProps) {
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={data} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
         {/* 严重度分带背景:加大透明度 + 纯色 */}
-        <ReferenceArea y1={0} y2={3} fill="#2d9d5a" fillOpacity={0.12} />
-        <ReferenceArea y1={3} y2={6} fill="#e68a00" fillOpacity={0.15} />
-        <ReferenceArea y1={6} y2={10} fill="#c62828" fillOpacity={0.12} />
+        <ReferenceArea y1={0} y2={3} fill={vasColor(1)} fillOpacity={0.12} />
+        <ReferenceArea y1={3} y2={6} fill={vasColor(5)} fillOpacity={0.15} />
+        <ReferenceArea y1={6} y2={10} fill={vasColor(8)} fillOpacity={0.12} />
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis dataKey="date" tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />
         <YAxis domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />

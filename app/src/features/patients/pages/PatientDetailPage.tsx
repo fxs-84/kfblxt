@@ -28,6 +28,7 @@ import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel"
 import { PainAssessmentForm } from "../../assessments/components/PainAssessmentForm";
 import { PainAssessmentList } from "../../assessments/components/PainAssessmentList";
 import { AIAssistantPanel, type AIBackfillHandlers } from "../../ai/AIAssistantPanel";
+import { VAS_COLORS } from "../../../lib/vas-colors";
 import { NewEncounterPage } from "./NewEncounterPage";
 import { useCreateDiagnosis, useDiagnosis } from "../../diagnosis/useDiagnosis";
 import { useCreateTreatmentPlan } from "../../treatment/useTreatment";
@@ -142,7 +143,7 @@ export function PatientDetailPage() {
           <h1 className="page-title">{patient.name}</h1>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
-          <button
+          <button type="button"
             className="btn btn--ghost"
             onClick={() => setConfirmDelete(true)}
             style={{ color: "var(--color-abnormal)" }}
@@ -153,7 +154,7 @@ export function PatientDetailPage() {
           <Link to={`/patients/${patient.id}/edit`} className="btn btn--ghost" style={{ textDecoration: "none" }}>
             ✏️ 编辑
           </Link>
-          <button className="btn btn--primary" onClick={() => setTab("new")}>+ 新建就诊</button>
+          <button type="button" className="btn btn--primary" onClick={() => setTab("new")}>+ 新建就诊</button>
         </div>
       </header>
 
@@ -173,10 +174,10 @@ export function PatientDetailPage() {
       </section>
 
       <nav className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "overview"} className={`tab ${tab === "overview" ? "tab--active" : ""}`} onClick={() => setTab("overview")}>概览</button>
-        <button role="tab" aria-selected={tab === "encounters"} className={`tab ${tab === "encounters" ? "tab--active" : ""}`} onClick={() => setTab("encounters")}>就诊记录 · {list.length}</button>
-        <button role="tab" aria-selected={tab === "new"} className={`tab ${tab === "new" ? "tab--active" : ""}`} onClick={() => setTab("new")} style={{color:"var(--color-accent)",fontWeight:700}}>+ 新建就诊</button>
-        <button role="tab" aria-selected={tab === "treatment"} className={`tab ${tab === "treatment" ? "tab--active" : ""}`} onClick={() => setTab("treatment")}>治疗计划</button>
+        <button type="button" role="tab" aria-selected={tab === "overview"} className={`tab ${tab === "overview" ? "tab--active" : ""}`} onClick={() => setTab("overview")}>概览</button>
+        <button type="button" role="tab" aria-selected={tab === "encounters"} className={`tab ${tab === "encounters" ? "tab--active" : ""}`} onClick={() => setTab("encounters")}>就诊记录 · {list.length}</button>
+        <button type="button" role="tab" aria-selected={tab === "new"} className={`tab ${tab === "new" ? "tab--active" : ""}`} onClick={() => setTab("new")} style={{color:"var(--color-accent)",fontWeight:700}}>+ 新建就诊</button>
+        <button type="button" role="tab" aria-selected={tab === "treatment"} className={`tab ${tab === "treatment" ? "tab--active" : ""}`} onClick={() => setTab("treatment")}>治疗计划</button>
       </nav>
 
       {tab === "overview" && (
@@ -191,9 +192,9 @@ export function PatientDetailPage() {
               <div className="panel__head">
                 <h3 className="panel__title">VAS 疼痛趋势</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                  <span style={{ color: "#2d9d5a", fontWeight: 700 }}>● 轻 (0-3)</span>
-                  <span style={{ color: "#e68a00", fontWeight: 700 }}>● 中 (4-6)</span>
-                  <span style={{ color: "#c62828", fontWeight: 700 }}>● 重 (7-10)</span>
+                  <span style={{ color: VAS_COLORS.mild, fontWeight: 700 }}>● 轻 (0-3)</span>
+                  <span style={{ color: VAS_COLORS.moderate, fontWeight: 700 }}>● 中 (4-6)</span>
+                  <span style={{ color: VAS_COLORS.severe, fontWeight: 700 }}>● 重 (7-10)</span>
                 </div>
               </div>
               <VasTrendChart data={series} />
@@ -240,7 +241,7 @@ export function PatientDetailPage() {
             <div ref={diagnosisSectionRef} style={{ marginTop: "1.5rem" }}>
               <DiagnosisPanel key={diagnosisEid ?? "no-dx"} encounterId={diagnosisEid} />
               <div style={{ textAlign: "right", marginTop: "var(--space-3)" }}>
-                <button className="btn btn--ghost" onClick={() => setDiagnosisEid(null)}>收起</button>
+                <button type="button" className="btn btn--ghost" onClick={() => setDiagnosisEid(null)}>收起</button>
               </div>
             </div>
           )}
@@ -272,7 +273,7 @@ export function PatientDetailPage() {
 
               {/* 结束就诊按钮 */}
               <div style={{ textAlign: "right", marginTop: "var(--space-4)" }}>
-                <button className="btn btn--primary" disabled={closing} onClick={() => handleCloseEncounter(examEncounterId)}>
+                <button type="button" className="btn btn--primary" disabled={closing} onClick={() => handleCloseEncounter(examEncounterId)}>
                   {closing ? "保存中…" : "✓ 结束本次就诊"}
                 </button>
               </div>

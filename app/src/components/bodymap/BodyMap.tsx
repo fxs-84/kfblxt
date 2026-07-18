@@ -16,9 +16,13 @@ interface BodyMapProps {
   intensity?: Partial<Record<BodyRegion, number>>;
 }
 
-const BODY_COLOR = "#dfe4ea";
-const SELECT_COLOR = "#2f7db0";
-const INTENSITY_COLORS = ["#5cb894", "#e0b13c", "#d9573f"];
+const BODY_COLOR = "var(--bodymap-base)";
+const SELECT_COLOR = "var(--bodymap-selected)";
+const INTENSITY_COLORS = [
+  "var(--bodymap-intensity-low)",
+  "var(--bodymap-intensity-mid)",
+  "var(--bodymap-intensity-high)",
+];
 
 function vasBucket(vas: number): number {
   if (vas <= 3) return 1;
@@ -125,10 +129,10 @@ export function BodyMap({ value, onChange, intensity }: BodyMapProps) {
           {/* 五官(仅正面) */}
           {view === "anterior" && (
             <g className="bodymap__face" aria-hidden="true">
-              <ellipse cx={45.5} cy={12} rx={1.7} ry={2.2} fill="#40525f" />
-              <ellipse cx={54.5} cy={12} rx={1.7} ry={2.2} fill="#40525f" />
-              <path d="M50 13.5 L48.2 17.5 L51.8 17.5 Z" fill="none" stroke="#8b97a1" strokeWidth={0.7} strokeLinejoin="round" />
-              <path d="M46.5 20.5 Q50 23 53.5 20.5" fill="none" stroke="#8b97a1" strokeWidth={0.7} strokeLinecap="round" />
+              <ellipse cx={45.5} cy={12} rx={1.7} ry={2.2} fill="var(--bodymap-face-fill)" />
+              <ellipse cx={54.5} cy={12} rx={1.7} ry={2.2} fill="var(--bodymap-face-fill)" />
+              <path d="M50 13.5 L48.2 17.5 L51.8 17.5 Z" fill="none" stroke="var(--bodymap-face-stroke)" strokeWidth={0.7} strokeLinejoin="round" />
+              <path d="M46.5 20.5 Q50 23 53.5 20.5" fill="none" stroke="var(--bodymap-face-stroke)" strokeWidth={0.7} strokeLinecap="round" />
             </g>
           )}
         </svg>

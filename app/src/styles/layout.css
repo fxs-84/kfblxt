@@ -22,6 +22,40 @@ body {
   padding-left: 252px;
 }
 
+/* 移动端: 侧栏改用 drawer,点击遮罩关闭 */
+/* 桌面端隐藏 toggle 按钮 */
+.sidebar-toggle { display: none; }
+@media (max-width: 768px) {
+  .app-shell { padding-left: 0; }
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--duration-fast) var(--ease-out-expo);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  .sidebar-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 28, 43, 0.35);
+    z-index: calc(var(--z-overlay) - 1);
+  }
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    width: 40px; height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    z-index: calc(var(--z-overlay) + 1);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
 /* ---- 深色侧栏(固定,不随页面滚动) ---- */
 .sidebar {
   position: fixed;
@@ -36,7 +70,7 @@ body {
   padding: var(--space-6) var(--space-4);
   gap: var(--space-6);
   color: var(--color-sidebar-text);
-  z-index: 100;
+  z-index: var(--z-overlay);
   overflow-y: auto;
 }
 
@@ -62,7 +96,7 @@ body {
 
 .sidebar__org {
   font-size: var(--text-xs);
-  color: #5a718a;
+  color: #8a9bb0;
   padding-left: var(--space-2);
   margin-top: -4px;
 }
@@ -1443,7 +1477,7 @@ body {
   outline: none;
   padding: var(--space-1) 0;
 }
-.search-bar__input::placeholder { color: #a0aec0; }
+.search-bar__input::placeholder { color: #6b7785; }
 .search-bar__clear {
   background: none;
   border: none;
@@ -1526,7 +1560,7 @@ body {
 
 /* ===== AI 临床助手 ===== */
 .ai-fab {
-  position: fixed; bottom: 28px; right: 28px; z-index: 100;
+  position: fixed; bottom: 28px; right: 28px; z-index: var(--z-overlay);
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   background: linear-gradient(135deg, #1b6d8f, #2a93bd);
@@ -1539,7 +1573,7 @@ body {
 .ai-fab__label { font-weight: 700; font-size: var(--text-sm); }
 
 .ai-panel {
-  position: fixed; bottom: 28px; right: 28px; z-index: 100;
+  position: fixed; bottom: 28px; right: 28px; z-index: var(--z-overlay);
   width: 420px; max-height: 72vh;
   background: var(--color-surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -1621,7 +1655,7 @@ body {
   background: rgba(15, 23, 42, 0.5);
   display: grid;
   place-items: center;
-  z-index: 1000;
+  z-index: var(--z-system);
   padding: var(--space-4);
   animation: modal-fade 150ms ease-out;
 }
@@ -1978,7 +2012,7 @@ body {
 
 /* ===== 结束就诊清单 ===== */
 .checklist-overlay {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; inset: 0; z-index: var(--z-drawer);
   background: rgba(15,28,43,0.35);
   display: grid; place-items: center;
   animation: checklist-fade-in 0.2s ease-out;
@@ -2026,7 +2060,7 @@ body {
   position: fixed;
   top: var(--space-4);
   right: var(--space-4);
-  z-index: 300;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
