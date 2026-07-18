@@ -269,11 +269,6 @@ export function recordPersonalAction(
   persist();
 }
 
-/** 获取当前记忆的只读副本 */
-export function getMemory() {
-  return memory;
-}
-
 /** 获取统计学摘要 */
 export function getAgentStats() {
   return {

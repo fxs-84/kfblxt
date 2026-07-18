@@ -6,39 +6,6 @@ import { getInterventionEffectiveness } from "./agent-memory";
 import { INTERVENTIONS_CATALOG } from "../treatment/interventions-catalog";
 import type { FollowupRecord } from "../followup/followup.repository";
 
-/** P3-2: 计算客户优先级分数(越高越靠前) */
-export function calcPatientPriority(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-_calcPatientPriority_patientId: string,
-  vasSeries: Array<{ vas: number }>,
-  pendingFollowups: FollowupRecord[],
-  hasIncompleteDiagnosis: boolean,
-): { score: number; reasons: string[] } {
-  let score = 0;
-  const reasons: string[] = [];
-
-  // 有未完成的诊断+100
-  if (hasIncompleteDiagnosis) { score += 100; reasons.push("未完成诊断"); }
-
-  // VAS反弹(最近一次VAS比之前高)+80
-  if (vasSeries.length >= 2) {
-    const latest = vasSeries[vasSeries.length - 1].vas;
-    const previous = vasSeries[vasSeries.length - 2].vas;
-    if (latest > previous) { score += 80; reasons.push("VAS反弹"); }
-    if (latest >= 7) { score += 60; reasons.push("高疼痛(VAS≥7)"); }
-  }
-
-  // 即将复诊+50
-  const now = Date.now();
-  const urgentFUs = pendingFollowups.filter((f) => {
-    const days = (new Date(f.dueDate).getTime() - now) / 86400000;
-    return f.status === "待复诊" && days >= 0 && days <= 3;
-  });
-  if (urgentFUs.length > 0) { score += 50; reasons.push(`${urgentFUs.length}条即将复诊`); }
-
-  return { score, reasons };
-}
-
 /** P3-8: 基于历史疗效预测本次复评结果 */
 export function predictOutcome(
   interventionIds: string[],

@@ -68,10 +68,23 @@ export function useCreateDiagnosis() {
       try {
         const enc = hasSupabaseConfig()
           ? await findEncounterByIdDual(created.encounterId)
-          : (await import("../encounters/encounter.repository")).encounterRepository.findById(created.encounterId);
+          // local 分支 findById 返回 Promise,必须 await——否则 enc 是 Promise 对象,
+          // if(enc) 恒真且 enc.patientId 为 undefined(积分与学习记录都会拿错)
+          : await (await import("../encounters/encounter.repository")).encounterRepository.findById(created.encounterId);
         if (enc) {
           const { onDiagnosisCreated } = await import("../membership/integration");
           await onDiagnosisCreated(enc.patientId, created.encounterId);
+          // 学习闭环:记录诊断行为(模式记录在创建治疗计划时,那时才有干预组合)
+          const { recordPersonalAction } = await import("../agent/agent-memory");
+          recordPersonalAction(
+            "create_diagnosis",
+            `诊断: ${created.levels.join("/")} · ${created.mechanisms.join("+")}`,
+            {
+              diagnosisLevels: created.levels,
+              patientId: enc.patientId,
+              therapistId: getSession().userId,
+            },
+          );
         }
       } catch { /* 静默 */ }
       return created;

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { analyzeAsync, getLLMConfigSync, saveLLMConfig, clearLLMConfig, isLLMConfigured } from "./llm-engine";
+import { analyzeAsync, getLLMConfig, getLLMConfigSync, saveLLMConfig, clearLLMConfig, isLLMConfigured } from "./llm-engine";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";
 import type { AnalyzeResult } from "./llm-engine";
@@ -313,11 +313,12 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                   if (!urlOk) { setLlmError("API URL 必填"); return; }
                   if (!keyOk) {
                     if (keyAlreadySet) {
-                      // 保留已有加密 key — 仅更新 URL/model/corsProxy,key 不变
-                      const raw = localStorage.getItem("anrm_llm_config");
-                      if (!raw) { setLlmError("配置丢失,请重新输入 API Key"); return; }
-                      const stored = JSON.parse(raw) as Record<string, unknown>;
-                      await saveLLMConfig({ apiUrl: urlOk, apiKey: (stored.apiKey as string) || "", model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
+                      // 保留已有 key — 仅更新 URL/model/corsProxy。
+                      // 必须走 getLLMConfig() 解密取回明文 key;
+                      // 直接读 localStorage 拿到的是加密态,再 save 会双重加密导致 key 损坏
+                      const current = await getLLMConfig();
+                      if (!current?.apiKey) { setLlmError("配置丢失,请重新输入 API Key"); return; }
+                      await saveLLMConfig({ apiUrl: urlOk, apiKey: current.apiKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
                     } else {
                       setLlmError("API Key 必填");
                       return;

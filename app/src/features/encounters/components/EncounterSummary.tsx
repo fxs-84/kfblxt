@@ -120,13 +120,13 @@ export function EncounterSummary({ encounter, patientName, patientSex }: Encount
                 <p><strong>{plan.phase} · {plan.frequency} · {plan.duration}</strong></p>
                 <p><strong>干预:</strong> {plan.interventionIds.map((id) => INTERVENTIONS_CATALOG.find((d) => d.id === id)?.name ?? id).join("、")}</p>
                 {plan.goals.length > 0 && <p><strong>目标:</strong> {plan.goals.map((g) => `${g.description}(${g.metric ?? ""})`).join("; ")}</p>}
-                {plan.boundaries && <p className="plan-card__boundary">⚠ 康复界限: {plan.boundaries}</p>}
+                {plan.boundary && <p className="plan-card__boundary">⚠ 康复界限: {plan.boundary}</p>}
                 {/* 复评 */}
                 {notes.filter((n) => n.treatmentPlanId === plan.id).length > 0 && (
                   <p style={{ marginTop: 4 }}>
                     <strong>复评:</strong> {notes.filter((n) => n.treatmentPlanId === plan.id).map((n) => (
                       <span key={n.id} className={`badge badge--${n.outcome === "显效" || n.outcome === "有效" ? "normal" : n.outcome === "恶化" ? "abnormal" : "caution"}`} style={{ marginRight: 4 }}>
-                        {n.node}:{n.outcome}{n.vasAfter !== undefined ? ` VAS${n.vasAfter}` : ""}
+                        {n.horizon}:{n.outcome}{n.vasAfter !== undefined ? ` VAS${n.vasAfter}` : ""}
                       </span>
                     ))}
                   </p>

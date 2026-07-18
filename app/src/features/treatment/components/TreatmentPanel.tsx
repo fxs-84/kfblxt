@@ -8,11 +8,11 @@ import type { TreatmentPlanRecord } from "../treatment.repository";
 import { predictOutcome } from "../../agent/agent-utils";
 import { formatDate } from "../../../lib/format";
 
-interface TreatmentPanelProps { encounterId: string }
+interface TreatmentPanelProps { encounterId: string; patientId: string }
 
 type DoseDraft = Partial<{ durationMin: number; sets: number; intensity: "轻度" | "中度" | "重度" }>;
 
-export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
+export function TreatmentPanel({ encounterId, patientId }: TreatmentPanelProps) {
   const { data: plans = [] } = useTreatmentPlans(encounterId);
   const createPlan = useCreateTreatmentPlan();
   const [showForm, setShowForm] = useState(false);
@@ -96,9 +96,9 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
     setSaving(true);
     try {
       await createPlan.mutateAsync({
-        encounterId, phase, frequency: frequency.trim(), duration: duration.trim(),
+        encounterId, patientId, phase, frequency: frequency.trim(), duration: duration.trim(),
         interventionIds: selectedIds, interventionDoses: normalized, goals,
-        boundaries: boundaries.trim() || undefined,
+        boundary: boundaries.trim() || undefined,
       });
       setShowForm(false);
       setDoses({});
@@ -303,7 +303,7 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
       )}
 
       {notePlanId && (() => { const activePlan = plans.find((p) => p.id === notePlanId); return (
-        <ProgressNoteForm planId={notePlanId} encounterId={encounterId} interventionIds={activePlan?.interventionIds ?? []} onDone={() => setNotePlanId(null)} />
+        <ProgressNoteForm planId={notePlanId} encounterId={encounterId} patientId={patientId} interventionIds={activePlan?.interventionIds ?? []} onDone={() => setNotePlanId(null)} />
       );})()}
     </div>
   );
@@ -354,13 +354,13 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
             ))}
           </div>
         )}
-        {plan.boundaries && <div className="plan-card__boundary">⚠ 康复界限: {plan.boundaries}</div>}
+        {plan.boundary && <div className="plan-card__boundary">⚠ 康复界限: {plan.boundary}</div>}
       </div>
       {notes.length > 0 && (
         <div className="plan-card__notes">
           {notes.map((n) => (
             <span key={n.id} className={`badge badge--${n.outcome === "显效" || n.outcome === "有效" ? "normal" : n.outcome === "恶化" ? "abnormal" : "caution"}`}>
-              {n.node}:{n.outcome}{n.vasAfter !== undefined ? ` VAS ${n.vasAfter}` : ""}
+              {n.horizon}:{n.outcome}{n.vasAfter !== undefined ? ` VAS ${n.vasAfter}` : ""}
             </span>
           ))}
         </div>
@@ -370,8 +370,8 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
   );
 }
 
-interface ProgressNoteFormProps { planId: string; encounterId: string; interventionIds: string[]; onDone: () => void; }
-function ProgressNoteForm({ planId, encounterId, interventionIds, onDone }: ProgressNoteFormProps) {
+interface ProgressNoteFormProps { planId: string; encounterId: string; patientId: string; interventionIds: string[]; onDone: () => void; }
+function ProgressNoteForm({ planId, encounterId, patientId, interventionIds, onDone }: ProgressNoteFormProps) {
   const createNote = useCreateProgressNote();
   const [node, setNode] = useState<"立即" | "短期" | "长期">("立即");
   const [vasAfter, setVasAfter] = useState<number | undefined>();
@@ -385,7 +385,7 @@ function ProgressNoteForm({ planId, encounterId, interventionIds, onDone }: Prog
     setError(null);
     setSaving(true);
     try {
-      await createNote.mutateAsync({ treatmentPlanId: planId, encounterId, node, vasAfter, outcome, adjustment: adjustment || undefined });
+      await createNote.mutateAsync({ treatmentPlanId: planId, encounterId, patientId, horizon: node, outcome, vasAfter, adjustment: adjustment || undefined, interventionIds });
       onDone();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "保存失败,请重试");

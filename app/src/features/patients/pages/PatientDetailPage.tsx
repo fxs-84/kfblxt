@@ -311,11 +311,11 @@ export function PatientDetailPage() {
 
       {tab === "treatment" && list.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-          <TreatmentPanel key={list[0].id} encounterId={list[0].id} />
+          <TreatmentPanel key={list[0].id} encounterId={list[0].id} patientId={id!} />
           {list.length > 1 && (
             <CollapseCard title="更多就诊治疗计划" extra={<span className="panel__hint">{list.length - 1} 条</span>}>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-                {list.slice(1).map((e) => <TreatmentPanel key={e.id} encounterId={e.id} />)}
+                {list.slice(1).map((e) => <TreatmentPanel key={e.id} encounterId={e.id} patientId={id!} />)}
               </div>
             </CollapseCard>
           )}
@@ -342,6 +342,7 @@ export function PatientDetailPage() {
           onAdoptIntervention: (interventionId) => {
             createTreatmentPlan.mutate({
               encounterId: activeEncounter.id,
+              patientId: activeEncounter.patientId,
               phase: "急性期",
               frequency: "待定",
               duration: "待定",

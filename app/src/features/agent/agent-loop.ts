@@ -14,9 +14,6 @@
 import { getLLMConfig, isLLMConfigured } from "../ai/llm-engine";
 import {
   callLLM,
-  cleanApiUrl,
-  resolveFetchUrl,
-  LLMCallError,
   type ChatMessage,
   type ToolDescriptor,
 } from "../ai/llm-client";
@@ -264,7 +261,6 @@ function toChatMessage(m: AgentMessage): ChatMessage {
 /* ============================================================
  *  MCP 工具 schema 转换(只在 agent-loop 内部用)
  * ============================================================ */
-
 function zodToJsonSchema(t: AgentTool): Record<string, unknown> {
   const schema: Record<string, unknown> = { type: "object", properties: {} };
   const props: Record<string, unknown> = {};
@@ -290,6 +286,3 @@ function zodToJsonSchema(t: AgentTool): Record<string, unknown> {
   schema.properties = props;
   return schema;
 }
-
-/* 重导出供 UI 接入 */
-export { cleanApiUrl, resolveFetchUrl, LLMCallError };

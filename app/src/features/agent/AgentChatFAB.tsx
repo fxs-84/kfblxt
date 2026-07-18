@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AgentChat } from "./AgentChat";
-import { isLLMConfigured } from "../ai/llm-engine";
+import { isLLMConfigured, LLM_CONFIG_CHANGED_EVENT } from "../ai/llm-engine";
 
 /**
  * 浮动入口按钮 — 放在 AppLayout 里全局生效。
@@ -11,10 +11,14 @@ export function AgentChatFAB() {
   const [configured, setConfigured] = useState(isLLMConfigured());
 
   useEffect(() => {
-    // 监听 LLM 配置变化
+    // 监听 LLM 配置变化:storage(跨标签页) + 自定义事件(同窗口)
     const refresh = () => setConfigured(isLLMConfigured());
     window.addEventListener("storage", refresh);
-    return () => window.removeEventListener("storage", refresh);
+    window.addEventListener(LLM_CONFIG_CHANGED_EVENT, refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener(LLM_CONFIG_CHANGED_EVENT, refresh);
+    };
   }, []);
 
   if (open) return <AgentChat onClose={() => setOpen(false)} />;

@@ -179,14 +179,20 @@ export interface ProgressNote {
   createdAt: Date;
   /** 复评节点 (对应 DB horizon 列) */
   horizon: "立即" | "短期" | "长期";
+  /** 疗效评级 */
+  outcome?: OutcomeRating;
+  /** 复评后 VAS(趋势追踪数据源) */
+  vasAfter?: number;
+  /** 方案调整说明 */
+  adjustment?: string;
   /** 主观资料 */
-  subjective: string;
+  subjective?: string;
   /** 客观资料 */
-  objective: string;
+  objective?: string;
   /** 评估 */
-  assessment: string;
+  assessment?: string;
   /** 计划 */
-  plan: string;
+  plan?: string;
   /** 当前 VAS 疼痛评分 */
   vasCurrent?: number;
 }

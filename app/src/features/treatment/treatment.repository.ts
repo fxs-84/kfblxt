@@ -27,10 +27,16 @@ export interface ProgressNoteInput {
   orgId: string;
   patientId: string;
   horizon: ProgressNote["horizon"];
-  subjective: string;
-  objective: string;
-  assessment: string;
-  plan: string;
+  /** 疗效评级(复评必填) */
+  outcome: ProgressNote["outcome"];
+  vasAfter?: number;
+  adjustment?: string;
+  /** 复评时计划的干预列表(不入库,仅供学习闭环 recordOutcome 使用) */
+  interventionIds?: string[];
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
   vasCurrent?: number;
 }
 

@@ -156,6 +156,7 @@ export async function saveLLMConfig(cfg: LLMConfig): Promise<void> {
       model: cfg.model || "claude-haiku-4-5",
       corsProxy: cfg.corsProxy,
     }));
+    notifyLLMConfigChanged();
   } catch (e) {
     console.error("[llm-engine] 保存 LLM 配置失败:", e);
     throw e;
@@ -164,6 +165,17 @@ export async function saveLLMConfig(cfg: LLMConfig): Promise<void> {
 
 export function clearLLMConfig(): void {
   try { localStorage.removeItem(LLM_CONFIG_KEY); } catch { /* ok */ }
+  notifyLLMConfigChanged();
+}
+
+/**
+ * LLM 配置变化事件名 — storage 事件只在跨标签页时触发,
+ * 同窗口内的保存/清除需要这个自定义事件通知监听方(如 AgentChatFAB)
+ */
+export const LLM_CONFIG_CHANGED_EVENT = "anrm-llm-config-changed";
+
+function notifyLLMConfigChanged(): void {
+  try { window.dispatchEvent(new Event(LLM_CONFIG_CHANGED_EVENT)); } catch { /* ok */ }
 }
 
 export function isLLMConfigured(): boolean {
