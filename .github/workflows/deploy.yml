@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: cd app && npm install
 
+      - name: Typecheck
+        run: cd app && npm run typecheck
+
       - name: Build
         run: cd app && DEPLOY_TARGET=github-pages npm run build
 
