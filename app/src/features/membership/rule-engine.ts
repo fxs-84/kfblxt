@@ -41,20 +41,41 @@ function evalCondition(c: RuleCondition, ctx: EvalContext): boolean {
 }
 
 export async function processEvent(event: TriggerEvent, operatorId = "system"): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log("[processEvent] entered, type=", event.type, "amount=", (event as any).amount);
   const rules = await findAllRules();
+  // eslint-disable-next-line no-console
   console.log("[processEvent] rules count:", rules.length);
   const active = rules.filter(r => r.enabled).sort((a, b) => b.priority - a.priority);
 
   for (const rule of active) {
-    if (!matchesTrigger(rule, event)) continue;
+    if (!matchesTrigger(rule, event)) {
+      // eslint-disable-next-line no-console
+      console.log("[processEvent] skip (no trigger match):", rule.id, "expects", rule.trigger);
+      continue;
+    }
+    // eslint-disable-next-line no-console
     console.log("[processEvent] matched rule:", rule.name);
     if (!isInDateRange(rule)) continue;
-    if (await isInCooldown(rule.id, event.patientId, rule.cooldownDays)) continue;
-    if (await exceedsMaxPerPatient(rule.id, event.patientId, rule.maxPerPatient)) continue;
+    if (await isInCooldown(rule.id, event.patientId, rule.cooldownDays)) {
+      // eslint-disable-next-line no-console
+      console.log("[processEvent] skip (cooldown):", rule.id);
+      continue;
+    }
+    if (await exceedsMaxPerPatient(rule.id, event.patientId, rule.maxPerPatient)) {
+      // eslint-disable-next-line no-console
+      console.log("[processEvent] skip (maxPerPatient reached):", rule.id);
+      continue;
+    }
 
     const ctx = await buildContext(event);
-    if (!evalConditions(rule.conditions, ctx)) continue;
+    if (!evalConditions(rule.conditions, ctx)) {
+      // eslint-disable-next-line no-console
+      console.log("[processEvent] skip (conditions not met):", rule.id);
+      continue;
+    }
+    // eslint-disable-next-line no-console
+    console.log("[processEvent] executing action:", rule.id, rule.action.kind);
     await executeAction(rule, event, ctx, operatorId);
   }
 }

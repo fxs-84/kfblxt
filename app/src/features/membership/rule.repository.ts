@@ -275,7 +275,11 @@ export async function findAllLogs(): Promise<PointsLog[]> {
   return dual(
     async () => {
       const supabase = getSupabase()!;
+      // eslint-disable-next-line no-console
+      console.log("[findAllLogs] query start");
       const { data, error } = await supabase.from("points_logs").select("*").is("deleted_at", null).order("created_at", { ascending: false });
+      // eslint-disable-next-line no-console
+      console.log("[findAllLogs] result data.length=", data?.length, "error=", error?.message);
       if (error) throw new Error(`查询积分流水失败: ${error.message}`);
       return (data ?? []).map((row: Record<string, unknown>) => ({
         id: String(row.id),
