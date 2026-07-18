@@ -104,6 +104,7 @@ export function PatientFormPage() {
             <label htmlFor="name">姓名</label>
             <input id="name" aria-invalid={Boolean(errors.name)}
               aria-describedby={errors.name ? "patient-name-error" : undefined}
+              autoComplete="name"
               {...register("name")} />
             <FieldError id="patient-name-error" message={errors.name?.message} />
           </div>
@@ -119,6 +120,7 @@ export function PatientFormPage() {
             <label htmlFor="birthDate">出生日期</label>
             <input id="birthDate" type="date" aria-invalid={Boolean(errors.birthDate)}
               aria-describedby={errors.birthDate ? "patient-birth-error" : undefined}
+              autoComplete="bday"
               {...register("birthDate")} />
             <FieldError id="patient-birth-error" message={errors.birthDate?.message} />
           </div>
@@ -126,6 +128,7 @@ export function PatientFormPage() {
             <label htmlFor="phone">联系电话</label>
             <input id="phone" aria-invalid={Boolean(errors.phone)}
               aria-describedby={errors.phone ? "patient-phone-error" : undefined}
+              autoComplete="tel"
               {...register("phone")} />
             <FieldError id="patient-phone-error" message={errors.phone?.message} />
           </div>

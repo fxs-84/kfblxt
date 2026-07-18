@@ -55,16 +55,27 @@ export function BodyMap({ value, onChange, intensity }: BodyMapProps) {
     <div className="bodymap">
       <div className="bodymap__toggle" role="tablist" aria-label="视图切换">
         <button type="button" role="tab" aria-selected={view === "anterior"}
+          aria-controls="bodymap-figure"
+          id="bodymap-tab-anterior"
+          tabIndex={view === "anterior" ? 0 : -1}
           className={view === "anterior" ? "active" : ""} onClick={() => setView("anterior")}>
           正面
         </button>
         <button type="button" role="tab" aria-selected={view === "posterior"}
+          aria-controls="bodymap-figure"
+          id="bodymap-tab-posterior"
+          tabIndex={view === "posterior" ? 0 : -1}
           className={view === "posterior" ? "active" : ""} onClick={() => setView("posterior")}>
           背面
         </button>
       </div>
 
-      <div className="bodymap__figure">
+      <div
+        className="bodymap__figure"
+        id="bodymap-figure"
+        role="tabpanel"
+        aria-labelledby={view === "anterior" ? "bodymap-tab-anterior" : "bodymap-tab-posterior"}
+      >
         <Model type={view} bodyColor={BODY_COLOR} style={{ width: "100%" }} />
 
         {/* 每条多边形独立可点,独立着色 */}

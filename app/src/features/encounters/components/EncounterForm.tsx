@@ -169,6 +169,7 @@ export function EncounterForm({ patientId, existing, onDone }: EncounterFormProp
               <input id="encounterDate" type="date"
                 aria-invalid={Boolean(errors.encounterDate)}
                 aria-describedby={errors.encounterDate ? errId("encounterDate") : undefined}
+                autoComplete="off"
                 {...register("encounterDate")} />
               <FieldError id={errId("encounterDate")} message={errors.encounterDate?.message} />
             </div>

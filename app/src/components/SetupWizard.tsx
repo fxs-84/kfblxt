@@ -15,6 +15,8 @@
  */
 
 import { useState } from "react";
+import { useFieldA11y } from "../hooks/useFieldA11y";
+import { FieldError } from "./ui/FieldError";
 
 const STORAGE_KEY = "kfblxt:supabase:config";
 
@@ -90,6 +92,10 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
   const urlOk = isValidSupabaseUrl(url.trim());
   const keyOk = isValidAnonKey(anonKey.trim());
   const allOk = urlOk && keyOk;
+
+  // 字段 a11y:id / aria-invalid / aria-describedby
+  const urlA = useFieldA11y({ name: "cfg-url", error: url && !urlOk ? "看起来不像 Supabase URL" : null });
+  const keyA = useFieldA11y({ name: "cfg-key", error: anonKey && !keyOk ? "应以 eyJ 或 sb_publishable_ 开头" : null });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,9 +176,9 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
 
       <form onSubmit={handleSubmit}>
         <div className="field">
-          <label htmlFor="cfg-url">Supabase Project URL</label>
+          <label htmlFor={urlA.id}>Supabase Project URL</label>
           <input
-            id="cfg-url"
+            {...urlA.inputProps}
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -180,17 +186,13 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
             autoComplete="off"
             spellCheck={false}
           />
-          {url && !urlOk && (
-            <span style={{ color: "var(--color-warning, #c66)", fontSize: 12 }}>
-              看起来不像 Supabase URL(应 *.supabase.co 结尾)
-            </span>
-          )}
+          <FieldError {...urlA.errorProps} message={url && !urlOk ? "看起来不像 Supabase URL(应 *.supabase.co 结尾)" : null} />
         </div>
 
         <div className="field">
-          <label htmlFor="cfg-key">anon / publishable key</label>
+          <label htmlFor={keyA.id}>anon / publishable key</label>
           <input
-            id="cfg-key"
+            {...keyA.inputProps}
             type="password"
             value={anonKey}
             onChange={(e) => setAnonKey(e.target.value)}
@@ -198,16 +200,11 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
             autoComplete="off"
             spellCheck={false}
           />
-          {anonKey && !keyOk && (
-            <span style={{ color: "var(--color-warning, #c66)", fontSize: 12 }}>
-              应是以 <code>eyJ</code> 开头的 JWT(legacy) 或 <code>sb_publishable_</code> 开头(2025+),
-              从 Supabase 项目 Settings → API → anon / publishable key 复制
-            </span>
-          )}
+          <FieldError {...keyA.errorProps} message={anonKey && !keyOk ? "应以 eyJ 或 sb_publishable_ 开头" : null} />
         </div>
 
         {error && (
-          <div className="field__error" style={{ color: "#c33", marginBottom: "var(--space-3)" }}>
+          <div className="field__error" role="alert" style={{ color: "#c33", marginBottom: "var(--space-3)" }}>
             {error}
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { loginByPasswordDual, registerUserDual } from "../../features/auth/user-supabase";
 import type { UserRole } from "../../lib/rbac";
@@ -41,6 +41,11 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
   const passwordA = useFieldA11y({ name: "login-password", error: errors.password });
   const fullNameA = useFieldA11y({ name: "login-fullname", error: errors.fullName });
 
+  // 焦点管理:记录打开前的活动元素 + 打开时聚焦用户名输入
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const usernameInputRef = useRef<HTMLInputElement>(null);
+  const previouslyFocusedRef = useRef<Element | null>(null);
+
   useEffect(() => {
     if (open) {
       setTab("login");
@@ -50,8 +55,50 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
       setRole("therapist");
       setErrors({});
       setTopError(null);
+      // 记录触发元素,关闭时恢复焦点
+      previouslyFocusedRef.current = document.activeElement;
+      // 聚焦用户名输入框
+      requestAnimationFrame(() => usernameInputRef.current?.focus());
+    } else {
+      // 关闭时恢复焦点到触发按钮
+      const prev = previouslyFocusedRef.current;
+      if (prev instanceof HTMLElement) prev.focus();
     }
   }, [open, current]);
+
+  // Escape 关闭
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  // 焦点陷阱:Tab 焦点超出 dialog 时折返
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open]);
 
   if (!open) return null;
 
@@ -116,6 +163,7 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
         className="modal-card"
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -192,6 +240,7 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
               <label htmlFor={usernameA.id}>用户名</label>
               <input
                 {...usernameA.inputProps}
+                ref={usernameInputRef}
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}

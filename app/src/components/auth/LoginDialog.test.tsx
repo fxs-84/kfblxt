@@ -87,8 +87,22 @@ describe("LoginDialog", () => {
     fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "validname" } });
     fireEvent.change(screen.getByLabelText("密码"), { target: { value: "secret123" } });
     fireEvent.click(screen.getByRole("button", { name: "登录" }));
-    // role=alert 是全局唯一的查询可能略多 — 改用文字匹配
     const alert = await screen.findByText("用户名或密码错误");
     expect(alert.closest('[role="alert"]')).toBeTruthy();
+  });
+
+  it("按 Escape 触发 onClose", () => {
+    const onClose = vi.fn();
+    render(<LoginDialog open current={DUMMY_SESSION} onClose={onClose} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("打开时焦点移到用户名输入框", async () => {
+    render(<LoginDialog open current={DUMMY_SESSION} onClose={vi.fn()} />);
+    // requestAnimationFrame 在 jsdom 中需要手动触发
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const username = screen.getByLabelText("用户名");
+    expect(document.activeElement).toBe(username);
   });
 });
