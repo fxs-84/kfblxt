@@ -26,7 +26,11 @@ export async function awardPoints(p: AwardParams): Promise<{ ok: boolean; balanc
   const balanceAfter = Math.max(0, membership.points + p.delta);
 
   const log: PointsLog = {
-    id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    // Supabase 模式下 points_logs.id 是 uuid 类型;用 crypto.randomUUID 生成合法 UUID。
+    // 之前用 `log_xxx` 字符串会触发 "invalid input syntax for type uuid" 错误。
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     patientId: p.patientId,
     delta: p.delta,
     balanceAfter,
