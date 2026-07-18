@@ -11,6 +11,7 @@
  * 限流:默认 8 轮工具调用,32K tokens 上限。
  */
 
+import { z } from "zod";
 import { getLLMConfig, isLLMConfigured } from "../ai/llm-engine";
 import {
   callLLM,
@@ -142,7 +143,8 @@ export async function runAgent(
   const tools: ToolDescriptor[] = allAgentTools.map((t) => ({
     name: t.name,
     description: t.description,
-    input_schema: zodToJsonSchema(t),
+    // zod v4 官方转换,取代手写的 _def 内省(私有 API,升级即碎)
+    input_schema: z.toJSONSchema(t.inputSchema) as Record<string, unknown>,
   }));
 
   // 消息序列(扁平,便于维护)
@@ -250,33 +252,4 @@ export async function runAgent(
 
 function toChatMessage(m: AgentMessage): ChatMessage {
   return { role: m.role === "system" ? "system" : m.role, content: m.content };
-}
-
-/* ============================================================
- *  Zod → JSON Schema 转换(只在 agent-loop 内部用)
- * ============================================================ */
-function zodToJsonSchema(t: AgentTool): Record<string, unknown> {
-  const schema: Record<string, unknown> = { type: "object", properties: {} };
-  const props: Record<string, unknown> = {};
-  try {
-    const shape = (t.inputSchema as { shape?: () => Record<string, { _def?: { typeName?: string; description?: string; values?: unknown; defaultValue?: () => unknown } }> }).shape;
-    if (typeof shape === "function") {
-      const entries = shape();
-      for (const [key, field] of Object.entries(entries)) {
-        const def = field._def;
-        if (!def) { props[key] = {}; continue; }
-        const typeMap: Record<string, string> = {
-          ZodString: "string", ZodNumber: "number", ZodBoolean: "boolean",
-          ZodEnum: "string", ZodOptional: "string", ZodDefault: "string",
-          ZodArray: "array",
-        };
-        const p: Record<string, unknown> = { type: typeMap[def.typeName || ""] || "string" };
-        if (def.description) p.description = def.description;
-        if (def.typeName === "ZodEnum" && def.values) p.enum = def.values;
-        props[key] = p;
-      }
-    }
-  } catch { /* best effort */ }
-  schema.properties = props;
-  return schema;
 }

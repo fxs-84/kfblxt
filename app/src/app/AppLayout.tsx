@@ -3,7 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { LoginDialog } from "../components/auth/LoginDialog";
 import { resetSession, useSession } from "../components/auth/useSession";
 import { getSupabase, resetSupabaseClient } from "../lib/supabase";
-import { AgentMonitor } from "../features/agent/AgentMonitor";
+import { AgentMonitor } from "../features/learning/AgentMonitor";
 import { AgentChatFAB } from "../features/agent/AgentChatFAB";
 import { ToastHost } from "../components/ui/ToastHost";
 

@@ -4,7 +4,7 @@ import { useDraftAutosave } from "../useDraftAutosave";
 import { useCreateExamSession } from "../useExam";
 import { EXAM_CATALOG } from "../exam-catalog";
 import { EXAM_CATEGORIES, CATEGORY_LABELS, type ExamCategory, type ExamResult, type ExamDataType } from "../exam.types";
-import { getExamFrequency, recordExamUsage, recordLastExam } from "../../agent/agent-memory";
+import { getExamFrequency, recordExamUsage, recordLastExam } from "../../learning/agent-memory";
 
 interface ExamFormProps {
   encounterId: string;

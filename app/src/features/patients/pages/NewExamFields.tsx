@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { EXAM_CATALOG } from "../../exam/exam-catalog";
 import { EXAM_CATEGORIES, CATEGORY_LABELS, type ExamCategory, type ExamResult, type ExamDataType } from "../../exam/exam.types";
-import { getExamFrequency } from "../../agent/agent-memory";
+import { getExamFrequency } from "../../learning/agent-memory";
 
 interface Props {
   results: Record<string, ExamResult>;

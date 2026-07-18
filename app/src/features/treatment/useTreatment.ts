@@ -47,7 +47,7 @@ export function useCreateTreatmentPlan() {
         const diag = hasSupabaseConfig()
           ? await (await import("../diagnosis/diagnosis-supabase")).findDiagnosisByEncounterDual(input.encounterId)
           : await (await import("../diagnosis/diagnosis.repository")).findDiagnosisByEncounter(input.encounterId);
-        const mem = await import("../agent/agent-memory");
+        const mem = await import("../learning/agent-memory");
         mem.recordDiagnosis(diag?.levels ?? [], diag?.mechanisms ?? [], "", input.interventionIds);
         for (const id of input.interventionIds) {
           const name = INTERVENTIONS_CATALOG.find((i) => i.id === id)?.name ?? id;
@@ -96,7 +96,7 @@ export function useCreateProgressNote() {
       const created = await createNoteDual({ ...input, orgId: getSession().orgId });
       // 学习闭环:疗效记录(预测数据源) + VAS 趋势(TrendSummaryCard/随访建议数据源)
       try {
-        const mem = await import("../agent/agent-memory");
+        const mem = await import("../learning/agent-memory");
         const diag = hasSupabaseConfig()
           ? await (await import("../diagnosis/diagnosis-supabase")).findDiagnosisByEncounterDual(input.encounterId)
           : await (await import("../diagnosis/diagnosis.repository")).findDiagnosisByEncounter(input.encounterId);

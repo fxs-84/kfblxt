@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useSharesByEncounter, useRevokeShare, useCreateShare } from "./useShare";
-import { generateHomeworkTemplate } from "../agent/agent-utils";
+import { generateHomeworkTemplate } from "../learning/agent-utils";
 import { useTreatmentPlans } from "../treatment/useTreatment";
 import { formatDate } from "../../lib/format";
 import { buildShareSnapshot } from "./build-snapshot";

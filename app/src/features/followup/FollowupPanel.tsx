@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePatientFollowups, useCreateFollowup, useCompleteFollowup, useNoShowFollowup } from "./useFollowup";
-import { suggestFollowupInterval } from "../agent/agent-utils";
-import { getVasHistory } from "../agent/agent-memory";
+import { suggestFollowupInterval } from "../learning/agent-utils";
+import { getVasHistory } from "../learning/agent-memory";
 import { formatDate } from "../../lib/format";
 import { useSession } from "../../components/auth/useSession";
 import { MyFilterToggle, applyMyFilter } from "../../components/auth/MyFilterToggle";

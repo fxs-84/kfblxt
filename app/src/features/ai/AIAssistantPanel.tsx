@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from "react";
-import { analyzeAsync, getLLMConfig, getLLMConfigSync, saveLLMConfig, clearLLMConfig, isLLMConfigured } from "./llm-engine";
+import { useState, useEffect } from "react";
+import { analyzeAsync, isLLMConfigured } from "./llm-engine";
+import { LLMSettingsPanel } from "./components/LLMSettingsPanel";
+import { useSpeechRecognition } from "./hooks/useSpeechRecognition";
 import { analyze, generateNarrative } from "./reasoning-engine";
 import type { ClinicalContext } from "./ai-assistant.types";
 import type { AnalyzeResult } from "./llm-engine";
@@ -8,11 +10,7 @@ import type { ExamSession } from "../exam/exam.types";
 import type { EncounterRecord } from "../encounters/encounter.repository";
 import type { DiagnosisRecord } from "../diagnosis/diagnosis.repository";
 import type { NeuroLevel, Mechanism, SpinalSegment, NerveTrunk } from "../diagnosis/localization.types";
-import { getInterventionEffectiveness, rankDiagnosisByHistory } from "../agent/agent-memory";
-
-/* ---- 浏览器语音 ---- */
-declare global { interface Window { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec; } }
-type SpeechRec = { continuous: boolean; interimResults: boolean; lang: string; start(): void; stop(): void; onresult: ((e: { results: { [i: number]: { [i: number]: { transcript: string } }; length: number } }) => void) | null; onerror: (() => void) | null; onend: (() => void) | null };
+import { getInterventionEffectiveness, rankDiagnosisByHistory } from "../learning/agent-memory";
 
 /* ---- 场景类型 ---- */
 type Scene = "诊前" | "诊中" | "诊后";
@@ -48,28 +46,14 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
   const [tab, setTab] = useState<"analysis" | "narrative" | "dictate">(scene === "诊后" ? "narrative" : "analysis");
   const [adopting, setAdopting] = useState<string | null>(null);
   const [savingSoap, setSavingSoap] = useState(false);
-  const voiceSupport = typeof window !== "undefined" && Boolean(
-    (window as unknown as Record<string,unknown>).SpeechRecognition ||
-    (window as unknown as Record<string,unknown>).webkitSpeechRecognition,
-  );
-
-  /* 语音状态 */
-  const [vListening, setVListening] = useState(false);
+  /* 语音状态(共享 hook;onResult 里做查体关键词结构化匹配) */
   const [vText, setVText] = useState("");
   const [vMatches, setVMatches] = useState<Array<{ examId: string; value: string }>>([]);
-  const recRef = useRef<SpeechRec | null>(null);
-
-  useEffect(() => {
-    const Ctor = (window as unknown as Record<string,unknown>).SpeechRecognition ||
-      (window as unknown as Record<string,unknown>).webkitSpeechRecognition;
-    if (!Ctor || typeof Ctor !== "function") return;
-    const rec = new (Ctor as new () => SpeechRec)();
-    rec.continuous = true; rec.interimResults = true; rec.lang = "zh-CN";
-    rec.onresult = (e) => {
-      let t = "";
-      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+  const { listening: vListening, supported: voiceSupport, toggle: toggleVoice } = useSpeechRecognition({
+    continuous: true,
+    interimResults: true,
+    onResult: (t) => {
       setVText(t);
-      // 结构化匹配
       const matches: Array<{ examId: string; value: string }> = [];
       for (const [keyword, id] of Object.entries(EXAM_KEYWORDS)) {
         const idx = t.indexOf(keyword);
@@ -81,24 +65,14 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
         }
       }
       setVMatches(matches);
-    };
-    rec.onerror = () => setVListening(false);
-    rec.onend = () => setVListening(false);
-    recRef.current = rec;
-    return () => { try { rec.stop(); } catch { /* ok */ } };
-  }, []);
+    },
+  });
 
   const [aiResult, setAiResult] = useState<AnalyzeResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState<"rules" | "llm">("rules");
   const [llmConfigured, setLlmConfigured] = useState(isLLMConfigured());
   const [showLlmSettings, setShowLlmSettings] = useState(false);
-  const [llmForm, setLlmForm] = useState<{ apiUrl: string; apiKey: string; model: string; corsProxy: string }>(() => {
-    const c = getLLMConfigSync();
-    return { apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages", apiKey: "", model: c?.model ?? "claude-haiku-4-5", corsProxy: c?.corsProxy ?? "" };
-  });
-  const [llmError, setLlmError] = useState<string | null>(null);
-  const [keyAlreadySet, setKeyAlreadySet] = useState(false);
 
   /* ---- 数据准备 ---- */
   const findings = examSessions.flatMap((s) =>
@@ -115,6 +89,27 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
     diagnosis: diagnosis ? { levels: diagnosis.levels, mechanisms: diagnosis.mechanisms, side: diagnosis.side, segments: diagnosis.segments, nerves: diagnosis.nerves, cutaneousNerveIds: diagnosis.cutaneousNerveIds } : undefined,
   } : null;
 
+  /* 按历史模式重排定位建议(LLM/规则两分支共用,此前为两份重复逻辑) */
+  const applyHistoryRanking = (result: AnalyzeResult): AnalyzeResult => {
+    const regionSummary = encounter!.chiefComplaint.regions.join(" ");
+    const mechanismHints = result.localizationSuggestions
+      .filter((s) => s.level === "特定体征")
+      .map((s) => s.rationale.slice(0, 20));
+    const allLevels = result.localizationSuggestions.map((s) => s.level);
+    const rankedLevels = rankDiagnosisByHistory(allLevels, regionSummary, mechanismHints);
+    if (rankedLevels.length === 0) return result;
+    const scored = result.localizationSuggestions.map((s) => {
+      const idx = rankedLevels.indexOf(s.level);
+      const histConf = idx >= 0 ? Math.max(0.5, 0.95 - idx * 0.1) : 0;
+      return { ...s, confidence: Math.max(s.confidence, histConf), matchedHistory: idx >= 0 };
+    });
+    scored.sort((a, b) => {
+      if (a.matchedHistory !== b.matchedHistory) return a.matchedHistory ? -1 : 1;
+      return b.confidence - a.confidence;
+    });
+    return { ...result, localizationSuggestions: scored };
+  };
+
   /* 异步推理:先试 LLM,不可用自动回退规则引擎 */
   useEffect(() => {
     if (!ctx) { setAiResult(null); return; }
@@ -122,49 +117,14 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
     setAiLoading(true);
     analyzeAsync(ctx).then((result) => {
       if (cancelled) return;
-      // P1: 按历史模式重新排序定位建议
-      const regionSummary = encounter!.chiefComplaint.regions.join(" ");
-      const mechanismHints = result.localizationSuggestions
-        .filter((s) => s.level === "特定体征")
-        .map((s) => s.rationale.slice(0, 20));
-      const allLevels = result.localizationSuggestions.map((s) => s.level);
-      const rankedLevels = rankDiagnosisByHistory(allLevels, regionSummary, mechanismHints);
-      if (rankedLevels.length > 0) {
-        const scored = result.localizationSuggestions.map((s) => {
-          const idx = rankedLevels.indexOf(s.level);
-          const histConf = idx >= 0 ? Math.max(0.5, 0.95 - idx * 0.1) : 0;
-          return { ...s, confidence: Math.max(s.confidence, histConf), matchedHistory: idx >= 0 };
-        });
-        scored.sort((a, b) => {
-          if (a.matchedHistory !== b.matchedHistory) return a.matchedHistory ? -1 : 1;
-          return b.confidence - a.confidence;
-        });
-        setAiResult({ ...result, localizationSuggestions: scored });
-      } else {
-        setAiResult(result);
-      }
+      setAiResult(applyHistoryRanking(result));
       // 真实来源(llm-engine 已统一返回 _source)
       setAiMode(result._source);
       setAiLoading(false);
     }).catch(() => {
       if (cancelled) return;
       const rules = { ...analyze(ctx), narrative: generateNarrative(ctx), _source: "rules" as const };
-      // 同样应用历史排序
-      const regionSummary = encounter!.chiefComplaint.regions.join(" ");
-      const allLevels = rules.localizationSuggestions.map((s) => s.level);
-      const rankedLevels = rankDiagnosisByHistory(allLevels, regionSummary, []);
-      if (rankedLevels.length > 0) {
-        const scored = rules.localizationSuggestions.map((s) => {
-          const idx = rankedLevels.indexOf(s.level);
-          return { ...s, confidence: idx >= 0 ? Math.max(s.confidence, 0.85 - idx * 0.1) : s.confidence, matchedHistory: idx >= 0 };
-        });
-        scored.sort((a, b) => {
-          if ((a as { matchedHistory?: boolean }).matchedHistory !== (b as { matchedHistory?: boolean }).matchedHistory) return (a as { matchedHistory?: boolean }).matchedHistory ? -1 : 1;
-          return b.confidence - a.confidence;
-        });
-        rules.localizationSuggestions = scored;
-      }
-      setAiResult(rules);
+      setAiResult(applyHistoryRanking(rules));
       setAiMode("rules");
       setAiLoading(false);
     });
@@ -212,7 +172,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             <button type="button"
               className="btn btn--ghost"
               style={{ fontSize: "10px", padding: "1px 6px", marginLeft: "auto" }}
-              onClick={() => { const opening = !showLlmSettings; setShowLlmSettings(opening); if (opening) setKeyAlreadySet(Boolean(getLLMConfigSync())); }}
+              onClick={() => setShowLlmSettings((v) => !v)}
               title="配置 LLM API key(仅本地)"
             >
               {llmConfigured ? "🔑" : "⚠️ 未配置 LLM"}
@@ -231,118 +191,9 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
       </nav>
 
       <div className="ai-panel__body">
-        {/* ========== LLM 设置面板 ========== */}
         {showLlmSettings && (
           <div className="ai-section" style={{ background: "var(--color-surface-sunken)", padding: "var(--space-3)", borderRadius: "var(--radius-md)", marginBottom: "var(--space-3)" }}>
-            <h4 className="ai-section__title">🔑 LLM API 配置(仅本地浏览器)</h4>
-            <p className="ai-empty" style={{ fontSize: "var(--text-xs)" }}>
-              API key 仅保存在浏览器 localStorage,不会上传或进入 JS bundle。
-              未配置时自动使用本地规则引擎。
-            </p>
-            {/* 预设按钮 */}
-            <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
-              {([
-                { label: "Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001" },
-                { label: "DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat" },
-                { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
-                { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
-              ] as const).map(p => (
-                <button type="button" key={p.label} onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: "" })} style={{
-                  padding: "3px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
-                  background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
-                  cursor: "pointer",
-                }}>{p.label}</button>
-              ))}
-            </div>
-            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
-              <label style={{ fontSize: "var(--text-xs)" }}>API URL</label>
-              <input
-                type="text"
-                value={llmForm.apiUrl}
-                onChange={(e) => setLlmForm((f) => ({ ...f, apiUrl: e.target.value }))}
-                placeholder="https://api.anthropic.com/v1/messages"
-                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
-              />
-            </div>
-            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
-              <label style={{ fontSize: "var(--text-xs)" }}>
-                API Key
-                {keyAlreadySet && <span style={{ color: "var(--color-normal)", fontSize: 10, marginLeft: "var(--space-1)" }}>🔒 已保存</span>}
-              </label>
-              <input
-                type="password"
-                value={llmForm.apiKey}
-                onChange={(e) => { setLlmForm((f) => ({ ...f, apiKey: e.target.value })); setLlmError(null); }}
-                placeholder={keyAlreadySet ? "如需更换请输入新 key" : "sk-ant-..."}
-                autoComplete="off"
-                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4, background: keyAlreadySet && !llmForm.apiKey ? "var(--color-normal-weak, #ecfdf5)" : undefined }}
-              />
-            </div>
-            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
-              <label style={{ fontSize: "var(--text-xs)" }}>模型名</label>
-              <input
-                type="text"
-                value={llmForm.model}
-                onChange={(e) => setLlmForm((f) => ({ ...f, model: e.target.value }))}
-                placeholder="claude-haiku-4-5"
-                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
-              />
-            </div>
-            <div className="field" style={{ marginBottom: "var(--space-2)" }}>
-              <label style={{ fontSize: "var(--text-xs)" }}>
-                CORS 代理 (可选)
-                <span style={{ fontSize: 10, color: "var(--color-text-muted)", marginLeft: 6 }}>GitHub Pages 跨域必填</span>
-              </label>
-              <input
-                type="text"
-                value={llmForm.corsProxy}
-                onChange={(e) => setLlmForm((f) => ({ ...f, corsProxy: e.target.value }))}
-                placeholder="留空直连;跨域则填代理地址"
-                style={{ width: "100%", padding: "6px 8px", fontSize: "var(--text-xs)", border: "1px solid var(--color-border)", borderRadius: 4 }}
-              />
-            </div>
-            {llmError && <div className="field__error" style={{ marginBottom: "var(--space-2)" }}>{llmError}</div>}
-            <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button type="button"
-                className="btn btn--primary"
-                style={{ fontSize: "var(--text-xs)" }}
-                onClick={async () => {
-                  setLlmError(null);
-                  const urlOk = llmForm.apiUrl.trim();
-                  const keyOk = llmForm.apiKey.trim();
-                  if (!urlOk) { setLlmError("API URL 必填"); return; }
-                  if (!keyOk) {
-                    if (keyAlreadySet) {
-                      // 保留已有 key — 仅更新 URL/model/corsProxy。
-                      // 必须走 getLLMConfig() 解密取回明文 key;
-                      // 直接读 localStorage 拿到的是加密态,再 save 会双重加密导致 key 损坏
-                      const current = await getLLMConfig();
-                      if (!current?.apiKey) { setLlmError("配置丢失,请重新输入 API Key"); return; }
-                      await saveLLMConfig({ apiUrl: urlOk, apiKey: current.apiKey, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
-                    } else {
-                      setLlmError("API Key 必填");
-                      return;
-                    }
-                  } else {
-                    await saveLLMConfig({ apiUrl: urlOk, apiKey: keyOk, model: llmForm.model.trim() || "claude-haiku-4-5", corsProxy: llmForm.corsProxy.trim() || undefined });
-                  }
-                  setLlmConfigured(true);
-                  setShowLlmSettings(false);
-                }}
-              >保存</button>
-              {llmConfigured && (
-                <button type="button"
-                  className="btn btn--ghost"
-                  style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
-                  onClick={() => {
-                    clearLLMConfig();
-                    setLlmConfigured(false);
-                    setKeyAlreadySet(false);
-                    setLlmForm((f) => ({ ...f, apiKey: "" }));
-                  }}
-                >清除</button>
-              )}
-            </div>
+            <LLMSettingsPanel variant="inline" onClose={() => setShowLlmSettings(false)} onConfiguredChange={setLlmConfigured} />
           </div>
         )}
 
@@ -488,8 +339,8 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                   <button type="button" className={`btn ${vListening ? "btn--primary" : "btn--ghost"}`}
                     style={{ fontSize: "var(--text-xs)" }}
                     onClick={() => {
-                      if (vListening) { recRef.current?.stop(); setVListening(false); }
-                      else { setVText(""); setVMatches([]); recRef.current?.start(); setVListening(true); }
+                      if (!vListening) { setVText(""); setVMatches([]); }
+                      toggleVoice();
                     }}>
                     {vListening ? "⏹ 停止" : "🎤 开始录音"}
                   </button>

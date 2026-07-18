@@ -75,7 +75,7 @@ export function useCreateDiagnosis() {
           const { onDiagnosisCreated } = await import("../membership/integration");
           await onDiagnosisCreated(enc.patientId, created.encounterId);
           // 学习闭环:记录诊断行为(模式记录在创建治疗计划时,那时才有干预组合)
-          const { recordPersonalAction } = await import("../agent/agent-memory");
+          const { recordPersonalAction } = await import("../learning/agent-memory");
           recordPersonalAction(
             "create_diagnosis",
             `诊断: ${created.levels.join("/")} · ${created.mechanisms.join("+")}`,

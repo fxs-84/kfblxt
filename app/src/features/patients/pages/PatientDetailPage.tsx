@@ -21,7 +21,7 @@ import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
 import { MembershipPanelCard } from "../../membership/MembershipPanelCard";
 import { CollapseCard } from "../../../components/ui/CollapseCard";
-import { TrendSummaryCard } from "../../agent/TrendSummaryCard";
+import { TrendSummaryCard } from "../../learning/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
 import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";

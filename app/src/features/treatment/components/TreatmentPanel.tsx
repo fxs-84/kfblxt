@@ -5,7 +5,7 @@ import { INTERVENTIONS_CATALOG } from "../interventions-catalog";
 import { INTERVENTION_CATEGORIES, TREATMENT_PHASES, OUTCOME_RATINGS, GOAL_TEMPLATES, GOAL_DOMAINS, type TreatmentPhase, type TreatmentGoal, type OutcomeRating } from "../treatment.types";
 import { INTENSITY_LEVELS, normalizeInterventionDoses, type InterventionDoseMap } from "../intervention-dose";
 import type { TreatmentPlanRecord } from "../treatment.repository";
-import { predictOutcome } from "../../agent/agent-utils";
+import { predictOutcome } from "../../learning/agent-utils";
 import { formatDate } from "../../../lib/format";
 
 interface TreatmentPanelProps { encounterId: string; patientId: string }
