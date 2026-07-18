@@ -276,7 +276,10 @@ export async function appendLogDual(log: PointsLog): Promise<PointsLog> {
     return localAppendLog(log);
   }
   const supabase = getSupabase()!;
-  const { data, error } = await supabase.from("points_logs").insert(logToRow(log)).select().maybeSingle();
+  const row = logToRow(log);
+  // eslint-disable-next-line no-console
+  console.log("[appendLogDual] row=", row);
+  const { data, error } = await supabase.from("points_logs").insert(row).select().maybeSingle();
   if (error || !data) throw new Error(`保存积分流水失败: ${error?.message ?? "无响应"}`);
   return logFromRow(data);
 }

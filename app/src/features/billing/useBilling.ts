@@ -55,7 +55,11 @@ export function useCreateBilling() {
           createdAt: new Date(),
         };
         if (input.encounterId) ev.encounterId = input.encounterId;
-        processEvent(ev as any).catch(() => {});
+        // 不再静默吞错:记录失败原因到 console 便于排查
+        processEvent(ev as any).catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("[useCreateBilling] processEvent 失败,积分流水未写入:", e);
+        });
       }
       return created;
     },
