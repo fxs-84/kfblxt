@@ -51,6 +51,19 @@ function fromRow(row: Record<string, unknown>): BillingRecordEntity {
   };
 }
 
+/** 全量查询(业绩面板等管理视图用)— RLS 自动按机构过滤 */
+export async function findAllBillingDual(): Promise<BillingRecordEntity[]> {
+  if (!isSupabaseReady()) return billingRepository.findAll();
+  const supabase = getSupabase()!;
+  const { data, error } = await supabase
+    .from("billing_records")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`查询账单失败: ${error.message}`);
+  return (data ?? []).map(fromRow);
+}
+
 export async function findBillingByPatientDual(patientId: string): Promise<BillingRecordEntity[]> {
   if (!isSupabaseReady()) {
     const all = await billingRepository.findAll();

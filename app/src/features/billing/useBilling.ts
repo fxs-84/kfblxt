@@ -4,6 +4,7 @@ import { billingRepository, findBillingByPatient, calcBalance, type BillingInput
 import { getSession } from "../../lib/session";
 import { processEvent } from "../membership/rule-engine";
 import {
+  findAllBillingDual,
   findBillingByPatientDual,
   createBillingDual,
   deleteBillingDual,
@@ -28,9 +29,10 @@ export function useAllBilling() {
     queryKey: ["billing", "all"],
     queryFn: async () => {
       if (hasSupabaseConfig()) {
-        // 没有对应的 findAllDual API,退化为按空 patientId 查询获取全量
-        const all = await billingRepository.findAll();
-        return [...all].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        // Supabase 模式查 billing_records 全表(RLS 按机构过滤);
+        // 之前误用 billingRepository.findAll()(localStorage),
+        // 导致业绩面板看不到云端消费记录
+        return findAllBillingDual();
       }
       return billingRepository.findAll();
     },

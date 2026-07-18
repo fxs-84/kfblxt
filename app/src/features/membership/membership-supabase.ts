@@ -206,11 +206,15 @@ export async function upsertMembershipDual(m: PatientMembership): Promise<Patien
     return m;
   }
   const supabase = getSupabase()!;
-  // 不依赖 onConflict(老实例主键可能不匹配),先查存在性再决定 update/insert
+  // 不依赖 onConflict(老实例主键可能不匹配),先查存在性再决定 update/insert。
+  // 注意:PatientMembership 模型没有 orgId 字段,定位条件必须用 session 的 orgId(),
+  // 与 membershipToRow 写入的 org_id 保持一致;用 m.orgId 会是 undefined,
+  // 导致存在性查询永远落空 → 已存在时误走 INSERT → 主键冲突,积分永远写不进。
+  const org = orgId();
   const { data: existing } = await supabase
     .from("patient_memberships")
     .select("org_id, patient_id")
-    .eq("org_id", m.orgId)
+    .eq("org_id", org)
     .eq("patient_id", m.patientId)
     .maybeSingle();
   let data: Record<string, unknown> | null = null;
@@ -219,7 +223,7 @@ export async function upsertMembershipDual(m: PatientMembership): Promise<Patien
     const res = await supabase
       .from("patient_memberships")
       .update(membershipToRow(m))
-      .eq("org_id", m.orgId)
+      .eq("org_id", org)
       .eq("patient_id", m.patientId)
       .select()
       .maybeSingle();
