@@ -12,6 +12,7 @@ import {
 import { useCreateEncounter, useUpdateEncounter } from "../useEncounters";
 import { getSession } from "../../../lib/session";
 import { BodyMap } from "../../../components/bodymap/BodyMap";
+import { FieldError } from "../../../components/ui/FieldError";
 
 const encounterFormSchema = encounterInputSchema.omit({ orgId: true, patientId: true });
 type EncounterFormValues = z.input<typeof encounterFormSchema>;
@@ -27,6 +28,8 @@ export function EncounterForm({ patientId, existing, onDone }: EncounterFormProp
   const createEncounter = useCreateEncounter();
   const updateEncounter = useUpdateEncounter();
   const isEdit = Boolean(existing);
+  // 错误展示用的稳定 id 前缀
+  const errId = (key: string) => `enc-${key}-error`;
   const {
     register,
     handleSubmit,
@@ -148,19 +151,26 @@ export function EncounterForm({ patientId, existing, onDone }: EncounterFormProp
             control={control}
             name="chiefComplaint.regions"
             render={({ field }) => (
-              <BodyMap value={field.value ?? []} onChange={field.onChange} />
+              <div
+                aria-invalid={Boolean(errors.chiefComplaint?.regions)}
+                aria-describedby={errors.chiefComplaint?.regions ? errId("regions") : undefined}
+              >
+                <BodyMap value={field.value ?? []} onChange={field.onChange} />
+              </div>
             )}
           />
-          {errors.chiefComplaint?.regions && (
-            <span className="field__error">{errors.chiefComplaint.regions.message}</span>
-          )}
+          <FieldError id={errId("regions")} message={errors.chiefComplaint?.regions?.message} />
         </div>
 
         <div className="encounter-form__fields">
           <div className="form-grid form-grid--tight">
             <div className="field">
               <label htmlFor="encounterDate">就诊日期</label>
-              <input id="encounterDate" type="date" {...register("encounterDate")} />
+              <input id="encounterDate" type="date"
+                aria-invalid={Boolean(errors.encounterDate)}
+                aria-describedby={errors.encounterDate ? errId("encounterDate") : undefined}
+                {...register("encounterDate")} />
+              <FieldError id={errId("encounterDate")} message={errors.encounterDate?.message} />
             </div>
             <div className="field">
               <label htmlFor="visitType">就诊类型</label>
@@ -206,24 +216,24 @@ export function EncounterForm({ patientId, existing, onDone }: EncounterFormProp
                 })}
               </div>
               {errors.chiefComplaint?.nature && (
-                <span className="field__error">{errors.chiefComplaint.nature.message}</span>
+                <FieldError id={errId("nature")} message={errors.chiefComplaint.nature.message} />
               )}
             </div>
 
             <div className="field">
               <label htmlFor="vas">疼痛 VAS(0-10)</label>
               <input id="vas" type="number" min={0} max={10}
+                aria-invalid={Boolean(errors.chiefComplaint?.vas)}
+                aria-describedby={errors.chiefComplaint?.vas ? errId("vas") : undefined}
                 {...register("chiefComplaint.vas", { valueAsNumber: true })} />
-              {errors.chiefComplaint?.vas && (
-                <span className="field__error">{errors.chiefComplaint.vas.message}</span>
-              )}
+              <FieldError id={errId("vas")} message={errors.chiefComplaint?.vas?.message} />
             </div>
             <div className="field">
               <label htmlFor="durationText">病程</label>
               <input id="durationText" {...register("chiefComplaint.durationText")}
                 placeholder="如:3个月" />
               {errors.chiefComplaint?.durationText && (
-                <span className="field__error">{errors.chiefComplaint.durationText.message}</span>
+                <FieldError id={errId("duration")} message={errors.chiefComplaint.durationText.message} />
               )}
             </div>
           </div>

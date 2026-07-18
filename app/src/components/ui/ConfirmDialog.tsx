@@ -70,13 +70,14 @@ export function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-message"
       >
         <header className="modal-card__head">
           <h2 id="confirm-dialog-title" className="modal-card__title">{title}</h2>
           <button type="button" className="modal-card__close" onClick={onClose} aria-label="关闭">×</button>
         </header>
         <div className="modal-card__body">
-          <p style={{ margin: 0, lineHeight: 1.6 }}>{message}</p>
+          <p id="confirm-dialog-message" style={{ margin: 0, lineHeight: 1.6 }}>{message}</p>
           {requireText && (
             <div className="field">
               <label htmlFor="confirm-typed">输入 <code>{requireText}</code> 以确认</label>

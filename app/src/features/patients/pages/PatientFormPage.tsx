@@ -6,6 +6,7 @@ import { z } from "zod";
 import { patientSchema } from "../patient.schema";
 import { useCreatePatient, useUpdatePatient, usePatient } from "../usePatients";
 import { getSession } from "../../../lib/session";
+import { FieldError } from "../../../components/ui/FieldError";
 
 // 机构 org_id 由会话注入,不作为表单字段
 const formSchema = patientSchema.omit({ id: true, createdAt: true, orgId: true });
@@ -94,13 +95,17 @@ export function PatientFormPage() {
         <div className="form-grid">
           <div className="field">
             <label htmlFor="mrn">病历号(留空自动生成)</label>
-            <input id="mrn" {...register("medicalRecordNo")} placeholder="如:ANRM-0001,留空则自动生成" />
-            {errors.medicalRecordNo && <span className="field__error">{errors.medicalRecordNo.message}</span>}
+            <input id="mrn" aria-invalid={Boolean(errors.medicalRecordNo)}
+              aria-describedby={errors.medicalRecordNo ? "patient-mrn-error" : undefined}
+              {...register("medicalRecordNo")} placeholder="如:ANRM-0001,留空则自动生成" />
+            <FieldError id="patient-mrn-error" message={errors.medicalRecordNo?.message} />
           </div>
           <div className="field">
             <label htmlFor="name">姓名</label>
-            <input id="name" {...register("name")} />
-            {errors.name && <span className="field__error">{errors.name.message}</span>}
+            <input id="name" aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? "patient-name-error" : undefined}
+              {...register("name")} />
+            <FieldError id="patient-name-error" message={errors.name?.message} />
           </div>
           <div className="field">
             <label htmlFor="sex">性别</label>
@@ -112,13 +117,17 @@ export function PatientFormPage() {
           </div>
           <div className="field">
             <label htmlFor="birthDate">出生日期</label>
-            <input id="birthDate" type="date" {...register("birthDate")} />
-            {errors.birthDate && <span className="field__error">{errors.birthDate.message}</span>}
+            <input id="birthDate" type="date" aria-invalid={Boolean(errors.birthDate)}
+              aria-describedby={errors.birthDate ? "patient-birth-error" : undefined}
+              {...register("birthDate")} />
+            <FieldError id="patient-birth-error" message={errors.birthDate?.message} />
           </div>
           <div className="field">
             <label htmlFor="phone">联系电话</label>
-            <input id="phone" {...register("phone")} />
-            {errors.phone && <span className="field__error">{errors.phone.message}</span>}
+            <input id="phone" aria-invalid={Boolean(errors.phone)}
+              aria-describedby={errors.phone ? "patient-phone-error" : undefined}
+              {...register("phone")} />
+            <FieldError id="patient-phone-error" message={errors.phone?.message} />
           </div>
           <div className="field">
             <label htmlFor="dominantHand">利手</label>

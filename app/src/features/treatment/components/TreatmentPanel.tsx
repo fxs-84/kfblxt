@@ -281,7 +281,7 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
             )}
           </div>
 
-          {error && <div className="field__error" style={{ marginTop: "var(--space-3)" }}>{error}</div>}
+          {error && <div className="field__error" role="alert" aria-live="polite" style={{ marginTop: "var(--space-3)" }}>{error}</div>}
 
           <div className="form-actions" style={{ padding: "var(--space-4) 0 0" }}>
             <button type="button" className="btn btn--primary" disabled={saving} onClick={handleSave}>
@@ -418,7 +418,7 @@ function ProgressNoteForm({ planId, encounterId, interventionIds, onDone }: Prog
           disabled={saving} onClick={handleSave}>{saving ? "…" : "保存复评"}</button>
         <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }} onClick={onDone}>取消</button>
       </div>
-      {error && <div className="field__error" style={{ marginTop: "var(--space-1)" }}>{error}</div>}
+      {error && <div className="field__error" role="alert" aria-live="polite" style={{ marginTop: "var(--space-1)" }}>{error}</div>}
     </div>
   );
 }

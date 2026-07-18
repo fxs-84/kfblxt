@@ -5,6 +5,8 @@ import type { UserRole } from "../../lib/rbac";
 import type { Session } from "../../lib/session";
 import { saveSession } from "./useSession";
 import { hasSupabaseConfig } from "../../lib/supabase";
+import { useFieldA11y } from "../../hooks/useFieldA11y";
+import { FieldError } from "../ui/FieldError";
 
 type Tab = "login" | "register";
 
@@ -34,6 +36,11 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string | null>(null);
 
+  // 字段 a11y(id / aria-invalid / aria-describedby)
+  const usernameA = useFieldA11y({ name: "login-username", error: errors.username });
+  const passwordA = useFieldA11y({ name: "login-password", error: errors.password });
+  const fullNameA = useFieldA11y({ name: "login-fullname", error: errors.fullName });
+
   useEffect(() => {
     if (open) {
       setTab("login");
@@ -45,15 +52,6 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
       setTopError(null);
     }
   }, [open, current]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -116,10 +114,9 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
-      <form
+      <div
         className="modal-card"
         onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-dialog-title"
@@ -181,79 +178,81 @@ export function LoginDialog({ open, current, onClose }: LoginDialogProps) {
           >注册</button>
         </div>
 
-        <div className="modal-card__body">
-          {topError && (
-            <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-              <span className="field__error" style={{ display: "block", padding: "var(--space-2) var(--space-3)", background: "var(--color-abnormal-bg, #fef2f2)", borderRadius: "var(--radius-sm)" }}>
-                {topError}
-              </span>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-card__body">
+            {topError && (
+              <div className="field" style={{ marginBottom: "var(--space-3)" }} role="alert">
+                <span className="field__error" style={{ display: "block", padding: "var(--space-2) var(--space-3)", background: "var(--color-abnormal-bg, #fef2f2)", borderRadius: "var(--radius-sm)" }}>
+                  {topError}
+                </span>
+              </div>
+            )}
+
+            <div className="field">
+              <label htmlFor={usernameA.id}>用户名</label>
+              <input
+                {...usernameA.inputProps}
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="如:zhang"
+                autoComplete="username"
+              />
+              <FieldError {...usernameA.errorProps} message={errors.username} />
             </div>
-          )}
 
-          <div className="field">
-            <label htmlFor="login-username">用户名</label>
-            <input
-              id="login-username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="如:zhang"
-              autoComplete="username"
-            />
-            {errors.username && <span className="field__error">{errors.username}</span>}
+            <div className="field">
+              <label htmlFor={passwordA.id}>密码</label>
+              <input
+                {...passwordA.inputProps}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="至少 6 位"
+                autoComplete={isRegister ? "new-password" : "current-password"}
+              />
+              <FieldError {...passwordA.errorProps} message={errors.password} />
+            </div>
+
+            {isRegister && (
+              <>
+                <div className="field">
+                  <label htmlFor={fullNameA.id}>姓名</label>
+                  <input
+                    {...fullNameA.inputProps}
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="如:张医师"
+                  />
+                  <FieldError {...fullNameA.errorProps} message={errors.fullName} />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="login-role">角色</label>
+                  <select
+                    id="login-role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as UserRole)}
+                    style={{ padding: "var(--space-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", font: "inherit" }}
+                  >
+                    <option value="therapist">治疗师</option>
+                    <option value="physician">医师</option>
+                    <option value="admin">管理员</option>
+                  </select>
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="field">
-            <label htmlFor="login-password">密码</label>
-            <input
-              id="login-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="至少 6 位"
-              autoComplete={isRegister ? "new-password" : "current-password"}
-            />
-            {errors.password && <span className="field__error">{errors.password}</span>}
-          </div>
-
-          {isRegister && (
-            <>
-              <div className="field">
-                <label htmlFor="login-fullname">姓名</label>
-                <input
-                  id="login-fullname"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="如:张医师"
-                />
-                {errors.fullName && <span className="field__error">{errors.fullName}</span>}
-              </div>
-
-              <div className="field">
-                <label htmlFor="login-role">角色</label>
-                <select
-                  id="login-role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  style={{ padding: "var(--space-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", font: "inherit" }}
-                >
-                  <option value="therapist">治疗师</option>
-                  <option value="physician">医师</option>
-                  <option value="admin">管理员</option>
-                </select>
-              </div>
-            </>
-          )}
-        </div>
-
-        <footer className="modal-card__foot">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>取消</button>
-          <button type="submit" className="btn btn--primary" disabled={submitting}>
-            {submitting ? "处理中…" : isRegister ? "注册并登录" : "登录"}
-          </button>
-        </footer>
-      </form>
+          <footer className="modal-card__foot">
+            <button type="button" className="btn btn--ghost" onClick={onClose}>取消</button>
+            <button type="submit" className="btn btn--primary" disabled={submitting}>
+              {submitting ? "处理中…" : isRegister ? "注册并登录" : "登录"}
+            </button>
+          </footer>
+        </form>
+      </div>
     </div>
   );
 }
