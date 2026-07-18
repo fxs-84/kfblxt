@@ -145,14 +145,14 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
         </summary>
         <ol style={{ paddingLeft: 20, lineHeight: 1.8 }}>
           <li>
-            下载 <strong>快速启动包</strong>:
-            <a href="https://github.com/fxs-84/kfblxt/raw/main/supabase-bootstrap.zip"
+            下载 <strong>数据库初始化 SQL</strong>:
+            <a href="https://github.com/fxs-84/kfblxt/raw/main/scripts/all-migrations.sql"
                target="_blank" rel="noopener"
                style={{ marginLeft: 6 }}>
-              📦 supabase-bootstrap.zip
+              📄 all-migrations.sql
             </a>
             <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-              (9 KB,内含 SQL + 指南)
+              (约 60 KB,全部建表 + 安全策略合一,幂等可重跑)
             </span>
           </li>
           <li>
@@ -160,8 +160,8 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
           </li>
           <li>点 <strong>New Project</strong>,选个 region,设数据库密码</li>
           <li>
-            进项目 → 左侧 <strong>SQL Editor</strong> → 把下载的 4 个 <code>.sql</code> 文件
-            依次全粘到查询框 → 每个点 <strong>Run</strong>
+            进项目 → 左侧 <strong>SQL Editor</strong> → 把下载的 <code>all-migrations.sql</code>
+            全文粘到查询框 → 点 <strong>Run</strong>(只需跑一次)
           </li>
           <li>
             左侧 <strong>Settings(齿轮)→ API</strong> → 复制

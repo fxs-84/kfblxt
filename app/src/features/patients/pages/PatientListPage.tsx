@@ -5,6 +5,7 @@ import { sortPatientsByCreatedDesc } from "../patient-sort";
 import { calcAge, formatDate, SEX_LABELS } from "../../../lib/format";
 import { useSession } from "../../../components/auth/useSession";
 import { MyFilterToggle, applyMyFilter } from "../../../components/auth/MyFilterToggle";
+import { hasSupabaseConfig } from "../../../lib/supabase";
 
 export function PatientListPage() {
   const navigate = useNavigate();
@@ -37,6 +38,11 @@ export function PatientListPage() {
           <p className="page-subtitle">神经科学特色病历 · 客户档案</p>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          {hasSupabaseConfig() && (
+            <Link to="/migrate" className="btn btn--ghost" style={{ fontSize: 13 }}>
+              导入本地数据
+            </Link>
+          )}
           <Link to="/patients/new" className="btn btn--primary">
             + 新建客户
           </Link>

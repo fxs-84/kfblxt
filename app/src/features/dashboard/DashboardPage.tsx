@@ -8,18 +8,7 @@ import { formatDate } from "../../lib/format";
 import { regionLabel } from "../../components/bodymap/regions";
 import { MyWorkStats } from "../../components/auth/MyWorkStats";
 import { hasSupabaseConfig } from "../../lib/supabase";
-
-function detectLocalData(): boolean {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("anrm_") && localStorage.getItem(key)) return true;
-    }
-  } catch {
-    /* noop */
-  }
-  return false;
-}
+import { hasLocalData } from "../../lib/migrate";
 
 function isThisMonth(d: Date): boolean {
   const now = new Date();
@@ -79,7 +68,7 @@ export function DashboardPage() {
         <Link to="/patients/new" className="btn btn--primary">+ 新建客户</Link>
       </header>
 
-      {hasSupabaseConfig() && detectLocalData() && (
+      {hasSupabaseConfig() && hasLocalData() && (
         <div
           className="card"
           style={{
@@ -92,7 +81,10 @@ export function DashboardPage() {
             background: "var(--color-accent-weak, #e6f0fa)",
           }}
         >
-          <span>检测到本浏览器有单机版数据。请按 MANUAL_MIGRATION.md 在 Supabase SQL Editor 手工执行迁移。</span>
+          <span>检测到本浏览器有单机版数据,可一键导入到当前 Supabase 机构。</span>
+          <Link to="/migrate" className="btn btn--primary" style={{ fontSize: 13 }}>
+            去导入
+          </Link>
         </div>
       )}
 

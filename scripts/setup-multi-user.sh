@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ANRM kfblxt — 把 4 个 SQL 迁移推到目标 Supabase 实例(自托管 OR 云)
+# ANRM kfblxt — 把全部 SQL 迁移推到目标 Supabase 实例(自托管 OR 云)
 #
 # 用法 1(自托管,有 psql):
 #   setup-multi-user.sh <SUPABASE_DB_URL> psql
@@ -31,13 +31,6 @@ MODE="${2:-psql}"
 
 # Supabase 不要在生产用 IF NOT EXISTS 反复 CREATE TABLE — 但我们的迁移都用了,所以可以幂等。
 
-MIGRATIONS=(
-  "0001_multitenant_baseline.sql"
-  "0002_audit_trail_and_tables.sql"
-  "0002_shares.sql"
-  "0003_share_snapshot.sql"
-)
-
 # 定位到本脚本所在 repo 根的 app/supabase/migrations/
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -48,6 +41,12 @@ if [[ ! -d "$MIGRATIONS_DIR" ]]; then
   echo "   请从 kfblxt 项目根目录运行此脚本。"
   exit 1
 fi
+
+# 自动枚举目录下全部迁移(0001..0010,按文件名排序),新增迁移无需改本脚本
+MIGRATIONS=()
+while IFS= read -r f; do
+  MIGRATIONS+=("$f")
+done < <(ls "$MIGRATIONS_DIR"/*.sql | xargs -n1 basename | sort)
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " ANRM kfblxt — Supabase 多用户模式初始化"
@@ -90,7 +89,7 @@ fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " ✓ 4 个 SQL 迁移已应用"
+echo " ✓ ${#MIGRATIONS[@]} 个 SQL 迁移已应用"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "下一步:"

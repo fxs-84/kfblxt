@@ -8,7 +8,7 @@
 | **B. 多人云端** | 配置 Supabase 云免费版 URL+key | Supabase PostgreSQL | 诊所多人、不愿运维服务器 |
 | **C. 多人局域网自托管** | 配置自托管 Supabase URL+key | 诊所本机 PostgreSQL | 数据不出诊所、有内部服务器 |
 
-**核心承诺:开发者不运营任何服务器。** 选 B 的人去 supabase.com 自己注册、跑 4 个 SQL 即可。选 C 的人在自己的诊所 PC 上跑。本文档是给采用者看的,不是给您(开发者)看的运维说明。
+**核心承诺:开发者不运营任何服务器。** 选 B 的人去 supabase.com 自己注册、跑 1 个 SQL(`scripts/all-migrations.sql`)即可。选 C 的人在自己的诊所 PC 上跑。本文档是给采用者看的,不是给您(开发者)看的运维说明。
 
 ---
 
@@ -45,14 +45,11 @@ npm install -g supabase
 ```bash
 supabase login
 supabase link --project-ref xxxx       # 您的 project ref,URL 里 xxxx 部分
-supabase db push                       # 自动跑 app/supabase/migrations/0001..0004
+supabase db push                       # 自动跑 app/supabase/migrations/0001..0010
 ```
 
-**方式二(不会用 CLI):** 进 Supabase 控制台 > SQL Editor,把下面 4 个文件内容依次粘进去运行:
-- `app/supabase/migrations/0001_multitenant_baseline.sql`
-- `app/supabase/migrations/0002_audit_trail_and_tables.sql`
-- `app/supabase/migrations/0002_shares.sql`
-- `app/supabase/migrations/0003_share_snapshot.sql`
+**方式二(不会用 CLI,推荐):** 进 Supabase 控制台 > SQL Editor,把 `scripts/all-migrations.sql` 全文粘进去,点一次 Run 即可。
+该文件已把 `app/supabase/migrations/` 下 0001–0010 共 11 个迁移合一,且全部幂等(IF NOT EXISTS / DROP IF EXISTS),重复执行不会报错。
 
 ### 步骤 3:配置环境变量
 复制 `app/.env.example` 为 `app/.env.local`,填入:
@@ -115,7 +112,7 @@ docker compose up -d
 bash scripts/setup-multi-user.sh http://<内网IP>:8000 postgres your-password
 ```
 
-(或手动跑 4 个 SQL,见模式 B 步骤 2)
+(或手动跑 all-migrations.sql,见模式 B 步骤 2)
 
 ### 步骤 4:配置前端 .env.local
 
@@ -169,7 +166,7 @@ Error: No matching Supabase CLI binary package found for win32-x64
 | **C. 直接下 EXE** | https://github.com/supabase/cli/releases → `supabase_windows_amd64.zip`,解压加 PATH | 网络受限 / 不能用 winget |
 | **D. Docker** | `docker run --rm -v "$PWD:/app" -w /app supabase/cli db push` | 有 Docker 的人 |
 
-**强烈建议诊所管理员直接走方案 A** — 不依赖系统级安装,把 4 个 SQL 复制粘贴,5 分钟搞定,无踩坑风险。
+**强烈建议诊所管理员直接走方案 A** — 不依赖系统级安装,把 1 个 SQL 复制粘贴,5 分钟搞定,无踩坑风险。
 
 ---
 

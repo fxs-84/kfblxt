@@ -17,8 +17,8 @@
 `getSupabase()` 懒初始化:有 env → 走 Supabase,没 env → 落回 localStorage。**前端代码无 if 分支**,所有调用经过 `*-supabase.ts` 双模式分发器。所以同一份代码:
 
 - 单机:开箱即用,演示数据自动种入
-- 多人云端:诊所用户自己注册 Supabase 免费层,跑 4 个 SQL,填 URL+anon key
-- 局域网自托管:诊所用户在自托管 Supabase 跑官方 docker,同样跑 4 个 SQL
+- 多人云端:诊所用户自己注册 Supabase 免费层,跑 1 个 SQL(`scripts/all-migrations.sql`),填 URL+anon key
+- 局域网自托管:诊所用户在自托管 Supabase 跑官方 docker,同样跑这 1 个 SQL
 
 **开发者不运营任何服务器。** 用户文档见 [`docs/SELF_HOST_GUIDE.md`](docs/SELF_HOST_GUIDE.md)。
 
@@ -53,7 +53,7 @@ npm run dev                         # http://localhost:5173
 
 **完整配置流程**:
 1. **用户**自己到 supabase.com 注册免费 project(5 分钟,见配置页面里的 5 步折叠教程)
-2. **用户**跑 4 个 SQL migration(配置页面里有 raw 链接,一键复制)
+2. **用户**跑 `scripts/all-migrations.sql`(配置页面里有 raw 链接,一键复制;11 个迁移合一,幂等)
 3. **用户**在配置页填 URL + anon key → 完成
 
 **开发者(您)做什么**:**什么都不用做**。一份代码托管在 GitHub Pages,任何用户访问都会自己填自己的 Supabase。
@@ -61,7 +61,7 @@ npm run dev                         # http://localhost:5173
 **完整技术说明**见 [`docs/SELF_HOST_GUIDE.md`](docs/SELF_HOST_GUIDE.md)。
 
 后端已就绪:
-- ✅ 14 张临床业务表的 Supabase 迁移(`app/supabase/migrations/`) + RLS + 审计
+- ✅ 13 张临床业务表 + 6 张会员积分表的 Supabase 迁移(`app/supabase/migrations/`) + RLS + 审计
 - ✅ 多租户(机构)隔离,RLS 下沉到数据库
 - ✅ RBAC 角色:`admin` / `physician` / `therapist`
 - ✅ `share` 模块已 dual-mode(做其它业务的样板)
@@ -83,10 +83,10 @@ kfblxt/
 │   │   │   │   assessments/auth/    # ⏳ 改造中
 │   │   │   └── agent/                # AI 助手(规则引擎 + 可选 LLM)
 │   │   └── lib/                      # 仓储基础设施、Supabase client、RBAC
-│   ├── supabase/migrations/0001..0004.sql
+│   ├── supabase/migrations/0001..0010.sql
 │   └── .env.example
 ├── scripts/
-│   └── setup-multi-user.sh           # 一键应用 4 个 SQL → 目标 Supabase 实例
+│   └── setup-multi-user.sh           # 一键应用全部 SQL 迁移 → 目标 Supabase 实例
 ├── docs/
 │   └── SELF_HOST_GUIDE.md            # 9 步部署指南(三种模式)
 └── docker-compose.yml                # 诊所自托管 docker 编排(前端)
