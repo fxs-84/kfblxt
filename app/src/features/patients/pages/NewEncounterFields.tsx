@@ -51,13 +51,13 @@ export function EncounterFields({ value, onChange }: Props) {
       {/* 基本字段 */}
       <div style={{ display: "flex", gap: "var(--space-3)" }}>
         <div className="field" style={{ flex: 1 }}>
-          <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>就诊日期</label>
-          <input type="date" value={value.encounterDate}
+          <label htmlFor="enc-encounter-date" style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>就诊日期</label>
+          <input id="enc-encounter-date" type="date" value={value.encounterDate}
             onChange={(e) => onChange(set(value, { encounterDate: e.target.value }))} />
         </div>
         <div className="field" style={{ flex: 1 }}>
-          <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>就诊类型</label>
-          <select value={value.visitType}
+          <label htmlFor="enc-visit-type" style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>就诊类型</label>
+          <select id="enc-visit-type" value={value.visitType}
             onChange={(e) => onChange(set(value, { visitType: e.target.value as "初诊" | "复诊" }))}>
             <option value="初诊">初诊</option>
             <option value="复诊">复诊</option>
@@ -67,14 +67,14 @@ export function EncounterFields({ value, onChange }: Props) {
 
       {/* 症状定位 */}
       <div className="field">
-        <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>症状定位 (点击标记)</label>
+        <span style={{ fontSize: "var(--text-sm)", fontWeight: 600, display: "block" }}>症状定位 (点击标记)</span>
         <BodyMap value={value.chiefComplaint.regions}
           onChange={(regions) => onChange(setCC(value, { regions }))} />
       </div>
 
       <div className="field">
-        <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>皮区 / 部位备注</label>
-        <input value={value.chiefComplaint.distributionNote}
+        <label htmlFor="enc-dist-note" style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>皮区 / 部位备注</label>
+        <input id="enc-dist-note" value={value.chiefComplaint.distributionNote}
           onChange={(e) => onChange(setCC(value, { distributionNote: e.target.value }))}
           placeholder="如:S1 皮区、坐骨神经走行" />
       </div>
@@ -113,21 +113,21 @@ export function EncounterFields({ value, onChange }: Props) {
       {/* VAS + 病程 */}
       <div style={{ display: "flex", gap: "var(--space-3)" }}>
         <div className="field" style={{ flex: 1 }}>
-          <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>疼痛 VAS (0-10)</label>
-          <input type="number" min={0} max={10} value={value.chiefComplaint.vas}
+          <label htmlFor="enc-vas" style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>疼痛 VAS (0-10)</label>
+          <input id="enc-vas" type="number" min={0} max={10} value={value.chiefComplaint.vas}
             onChange={(e) => onChange(setCC(value, { vas: Number(e.target.value) }))} />
         </div>
         <div className="field" style={{ flex: 1 }}>
-          <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>病程</label>
-          <input value={value.chiefComplaint.durationText}
+          <label htmlFor="enc-duration" style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>病程</label>
+          <input id="enc-duration" value={value.chiefComplaint.durationText}
             onChange={(e) => onChange(setCC(value, { durationText: e.target.value }))}
             placeholder="如:3个月" />
         </div>
       </div>
 
       <div className="field">
-        <label style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>发病诱因 (选填)</label>
-        <input value={value.chiefComplaint.onset}
+        <label htmlFor="enc-trigger" style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>发病诱因 (选填)</label>
+        <input id="enc-trigger" value={value.chiefComplaint.onset}
           onChange={(e) => onChange(setCC(value, { onset: e.target.value }))}
           placeholder="如:无明显诱因、运动后、外伤后" />
       </div>

@@ -5,6 +5,7 @@ import { resetSession, useSession } from "../components/auth/useSession";
 import { getSupabase, resetSupabaseClient } from "../lib/supabase";
 import { AgentMonitor } from "../features/agent/AgentMonitor";
 import { AgentChatFAB } from "../features/agent/AgentChatFAB";
+import { ToastHost } from "../components/ui/ToastHost";
 
 interface NavItem {
   to: string;
@@ -121,6 +122,7 @@ export function AppLayout() {
 
       <AgentMonitor />
       <AgentChatFAB />
+      <ToastHost />
       <LoginDialog
         open={loginOpen}
         current={session}

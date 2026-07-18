@@ -67,14 +67,14 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
       {showForm && (
         <div style={{ padding: "0 var(--space-5) var(--space-3)", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+            <input type="date" aria-label="复诊日期" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               style={{ padding: "2px 6px", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: "var(--text-xs)" }} />
             {fuSuggestion && (
               <span className="badge badge--normal" style={{ fontSize: "10px" }} title={fuSuggestion.rationale}>
                 🧠 {fuSuggestion.intervalDays}天
               </span>
             )}
-            <input placeholder="备注" value={note} onChange={(e) => setNote(e.target.value)}
+            <input aria-label="备注" placeholder="备注" value={note} onChange={(e) => setNote(e.target.value)}
               style={{ flex: 1, minWidth: 150, padding: "2px 6px", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: "var(--text-xs)" }} />
             <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "3px 12px" }}
               disabled={saving} onClick={handleSave}>{saving ? "…" : "保存"}</button>

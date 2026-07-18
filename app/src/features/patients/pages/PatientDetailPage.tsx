@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { toast } from "../../../lib/toast";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { usePatient, useDeletePatient } from "../usePatients";
 import { getSession } from "../../../lib/session";
@@ -98,7 +99,7 @@ export function PatientDetailPage() {
     } catch (e: unknown) {
       console.error("[删除客户] 失败:", e);
       const msg = e instanceof Error ? e.message : "删除失败";
-      alert(msg + "\n\n当前会话角色: " + getSession().role);
+      toast.error(msg);
       setConfirmDelete(false);
     }
   };

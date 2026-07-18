@@ -9,6 +9,7 @@ import {
   deleteReward,
   findAllTiers,
 } from "../rule.repository";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import {
   REWARD_CATEGORY_LABEL,
   REWARD_CATEGORIES,
@@ -24,6 +25,7 @@ export function ProductManagePage() {
   const [tiers, setTiers] = useState<TierConfig[]>([]);
   const [editing, setEditing] = useState<RewardProduct | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const reload = async () => {
     setProducts(await findAllRewards());
@@ -44,9 +46,7 @@ export function ProductManagePage() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("确定删除?")) return;
-    await deleteReward(id);
-    await reload();
+    setPendingDelete(id);
   };
 
   const toggle = async (p: RewardProduct) => {
@@ -119,6 +119,22 @@ export function ProductManagePage() {
           })}
         </tbody>
       </table>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="删除商品"
+        message="确定删除该商品？删除后无法恢复。"
+        confirmLabel="删除"
+        danger
+        onClose={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          if (pendingDelete) {
+            await deleteReward(pendingDelete);
+            await reload();
+          }
+          setPendingDelete(null);
+        }}
+      />
     </div>
   );
 }

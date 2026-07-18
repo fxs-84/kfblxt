@@ -128,14 +128,14 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
             )}
           </div>
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
-            <select style={{ padding: "var(--space-2)", fontSize: "var(--text-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)" }} value={type} onChange={(e) => setType(e.target.value as BillingType)}>
+            <select aria-label="收/支类型" style={{ padding: "var(--space-2)", fontSize: "var(--text-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)" }} value={type} onChange={(e) => setType(e.target.value as BillingType)}>
               {BILLING_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
-            <input className="exam-number" style={{ width: 140, padding: "var(--space-3) var(--space-4)", fontSize: "var(--text-lg)", fontWeight: 700 }} type="number" step="0.01" min="0"
+            <input className="exam-number" aria-label="金额" style={{ width: 140, padding: "var(--space-3) var(--space-4)", fontSize: "var(--text-lg)", fontWeight: 700 }} type="number" step="0.01" min="0"
               placeholder="金额" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <input className="exam-number" style={{ width: 100, padding: "var(--space-2) var(--space-3)", fontSize: "var(--text-base)" }} type="number" min="0"
+            <input className="exam-number" aria-label="卡次" style={{ width: 100, padding: "var(--space-2) var(--space-3)", fontSize: "var(--text-base)" }} type="number" min="0"
               placeholder="卡次" value={sessions} onChange={(e) => setSessions(e.target.value)} />
-            <input placeholder="备注(必填)" value={note} onChange={(e) => setNote(e.target.value)}
+            <input aria-label="备注" placeholder="备注(必填)" value={note} onChange={(e) => setNote(e.target.value)}
               style={{ flex: 1, minWidth: 200, padding: "var(--space-3) var(--space-4)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "var(--text-base)" }} />
             <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "3px 12px" }}
               disabled={saving} onClick={handleSave}>{saving ? "…" : "保存"}</button>

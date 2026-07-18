@@ -2,6 +2,7 @@
  * 规则测试沙盒 — 模拟事件,看哪些规则会触发,得到多少积分
  */
 import { useState, useEffect } from "react";
+import { toast } from "../../../lib/toast";
 import { findAllRules, getOrCreateMembership } from "../rule.repository";
 import { processEvent } from "../rule-engine";
 import type { PointsRule, TriggerEvent, MemberTier } from "../models";
@@ -27,7 +28,7 @@ export function RuleTestPage() {
   }, []);
 
   const runTest = async (event: TriggerEvent) => {
-    if (!patientId.trim()) { alert("请输入客户 ID"); return; }
+    if (!patientId.trim()) { toast.warning("请输入客户 ID"); return; }
     // 临时设置客户 tier
     const m = await getOrCreateMembership(patientId.trim());
     const { updateMembership } = await import("../rule.repository");

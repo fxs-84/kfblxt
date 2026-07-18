@@ -2,6 +2,7 @@
  * 规则编辑器 — 可视化编辑
  */
 import { useEffect, useState } from "react";
+import { toast } from "../../../lib/toast";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ruleRepository,
@@ -59,7 +60,7 @@ export function RuleEditPage() {
   if (loading || !rule) return <div style={{ padding: 24 }}>加载中...</div>;
 
   const save = async () => {
-    if (!rule.name.trim()) { alert("请输入规则名称"); return; }
+    if (!rule.name.trim()) { toast.warning("请输入规则名称"); return; }
     if (isNew) {
       await createRule(rule);
     } else {

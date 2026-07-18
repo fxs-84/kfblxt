@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { toast } from "../../../lib/toast";
 import { useDraftAutosave } from "../useDraftAutosave";
 import { useCreateExamSession } from "../useExam";
 import { EXAM_CATALOG } from "../exam-catalog";
@@ -216,8 +217,7 @@ export function ExamForm({ encounterId, patientId, onDone }: ExamFormProps) {
       onDone();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "保存查体失败,请重试";
-      // eslint-disable-next-line no-alert
-      alert(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }

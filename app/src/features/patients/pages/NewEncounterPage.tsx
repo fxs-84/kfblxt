@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "../../../lib/toast";
 import { useDraftAutosave } from "../../exam/useDraftAutosave";
 import { useCreateEncounter } from "../../encounters/useEncounters";
 import { useCreateExamSession } from "../../exam/useExam";
@@ -124,16 +125,14 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
           <div className="form-actions">
             <button className="btn btn--primary" onClick={async () => {
               if (Object.keys(examResults).length === 0) {
-                // eslint-disable-next-line no-alert
-                alert("请至少填写一项查体结果");
+                toast.warning("请至少填写一项查体结果");
                 return;
               }
               try {
                 await createExam.mutateAsync({ encounterId, patientId, results: examResults });
               } catch (e: unknown) {
                 const message = e instanceof Error ? e.message : "保存查体失败,请重试";
-                // eslint-disable-next-line no-alert
-                alert(message);
+                toast.error(message);
               }
             }} style={{ fontSize: "var(--text-base)" }}>保存查体</button>
           </div>

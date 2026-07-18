@@ -53,6 +53,7 @@ export function PatientListPage() {
         <input
           className="search-bar__input"
           placeholder="按姓名、手机号或病历号搜索…"
+          aria-label="搜索客户"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

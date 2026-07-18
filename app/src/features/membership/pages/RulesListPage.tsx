@@ -1,16 +1,19 @@
 /**
  * 积分规则列表页 — 治疗师/管理员可启用/禁用/编辑/复制
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRules } from "../hooks/useMembership";
 import { ruleRepository } from "../rule.repository";
 import { TRIGGER_LABEL } from "../models";
 import type { PointsRule } from "../models";
 import { useNavigate } from "react-router-dom";
+import { toast } from "../../../lib/toast";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 
 export function RulesListPage() {
   const [rules, reload] = useRules();
   const navigate = useNavigate();
+  const [pendingDelete, setPendingDelete] = useState<PointsRule | null>(null);
 
   const toggle = async (r: PointsRule) => {
     await ruleRepository.update(r.id, { enabled: !r.enabled });
@@ -29,11 +32,9 @@ export function RulesListPage() {
     await reload();
   };
 
-  const remove = async (r: PointsRule) => {
-    if (r.builtin) { alert("系统预设规则不可删除,可禁用"); return; }
-    if (!confirm(`确定删除规则 "${r.name}"?`)) return;
-    await ruleRepository.remove(r.id);
-    await reload();
+  const remove = (r: PointsRule) => {
+    if (r.builtin) { toast.warning("系统预设规则不可删除,可禁用"); return; }
+    setPendingDelete(r);
   };
 
   return (
@@ -114,6 +115,22 @@ export function RulesListPage() {
           </div>
         </div>
       ))}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="删除规则"
+        message={pendingDelete ? `确定删除规则 "${pendingDelete.name}"?` : ""}
+        confirmLabel="删除"
+        danger
+        onClose={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          if (pendingDelete) {
+            await ruleRepository.remove(pendingDelete.id);
+            await reload();
+          }
+          setPendingDelete(null);
+        }}
+      />
     </div>
   );
 }

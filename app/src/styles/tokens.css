@@ -7,7 +7,7 @@
   --color-surface-sunken: #e9eef3;
   --color-border: #d8dee8;
   --color-text: #1a2332;
-  --color-text-muted: #5e6f82;
+  --color-text-muted: #4a5568;
 
   /* 主色 — 深医疗青 */
   --color-accent: #1b6d8f;
@@ -21,7 +21,7 @@
   --color-normal-weak: #e8f5ed;
   --color-abnormal: #d94a3a;
   --color-abnormal-weak: #fef0ed;
-  --color-caution: #d48c2c;
+  --color-caution: #b45f06;
   --color-caution-weak: #fef8ed;
   --color-critical: #b82020;
 
@@ -66,4 +66,16 @@
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 关爱对动态效果敏感的用户（WCAG 2.3.3） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

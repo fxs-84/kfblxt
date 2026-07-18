@@ -20,6 +20,7 @@ import {
 import { usePatients } from "../../patients/usePatients";
 import { useSession } from "../../../components/auth/useSession";
 import { can } from "../../../lib/rbac";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import type {
   PatientMembership,
   PointsLog,
@@ -46,6 +47,7 @@ export function MembershipCenterPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [deletingPatientId, setDeletingPatientId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const reload = useMemo(
     () => async () => {
@@ -76,12 +78,15 @@ export function MembershipCenterPage() {
    * localStorage 数据保留(deletedAt 时间戳)作审计/计费证据。
    * 仅 admin 可见入口;点击 → window.confirm → cascade。
    */
-  const handleDeleteMembership = async (patientId: string, patientName: string) => {
+  const handleDeleteMembership = (patientId: string, patientName: string) => {
     if (deletingPatientId) return;
-    const ok = window.confirm(
-      `确定删除会员 ${patientName}?\n该客户的会员档案、积分流水与兑换订单将不再显示,但后台数据保留以备审计。`,
-    );
-    if (!ok) return;
+    setPendingDelete({ id: patientId, name: patientName });
+  };
+
+  const confirmDeleteMembership = async () => {
+    if (!pendingDelete) return;
+    const { id: patientId } = pendingDelete;
+    setPendingDelete(null);
     setDeletingPatientId(patientId);
     try {
       const [mCount, lCount, rCount] = await Promise.all([
@@ -316,6 +321,16 @@ export function MembershipCenterPage() {
           </tbody>
         </table>}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="删除会员"
+        message={pendingDelete ? `确定删除会员 ${pendingDelete.name}?\n该客户的会员档案、积分流水与兑换订单将不再显示,但后台数据保留以备审计。` : ""}
+        confirmLabel="删除"
+        danger
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmDeleteMembership}
+      />
     </div>
   );
 }

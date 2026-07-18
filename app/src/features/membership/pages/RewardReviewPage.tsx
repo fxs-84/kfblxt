@@ -9,11 +9,13 @@ import {
 import { fulfillRedemption, cancelRedemption } from "../redemption.service";
 import { useSession } from "../../../components/auth/useSession";
 import type { Redemption, PatientMembership } from "../models";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 
 export function RewardReviewPage() {
   const [orders, setOrders] = useState<Redemption[]>([]);
   const [members, setMembers] = useState<PatientMembership[]>([]);
   const [filter, setFilter] = useState<"pending" | "all" | "fulfilled" | "cancelled">("pending");
+  const [pendingCancel, setPendingCancel] = useState<string | null>(null);
   const session = useSession();
 
   const reload = async () => {
@@ -29,8 +31,11 @@ export function RewardReviewPage() {
     await fulfillRedemption(id, session?.userId ?? "system");
     await reload();
   };
-  const handleCancel = async (id: string) => {
-    if (!confirm("确定取消此兑换?积分将退还给客户。")) return;
+  const handleCancel = (id: string) => setPendingCancel(id);
+  const confirmCancel = async () => {
+    if (!pendingCancel) return;
+    const id = pendingCancel;
+    setPendingCancel(null);
     await cancelRedemption(id, session?.userId ?? "system");
     await reload();
   };
@@ -99,6 +104,16 @@ export function RewardReviewPage() {
           </div>
         );
       })}
+
+      <ConfirmDialog
+        open={pendingCancel !== null}
+        title="取消兑换"
+        message="确定取消此兑换?积分将退还给客户。"
+        confirmLabel="取消兑换"
+        danger
+        onClose={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
+      />
     </div>
   );
 }
