@@ -110,8 +110,8 @@ export function MembershipDashboard() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 16 }}>
             <thead>
               <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-                <th style={{ textAlign: "left", padding: 8 }}>规则</th>
-                <th style={{ textAlign: "right", padding: 8 }}>触发次数</th>
+                <th scope="col" style={{ textAlign: "left", padding: 8 }}>规则</th>
+                <th scope="col" style={{ textAlign: "right", padding: 8 }}>触发次数</th>
               </tr>
             </thead>
             <tbody>
@@ -133,8 +133,8 @@ export function MembershipDashboard() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-                <th style={{ textAlign: "left", padding: 8 }}>商品</th>
-                <th style={{ textAlign: "right", padding: 8 }}>兑换次数</th>
+                <th scope="col" style={{ textAlign: "left", padding: 8 }}>商品</th>
+                <th scope="col" style={{ textAlign: "right", padding: 8 }}>兑换次数</th>
               </tr>
             </thead>
             <tbody>

@@ -86,7 +86,7 @@ export function AttachmentPanel({ encounterId }: AttachmentPanelProps) {
         <span className="attachment-card__meta">{formatSize(att.sizeBytes)} · {formatDate(att.createdAt)}</span>
         {att.note && <span className="attachment-card__note">{att.note}</span>}
       </div>
-      <button className="attachment-card__del" onClick={() => deleteAttachment.mutate(att.id)} title="删除">✕</button>
+      <button type="button" className="attachment-card__del" onClick={() => deleteAttachment.mutate(att.id)} title="删除">✕</button>
     </div>
   );
 
@@ -123,7 +123,7 @@ export function AttachmentPanel({ encounterId }: AttachmentPanelProps) {
           <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,.pdf"
             style={{ display: "none" }}
             onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
-          <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "3px 14px" }}
+          <button type="button" className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "3px 14px" }}
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}>
             {uploading ? "上传中…" : "📎 上传"}

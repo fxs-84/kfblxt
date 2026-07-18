@@ -68,7 +68,7 @@ export function BrainRegionPanel({ patientId, encounterId }: BrainRegionPanelPro
           <h3 className="panel__title">🧠 大脑区域定位表</h3>
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
             <span className="panel__hint">{list?.length ?? 0} 次记录</span>
-            <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>
+            <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>
               {latest ? "✏️ 重新填写" : "+ 新增填写"}
             </button>
           </div>

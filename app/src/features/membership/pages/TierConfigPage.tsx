@@ -96,8 +96,7 @@ function TierCard({ tier, onSave }: { tier: TierConfig; onSave: (t: TierConfig) 
         />
       </Field>
 
-      <button
-        type="button"
+      <button type="button"
         onClick={() => onSave(edit)}
         disabled={JSON.stringify(edit) === JSON.stringify(tier)}
         style={{

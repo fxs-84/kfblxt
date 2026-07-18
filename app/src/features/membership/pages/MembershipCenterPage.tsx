@@ -219,11 +219,11 @@ export function MembershipCenterPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-              <th style={{ padding: "8px 6px" }}>客户</th>
-              <th style={{ padding: "8px 6px" }}>等级</th>
-              <th style={{ padding: "8px 6px", textAlign: "right" }}>当前积分</th>
-              <th style={{ padding: "8px 6px", textAlign: "right" }}>累计获得</th>
-              <th style={{ padding: "8px 6px" }}>操作</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>客户</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>等级</th>
+              <th scope="col" style={{ padding: "8px 6px", textAlign: "right" }}>当前积分</th>
+              <th scope="col" style={{ padding: "8px 6px", textAlign: "right" }}>累计获得</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -287,11 +287,11 @@ export function MembershipCenterPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-              <th style={{ padding: "6px" }}>时间</th>
-              <th style={{ padding: "6px" }}>客户</th>
-              <th style={{ padding: "6px" }}>商品</th>
-              <th style={{ padding: "6px", textAlign: "right" }}>积分</th>
-              <th style={{ padding: "6px" }}>状态</th>
+              <th scope="col" style={{ padding: "6px" }}>时间</th>
+              <th scope="col" style={{ padding: "6px" }}>客户</th>
+              <th scope="col" style={{ padding: "6px" }}>商品</th>
+              <th scope="col" style={{ padding: "6px", textAlign: "right" }}>积分</th>
+              <th scope="col" style={{ padding: "6px" }}>状态</th>
             </tr>
           </thead>
           <tbody>

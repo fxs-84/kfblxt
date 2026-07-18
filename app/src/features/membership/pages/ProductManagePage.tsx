@@ -85,13 +85,13 @@ export function ProductManagePage() {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-            <th style={{ textAlign: "left", padding: 8 }}>商品</th>
-            <th style={{ textAlign: "left", padding: 8 }}>分类</th>
-            <th style={{ textAlign: "right", padding: 8 }}>积分</th>
-            <th style={{ textAlign: "left", padding: 8 }}>等级要求</th>
-            <th style={{ textAlign: "right", padding: 8 }}>库存</th>
-            <th style={{ textAlign: "center", padding: 8 }}>启用</th>
-            <th style={{ textAlign: "right", padding: 8 }}>操作</th>
+            <th scope="col" style={{ textAlign: "left", padding: 8 }}>商品</th>
+            <th scope="col" style={{ textAlign: "left", padding: 8 }}>分类</th>
+            <th scope="col" style={{ textAlign: "right", padding: 8 }}>积分</th>
+            <th scope="col" style={{ textAlign: "left", padding: 8 }}>等级要求</th>
+            <th scope="col" style={{ textAlign: "right", padding: 8 }}>库存</th>
+            <th scope="col" style={{ textAlign: "center", padding: 8 }}>启用</th>
+            <th scope="col" style={{ textAlign: "right", padding: 8 }}>操作</th>
           </tr>
         </thead>
         <tbody>

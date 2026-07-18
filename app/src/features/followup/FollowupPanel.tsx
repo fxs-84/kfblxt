@@ -102,7 +102,7 @@ export function FollowupPanel({ patientId, encounterId }: FollowupPanelProps) {
           ) : (
             <table className="table">
               <thead>
-                <tr><th>复诊日期</th><th>状态</th><th>备注</th><th style={{ width: 100 }}>操作</th></tr>
+                <tr><th scope="col">复诊日期</th><th scope="col">状态</th><th scope="col">备注</th><th scope="col" style={{ width: 100 }}>操作</th></tr>
               </thead>
               <tbody>
                 {filteredFollowups.map((f) => {

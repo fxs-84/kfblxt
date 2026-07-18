@@ -233,7 +233,7 @@ export function ExamForm({ encounterId, patientId, onDone }: ExamFormProps) {
       {draft.hasDraft && (
         <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--color-caution, #d48c2c)", fontWeight: 500 }}>
           💾 草稿已自动保存 {draft.lastSavedAt ? new Date(draft.lastSavedAt).toLocaleTimeString() : ""}
-          <button className="btn btn--ghost" style={{ fontSize: 10, marginLeft: 4 }} onClick={() => { draft.clearDraft(); setResults({}); }}>清空</button>
+          <button type="button" className="btn btn--ghost" style={{ fontSize: 10, marginLeft: 4 }} onClick={() => { draft.clearDraft(); setResults({}); }}>清空</button>
         </span>
       )}
       </div>

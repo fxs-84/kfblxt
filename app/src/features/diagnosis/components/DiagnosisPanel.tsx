@@ -103,7 +103,7 @@ const handleSave = async () => {
       <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>
         <div className="panel__head">
           <h3 className="panel__title">诊断</h3>
-          <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>编辑</button>
+          <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>编辑</button>
         </div>
         <div style={{ padding: "0 var(--space-5) var(--space-4)" }}>
 
@@ -273,10 +273,10 @@ const handleSave = async () => {
         {error && <div className="field__error" style={{ marginTop: "var(--space-4)" }}>{error}</div>}
 
         <div className="form-actions" style={{ padding: "var(--space-4) 0 0" }}>
-          <button className="btn btn--primary" disabled={saving} onClick={handleSave}>
+          <button type="button" className="btn btn--primary" disabled={saving} onClick={handleSave}>
             {saving ? "保存中…" : "保存诊断"}
           </button>
-          {diagnosis && <button className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>}
+          {diagnosis && <button type="button" className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>}
         </div>
       </div>
     </div>

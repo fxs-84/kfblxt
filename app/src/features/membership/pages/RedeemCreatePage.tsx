@@ -168,19 +168,16 @@ export function RedeemCreatePage() {
 
       {/* 分类筛选 */}
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          onClick={() => setCategoryFilter("all")}
+        <button type="button"
+ onClick={() => setCategoryFilter("all")}
           className={`btn ${categoryFilter === "all" ? "btn--primary" : "btn--ghost"}`}
           style={{ fontSize: 12, padding: "4px 10px" }}
         >
           全部
         </button>
         {(Object.keys(REWARD_CATEGORY_LABEL) as RewardCategory[]).map(cat => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setCategoryFilter(cat)}
+          <button type="button"
+            key={cat} onClick={() => setCategoryFilter(cat)}
             className={`btn ${categoryFilter === cat ? "btn--primary" : "btn--ghost"}`}
             style={{ fontSize: 12, padding: "4px 10px" }}
           >
@@ -204,10 +201,8 @@ export function RedeemCreatePage() {
                 || (r.tierRequired && tier !== r.tierRequired)
                 || r.stock === 0;
               return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setSelectedRewardId(r.id)}
+                <button type="button"
+                  key={r.id} onClick={() => setSelectedRewardId(r.id)}
                   disabled={blocked}
                   data-testid={`reward-${r.id}`}
                   style={{
@@ -277,9 +272,8 @@ export function RedeemCreatePage() {
               {error}
             </div>
           )}
-          <button
-            type="button"
-            onClick={handleSubmit}
+          <button type="button"
+ onClick={handleSubmit}
             disabled={!canSubmit}
             className="btn btn--primary"
             style={{ width: "100%", padding: "10px", fontSize: 14 }}

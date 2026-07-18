@@ -209,7 +209,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                     ? "⚠️ LLM 配置存在但调用失败,已用规则引擎"
                     : "📋 规则引擎(未配置 LLM)"}
             </span>
-            <button
+            <button type="button"
               className="btn btn--ghost"
               style={{ fontSize: "10px", padding: "1px 6px", marginLeft: "auto" }}
               onClick={() => { const opening = !showLlmSettings; setShowLlmSettings(opening); if (opening) setKeyAlreadySet(Boolean(getLLMConfigSync())); }}
@@ -219,12 +219,12 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             </button>
           </div>
         </div>
-        <button className="btn btn--ghost" style={{ padding: "2px 8px" }} onClick={() => setOpen(false)}>✕</button>
+        <button type="button" className="btn btn--ghost" style={{ padding: "2px 8px" }} onClick={() => setOpen(false)}>✕</button>
       </div>
 
       <nav className="ai-panel__tabs">
         {(["analysis", "narrative", "dictate"] as const).map((k) => (
-          <button key={k} className={`ai-tab ${tab === k ? "ai-tab--active" : ""}`} onClick={() => setTab(k)}>
+          <button type="button" key={k} className={`ai-tab ${tab === k ? "ai-tab--active" : ""}`} onClick={() => setTab(k)}>
             {k === "analysis" ? "🧠 分析" : k === "narrative" ? "📝 笔记" : "🎤 语音"}
           </button>
         ))}
@@ -247,7 +247,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                 { label: "DeepSeek V4", url: "https://api.deepseek.com/chat/completions", model: "deepseek-v4-pro" },
                 { label: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
               ] as const).map(p => (
-                <button key={p.label} type="button" onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: "" })} style={{
+                <button type="button" key={p.label} onClick={() => setLlmForm({ apiUrl: p.url, apiKey: "", model: p.model, corsProxy: "" })} style={{
                   padding: "3px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
                   background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
                   cursor: "pointer",
@@ -303,7 +303,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             </div>
             {llmError && <div className="field__error" style={{ marginBottom: "var(--space-2)" }}>{llmError}</div>}
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button
+              <button type="button"
                 className="btn btn--primary"
                 style={{ fontSize: "var(--text-xs)" }}
                 onClick={async () => {
@@ -330,7 +330,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                 }}
               >保存</button>
               {llmConfigured && (
-                <button
+                <button type="button"
                   className="btn btn--ghost"
                   style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
                   onClick={() => {
@@ -374,7 +374,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                     ))
                   )}
                   {backfill?.onAdoptDiagnosis && result && result.localizationSuggestions.length > 0 && (
-                    <button
+                    <button type="button"
                       className="btn btn--primary" style={{ marginTop: "var(--space-2)", fontSize: "var(--text-xs)", width: "100%" }}
                       disabled={adopting === "diagnosis"}
                       onClick={() => {
@@ -416,7 +416,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                                 );
                               })()}
                               {backfill?.onAdoptIntervention && (
-                                <button
+                                <button type="button"
                                   className="btn btn--primary" style={{ marginLeft: "auto", fontSize: "10px", padding: "1px 8px" }}
                                   disabled={adopting === s.interventionId}
                                   onClick={() => {
@@ -453,12 +453,12 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                   </div>
                 ))}
                 <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)", flexWrap: "wrap" }}>
-                  <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }}
+                  <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }}
                     onClick={() => navigator.clipboard?.writeText(soapFull).catch(() => {})}>
                     📋 复制
                   </button>
                   {backfill?.onSaveSoap && (
-                    <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }}
+                    <button type="button" className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }}
                       disabled={savingSoap}
                       onClick={async () => {
                         setSavingSoap(true);
@@ -484,7 +484,7 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
             ) : (
               <>
                 <div className="ai-dictate__controls" style={{ marginBottom: "var(--space-2)" }}>
-                  <button className={`btn ${vListening ? "btn--primary" : "btn--ghost"}`}
+                  <button type="button" className={`btn ${vListening ? "btn--primary" : "btn--ghost"}`}
                     style={{ fontSize: "var(--text-xs)" }}
                     onClick={() => {
                       if (vListening) { recRef.current?.stop(); setVListening(false); }
@@ -520,9 +520,9 @@ export function AIAssistantPanel({ scene, encounter, examSessions, diagnosis, ba
                 )}
 
                 <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
-                  <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }}
+                  <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }}
                     onClick={() => navigator.clipboard?.writeText(vText).catch(() => {})}>📋 复制</button>
-                  <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }}
+                  <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }}
                     onClick={() => { setVText(""); setVMatches([]); }}>清空</button>
                 </div>
               </>

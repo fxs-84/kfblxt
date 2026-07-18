@@ -70,8 +70,8 @@ export function CloseChecklist({ encounterId, hasSoap, onConfirm, onCancel, clos
         </div>
 
         <div className="checklist-card__actions">
-          <button className="btn btn--ghost" onClick={onCancel} disabled={closing}>返回补充</button>
-          <button className="btn btn--primary" onClick={onConfirm} disabled={closing}>
+          <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={closing}>返回补充</button>
+          <button type="button" className="btn btn--primary" onClick={onConfirm} disabled={closing}>
             {closing ? "保存中…" : "仍然结束就诊"}
           </button>
         </div>

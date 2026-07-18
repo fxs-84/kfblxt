@@ -113,9 +113,8 @@ export function ShopPage({ patientId: propPatientId, onClose }: Props) {
                 {requiredTier && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: requiredTier.color + "22", color: requiredTier.color }}>{requiredTier.icon} {requiredTier.name}</span>}
               </div>
               {r.stock !== -1 && <div style={{ fontSize: 10, color: "var(--color-text-muted)", marginBottom: 6 }}>库存: {r.stock}</div>}
-              <button
-                type="button"
-                onClick={() => handleRedeem(r)}
+              <button type="button"
+ onClick={() => handleRedeem(r)}
                 disabled={disabled}
                 style={{
                   width: "100%", padding: "6px 12px",

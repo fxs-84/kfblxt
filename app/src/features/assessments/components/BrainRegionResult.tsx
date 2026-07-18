@@ -52,11 +52,11 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
           </span>
           {confirming ? (
             <>
-              <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }} onClick={handleDelete}>确认删除</button>
-              <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setConfirming(false)}>取消</button>
+              <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }} onClick={handleDelete}>确认删除</button>
+              <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setConfirming(false)}>取消</button>
             </>
           ) : (
-            <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setConfirming(true)}>删除</button>
+            <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setConfirming(true)}>删除</button>
           )}
         </div>
       </div>

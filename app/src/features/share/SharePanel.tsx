@@ -68,7 +68,7 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
 
       {!showForm && shares.length === 0 && (
         <div style={{ padding: "0 var(--space-5) var(--space-4)" }}>
-          <button className="btn btn--primary" onClick={() => setShowForm(true)}>
+          <button type="button" className="btn btn--primary" onClick={() => setShowForm(true)}>
             + 生成分享链接
           </button>
         </div>
@@ -100,10 +100,10 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
               </div>
             </div>
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button className="btn btn--primary" disabled={saving} onClick={handleGenerate}>
+              <button type="button" className="btn btn--primary" disabled={saving} onClick={handleGenerate}>
                 {saving ? "生成中…" : "生成分享链接"}
               </button>
-              <button className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>
+              <button type="button" className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>
             </div>
           </div>
         </div>
@@ -131,16 +131,16 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
                     <input readOnly value={url}
                       onClick={(e) => (e.target as HTMLInputElement).select()}
                       style={{ flex: 1, padding: "var(--space-1) var(--space-2)", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: "var(--text-xs)", fontFamily: "var(--font-mono)", background: "var(--color-surface-sunken)" }} />
-                    <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }}
+                    <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }}
                       onClick={() => navigator.clipboard?.writeText(url)}>复制</button>
                   </div>
                   <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
                     {!s.revoked && (
-                      <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
+                      <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
                         onClick={() => revokeShare.mutate(s.id)}>撤销分享</button>
                     )}
                     {!showForm && (
-                      <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }}
+                      <button type="button" className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }}
                         onClick={() => setShowForm(true)}>+ 新建分享</button>
                     )}
                   </div>

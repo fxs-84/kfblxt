@@ -274,12 +274,12 @@ export function PointsHistoryPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-              <th style={{ padding: "8px 6px" }}>时间</th>
-              <th style={{ padding: "8px 6px" }}>事件</th>
-              <th style={{ padding: "8px 6px" }}>规则</th>
-              <th style={{ padding: "8px 6px", textAlign: "right" }}>变动</th>
-              <th style={{ padding: "8px 6px", textAlign: "right" }}>余额</th>
-              <th style={{ padding: "8px 6px" }}>备注</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>时间</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>事件</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>规则</th>
+              <th scope="col" style={{ padding: "8px 6px", textAlign: "right" }}>变动</th>
+              <th scope="col" style={{ padding: "8px 6px", textAlign: "right" }}>余额</th>
+              <th scope="col" style={{ padding: "8px 6px" }}>备注</th>
             </tr>
           </thead>
           <tbody>

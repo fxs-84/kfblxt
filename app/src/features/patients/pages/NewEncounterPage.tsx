@@ -88,11 +88,11 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
             {error && <div className="field__error" style={{ marginTop: "var(--space-3)" }}>{error}</div>}
           </div>
           <div className="form-actions">
-            <button className="btn btn--primary" onClick={handleSaveEncounter} disabled={saving}
+            <button type="button" className="btn btn--primary" onClick={handleSaveEncounter} disabled={saving}
               style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
               {saving ? "保存中…" : "💾 保存基本信息"}
             </button>
-            <button className="btn btn--ghost" onClick={onDone}>取消</button>
+            <button type="button" className="btn btn--ghost" onClick={onDone}>取消</button>
           </div>
         </div>
       </div>
@@ -123,7 +123,7 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
             <ExamFields results={examResults} onChange={setExamResults} />
           </div>
           <div className="form-actions">
-            <button className="btn btn--primary" onClick={async () => {
+            <button type="button" className="btn btn--primary" onClick={async () => {
               if (Object.keys(examResults).length === 0) {
                 toast.warning("请至少填写一项查体结果");
                 return;
@@ -161,7 +161,7 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
       </FoldSection>
 
       <div className="form-actions" style={{ justifyContent: "center", gap: "var(--space-3)" }}>
-        <button className="btn btn--primary" onClick={onDone}
+        <button type="button" className="btn btn--primary" onClick={onDone}
           style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-6)" }}>
           ✅ 完成就诊
         </button>

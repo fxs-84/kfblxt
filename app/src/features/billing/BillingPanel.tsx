@@ -166,12 +166,12 @@ export function BillingPanel({ patientId, encounterId }: BillingPanelProps) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>日期</th>
-                  <th>类型</th>
-                  <th>金额</th>
-                  <th>卡次</th>
-                  <th>备注</th>
-                  <th style={{ width: 40 }} />
+                  <th scope="col">日期</th>
+                  <th scope="col">类型</th>
+                  <th scope="col">金额</th>
+                  <th scope="col">卡次</th>
+                  <th scope="col">备注</th>
+                  <th scope="col" style={{ width: 40 }} />
                 </tr>
               </thead>
               <tbody>

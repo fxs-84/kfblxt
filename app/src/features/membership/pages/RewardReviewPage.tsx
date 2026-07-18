@@ -46,7 +46,7 @@ export function RewardReviewPage() {
 
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         {(["pending", "fulfilled", "cancelled", "all"] as const).map(f => (
-          <button key={f} type="button" onClick={() => setFilter(f)} style={{
+          <button type="button" key={f} onClick={() => setFilter(f)} style={{
             padding: "4px 12px", fontSize: 12,
             background: filter === f ? "var(--color-accent)" : "transparent",
             color: filter === f ? "white" : "var(--color-text)",

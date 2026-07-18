@@ -133,7 +133,7 @@ export function ClinicalDiagnosisSection({ diagnoses, onChange }: Props) {
           background: "var(--color-surface)",
         }}>
           {results.map(e => (
-            <button key={e.code} type="button" onClick={() => addDx(e)} style={{
+            <button type="button" key={e.code} onClick={() => addDx(e)} style={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
               width: "100%", padding: "6px 10px", border: "none",
               borderBottom: "1px solid var(--color-border)",

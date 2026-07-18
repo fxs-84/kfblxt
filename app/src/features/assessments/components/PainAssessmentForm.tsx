@@ -167,7 +167,7 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
           </div>
         )}
         <div className="form-actions" style={{ justifyContent: "center" }}>
-          <button className="btn btn--ghost" onClick={() => { setDoneState(false); }}>返回</button>
+          <button type="button" className="btn btn--ghost" onClick={() => { setDoneState(false); }}>返回</button>
         </div>
       </div>
     );
@@ -293,7 +293,7 @@ export function PainAssessmentForm({ patientId, encounterId, draftKey, onResult 
           {grandAnswered === grandTotal ? "✅ 已完成全部题目" : `⏳ 还需作答 ${grandTotal - grandAnswered} 题`}
         </span>
         <div className="brain-form__foot-actions">
-          <button className="btn btn--primary" onClick={handleSubmit} disabled={grandAnswered !== grandTotal}
+          <button type="button" className="btn btn--primary" onClick={handleSubmit} disabled={grandAnswered !== grandTotal}
             style={{ fontSize: "var(--text-base)", fontWeight: 700, padding: "var(--space-2) var(--space-5)" }}>
             💾 提交疼痛评估
           </button>

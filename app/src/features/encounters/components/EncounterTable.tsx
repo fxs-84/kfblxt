@@ -20,15 +20,15 @@ export function EncounterTable({ encounters, onExam, activeExamId, activeDiagnos
     <table className="table">
       <thead>
         <tr>
-          <th>日期</th>
-          <th>类型</th>
-          <th>状态</th>
-          <th>定位</th>
-          <th>性质</th>
-          <th>VAS</th>
-          <th>病程</th>
-          <th>诊断</th>
-          {hasActions && <th style={{ width: 120 }}>操作</th>}
+          <th scope="col">日期</th>
+          <th scope="col">类型</th>
+          <th scope="col">状态</th>
+          <th scope="col">定位</th>
+          <th scope="col">性质</th>
+          <th scope="col">VAS</th>
+          <th scope="col">病程</th>
+          <th scope="col">诊断</th>
+          {hasActions && <th scope="col" style={{ width: 120 }}>操作</th>}
         </tr>
       </thead>
       <tbody>

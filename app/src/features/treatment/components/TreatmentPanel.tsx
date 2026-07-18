@@ -114,7 +114,7 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
     <div className="card treatment-panel" style={{ marginBottom: "1.5rem" }}>
       <div className="exam-panel__header">
         <h3 className="panel__title">治疗计划</h3>
-        {!showForm && <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>+ 新建计划</button>}
+        {!showForm && <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => setShowForm(true)}>+ 新建计划</button>}
       </div>
 
       {showForm && (
@@ -239,7 +239,7 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
                     {items.map((tpl) => {
                       const alreadyAdded = goals.some((g) => g.description === tpl.description);
                       return (
-                        <button key={tpl.id} type="button"
+                        <button type="button" key={tpl.id}
                           className={`goal-tpl-chip ${alreadyAdded ? "goal-tpl-chip--added" : ""}`}
                           disabled={alreadyAdded}
                           onClick={() => setGoals([...goals, { term: tpl.term, description: tpl.description, metric: tpl.exampleMetric }])}
@@ -284,10 +284,10 @@ export function TreatmentPanel({ encounterId }: TreatmentPanelProps) {
           {error && <div className="field__error" style={{ marginTop: "var(--space-3)" }}>{error}</div>}
 
           <div className="form-actions" style={{ padding: "var(--space-4) 0 0" }}>
-            <button className="btn btn--primary" disabled={saving} onClick={handleSave}>
+            <button type="button" className="btn btn--primary" disabled={saving} onClick={handleSave}>
               {saving ? "保存中…" : "保存治疗计划"}
             </button>
-            <button className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>
+            <button type="button" className="btn btn--ghost" onClick={() => setShowForm(false)}>取消</button>
           </div>
         </div>
       )}
@@ -365,7 +365,7 @@ function TreatmentPlanCard({ plan, onNote }: { plan: TreatmentPlanRecord; onNote
           ))}
         </div>
       )}
-      {onNote && <button className="btn btn--ghost" style={{ marginTop: "var(--space-2)", fontSize: "var(--text-xs)" }} onClick={onNote}>+ 疗效复评</button>}
+      {onNote && <button type="button" className="btn btn--ghost" style={{ marginTop: "var(--space-2)", fontSize: "var(--text-xs)" }} onClick={onNote}>+ 疗效复评</button>}
     </div>
   );
 }
@@ -414,9 +414,9 @@ function ProgressNoteForm({ planId, encounterId, interventionIds, onDone }: Prog
             🧠 预判:{prediction.predicted}({Math.round(prediction.confidence * 100)}%)
           </span>
         )}
-        <button className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "2px 12px" }}
+        <button type="button" className="btn btn--primary" style={{ fontSize: "var(--text-xs)", padding: "2px 12px" }}
           disabled={saving} onClick={handleSave}>{saving ? "…" : "保存复评"}</button>
-        <button className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }} onClick={onDone}>取消</button>
+        <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }} onClick={onDone}>取消</button>
       </div>
       {error && <div className="field__error" style={{ marginTop: "var(--space-1)" }}>{error}</div>}
     </div>
