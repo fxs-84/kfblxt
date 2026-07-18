@@ -8,9 +8,9 @@ describe("rbac", () => {
     }
   });
 
-  it("physician 没有删除权限(patient:delete / membership:delete)", () => {
+  it("physician 不能删客户,但可删会员(patient:delete ✗ / membership:delete ✓)", () => {
     expect(can("physician", "patient:delete")).toBe(false);
-    expect(can("physician", "membership:delete")).toBe(false);
+    expect(can("physician", "membership:delete")).toBe(true);
   });
 
   it("therapist 没有删除权限(patient:delete / membership:delete)", () => {
@@ -18,10 +18,10 @@ describe("rbac", () => {
     expect(can("therapist", "membership:delete")).toBe(false);
   });
 
-  it("membership:delete 权限矩阵 — admin/physician/therapist 的显式差异,锁定视图条件渲染不变量", () => {
+  it("membership:delete 权限矩阵 — admin+physician 可删,therapist 不可,锁定视图条件渲染不变量", () => {
     // 这是对齐 MembershipCenterPage 中 canDeleteMembership 的语义
     expect(can("admin", "membership:delete")).toBe(true);
-    expect(can("physician", "membership:delete")).toBe(false);
+    expect(can("physician", "membership:delete")).toBe(true);
     expect(can("therapist", "membership:delete")).toBe(false);
   });
 });
