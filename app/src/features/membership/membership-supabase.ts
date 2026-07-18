@@ -206,11 +206,34 @@ export async function upsertMembershipDual(m: PatientMembership): Promise<Patien
     return m;
   }
   const supabase = getSupabase()!;
-  const { data, error } = await supabase
+  // 不依赖 onConflict(老实例主键可能不匹配),先查存在性再决定 update/insert
+  const { data: existing } = await supabase
     .from("patient_memberships")
-    .upsert(membershipToRow(m), { onConflict: "org_id,patient_id" })
-    .select()
+    .select("org_id, patient_id")
+    .eq("org_id", m.orgId)
+    .eq("patient_id", m.patientId)
     .maybeSingle();
+  let data: Record<string, unknown> | null = null;
+  let error: { message: string } | null = null;
+  if (existing) {
+    const res = await supabase
+      .from("patient_memberships")
+      .update(membershipToRow(m))
+      .eq("org_id", m.orgId)
+      .eq("patient_id", m.patientId)
+      .select()
+      .maybeSingle();
+    data = res.data;
+    error = res.error;
+  } else {
+    const res = await supabase
+      .from("patient_memberships")
+      .insert(membershipToRow(m))
+      .select()
+      .maybeSingle();
+    data = res.data;
+    error = res.error;
+  }
   if (error || !data) throw new Error(`保存客户会员档案失败: ${error?.message ?? "无响应"}`);
   return membershipFromRow(data);
 }
