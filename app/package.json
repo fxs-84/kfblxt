@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "scan:columns": "node scripts/scan-required-columns.mjs",
+    "prebuild": "npm run scan:columns",
+    "predev": "npm run scan:columns",
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
