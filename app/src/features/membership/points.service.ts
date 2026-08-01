@@ -21,7 +21,6 @@ interface AwardParams {
 }
 
 export async function awardPoints(p: AwardParams): Promise<{ ok: boolean; balance: number; log: PointsLog }> {
-  console.log("[awardPoints] patient=", p.patientId, "delta=", p.delta, "reason=", p.reason);
   const membership = await getOrCreateMembership(p.patientId);
   const balanceAfter = Math.max(0, membership.points + p.delta);
 

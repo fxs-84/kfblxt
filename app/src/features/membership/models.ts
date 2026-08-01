@@ -38,6 +38,7 @@ export const TRIGGER_LABEL: Record<TriggerType, string> = {
 export const CONDITION_FIELDS = [
   "patient.tier",
   "encounter.amount",
+  "recharge.amount",
   "patient.age",
   "patient.isFirstVisit",
 ] as const;
@@ -48,10 +49,38 @@ export type ConditionOp = (typeof CONDITION_OPS)[number];
 
 export const CONDITION_FIELD_LABEL: Record<ConditionField, string> = {
   "patient.tier": "客户等级",
-  "encounter.amount": "消费/充值金额",
+  "encounter.amount": "消费金额",
+  "recharge.amount": "充值金额",
   "patient.age": "客户年龄",
   "patient.isFirstVisit": "是否首次就诊",
 };
+
+/**
+ * 根据触发器返回可选条件字段 — UI 用来过滤下拉。
+ * 充值事件只看充值金额,消费事件只看消费金额;否则条件字段会被误读为"另一个场景"的金额。
+ * 为什么不能共用:encounter.amount 在 buildContext 里只在 billing.consumed/encounter.closed 时被注入,
+ * recharge.amount 同样只在 billing.recharged 时被注入;触发器不匹配时 ctx 字段是 undefined,
+ * evalCondition 会直接 false,规则永远不触发 — 这就是「充值规则设置≥500没生效」的根因。
+ * 注意:patient.age / patient.isFirstVisit 从未被 buildContext 注入,配了也永不触发,故不出现在下拉里。
+ */
+export function conditionFieldsForTrigger(trigger: TriggerType): readonly ConditionField[] {
+  switch (trigger) {
+    case "billing.recharged":
+      return ["patient.tier", "recharge.amount"];
+    case "encounter.closed":
+    case "billing.consumed":
+      return ["patient.tier", "encounter.amount"];
+    case "encounter.nth":
+    case "manual":
+    case "encounter.created":
+    case "diagnosis.created":
+    case "patient.created":
+    case "share.sent":
+    case "patient.recommend":
+    case "patient.birthday":
+      return ["patient.tier"];
+  }
+}
 
 export const CONDITION_OP_LABEL: Record<ConditionOp, string> = {
   eq: "等于",

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { billingRepository, findBillingByPatient, calcBalance } from "./billing.repository";
+import { buildBillingEvent } from "./useBilling";
 import type { BillingRecordEntity } from "./billing.repository";
 
 function record(overrides: Partial<BillingRecordEntity>): BillingRecordEntity {
@@ -60,5 +61,41 @@ describe("calcBalance", () => {
     expect(b.totalSessions).toBe(20);
     expect(b.usedSessions).toBe(2);
     expect(b.sessionBalance).toBe(18);
+  });
+});
+
+describe("buildBillingEvent", () => {
+  it("消费生成 billing.consumed 事件", () => {
+    const ev = buildBillingEvent(
+      { type: "消费", patientId: "p1", amount: 200, encounterId: "e1" },
+      "b_1",
+    );
+    expect(ev).not.toBeNull();
+    expect(ev!.type).toBe("billing.consumed");
+    expect((ev as Extract<typeof ev, { type: "billing.consumed" }>).amount).toBe(200);
+    expect((ev as Extract<typeof ev, { type: "billing.consumed" }>).encounterId).toBe("e1");
+  });
+
+  it("充值生成 billing.recharged 事件", () => {
+    const ev = buildBillingEvent(
+      { type: "充值", patientId: "p1", amount: 500, sessions: 5 },
+      "b_2",
+    );
+    expect(ev).not.toBeNull();
+    expect(ev!.type).toBe("billing.recharged");
+    expect((ev as Extract<typeof ev, { type: "billing.recharged" }>).amount).toBe(2500);
+  });
+
+  it("退费不生成事件", () => {
+    const ev = buildBillingEvent(
+      { type: "退费", patientId: "p1", amount: 100 },
+      "b_3",
+    );
+    expect(ev).toBeNull();
+  });
+
+  it("金额 <= 0 不生成事件", () => {
+    expect(buildBillingEvent({ type: "充值", patientId: "p1", amount: 0 }, "b_4")).toBeNull();
+    expect(buildBillingEvent({ type: "消费", patientId: "p1", amount: -50 }, "b_5")).toBeNull();
   });
 });

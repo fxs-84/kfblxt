@@ -13,6 +13,7 @@ import type { PointsRule, RuleCondition, TriggerEvent, MemberTier, PointsLog } f
 interface EvalContext {
   patientTier: MemberTier;
   encounterAmount?: number;
+  rechargeAmount?: number;
   patientAge?: number;
   patientIsFirstVisit?: boolean;
   nth?: number;
@@ -23,6 +24,7 @@ function evalCondition(c: RuleCondition, ctx: EvalContext): boolean {
   switch (c.field) {
     case "patient.tier": actual = ctx.patientTier; break;
     case "encounter.amount": actual = ctx.encounterAmount; break;
+    case "recharge.amount": actual = ctx.rechargeAmount; break;
     case "patient.age": actual = ctx.patientAge; break;
     case "patient.isFirstVisit": actual = ctx.patientIsFirstVisit; break;
   }
@@ -41,41 +43,17 @@ function evalCondition(c: RuleCondition, ctx: EvalContext): boolean {
 }
 
 export async function processEvent(event: TriggerEvent, operatorId = "system"): Promise<void> {
-  // eslint-disable-next-line no-console
-  console.log("[processEvent] entered, type=", event.type, "amount=", (event as any).amount);
   const rules = await findAllRules();
-  // eslint-disable-next-line no-console
-  console.log("[processEvent] rules count:", rules.length);
   const active = rules.filter(r => r.enabled).sort((a, b) => b.priority - a.priority);
 
   for (const rule of active) {
-    if (!matchesTrigger(rule, event)) {
-      // eslint-disable-next-line no-console
-      console.log("[processEvent] skip (no trigger match):", rule.id, "expects", rule.trigger);
-      continue;
-    }
-    // eslint-disable-next-line no-console
-    console.log("[processEvent] matched rule:", rule.name);
+    if (!matchesTrigger(rule, event)) continue;
     if (!isInDateRange(rule)) continue;
-    if (await isInCooldown(rule.id, event.patientId, rule.cooldownDays)) {
-      // eslint-disable-next-line no-console
-      console.log("[processEvent] skip (cooldown):", rule.id);
-      continue;
-    }
-    if (await exceedsMaxPerPatient(rule.id, event.patientId, rule.maxPerPatient)) {
-      // eslint-disable-next-line no-console
-      console.log("[processEvent] skip (maxPerPatient reached):", rule.id);
-      continue;
-    }
+    if (await isInCooldown(rule.id, event.patientId, rule.cooldownDays)) continue;
+    if (await exceedsMaxPerPatient(rule.id, event.patientId, rule.maxPerPatient)) continue;
 
     const ctx = await buildContext(event);
-    if (!evalConditions(rule.conditions, ctx)) {
-      // eslint-disable-next-line no-console
-      console.log("[processEvent] skip (conditions not met):", rule.id);
-      continue;
-    }
-    // eslint-disable-next-line no-console
-    console.log("[processEvent] executing action:", rule.id, rule.action.kind);
+    if (!evalConditions(rule.conditions, ctx)) continue;
     await executeAction(rule, event, ctx, operatorId);
   }
 }
@@ -99,9 +77,12 @@ function evalConditions(conditions: RuleCondition[], ctx: EvalContext): boolean 
 
 async function buildContext(event: TriggerEvent): Promise<EvalContext> {
   const m = await getOrCreateMembership(event.patientId);
+  const amount = getEventAmount(event);
   const ctx: EvalContext = { patientTier: m.tier };
-  if (event.type === "encounter.closed" || event.type === "billing.consumed") {
-    ctx.encounterAmount = event.amount;
+  if (event.type === "billing.recharged") {
+    ctx.rechargeAmount = amount;
+  } else if (amount !== undefined) {
+    ctx.encounterAmount = amount;
   }
   return ctx;
 }
@@ -128,20 +109,23 @@ async function executeAction(
       operatorId,
     });
   } else if (rule.action.kind === "award_ratio") {
-    const isConsumption = event.type === "encounter.closed" || event.type === "billing.consumed";
-    if (!isConsumption || !event.amount) return;
+    // award_ratio 现在按 event.amount 自动适配消费/充值/就诊场景
+    // 触发器已限制:能配这条动作的 rule 只可能 trigger 是 encounter.closed / billing.consumed / billing.recharged
+    // 旧版本 isConsumption 判断把 recharge 场景直接 return,导致"按比例充1元返1积分"类规则失效 — 已修复
+    const amount = getEventAmount(event);
+    if (amount === undefined || amount <= 0) return;
     const tiers = await findAllTiers();
     const tier = tiers.find(t => t.tier === ctx.patientTier);
     const multiplier = tier?.pointMultiplier ?? 1;
-    const finalPoints = Math.round(event.amount * rule.action.pointsPerYuan * multiplier);
+    const finalPoints = Math.round(amount * rule.action.pointsPerYuan * multiplier);
     await awardPoints({
       patientId: event.patientId,
       delta: finalPoints,
       reason: rule.action.reason,
       ruleId: rule.id,
       triggerType: event.type,
-      refType: event.type === "billing.consumed" ? "manual" : "encounter",
-      refId: "encounterId" in event ? event.encounterId : ("billingId" in event ? event.billingId : null),
+      refType: refTypeOf(event.type),
+      refId: getRefId(event),
       operatorId,
     });
   } else if (rule.action.kind === "set_tier") {
@@ -162,6 +146,18 @@ function getRefId(event: TriggerEvent): string | null {
   if ("refPatientId" in event) return event.refPatientId ?? null;
   if ("billingId" in event) return event.billingId ?? null;
   return null;
+}
+
+/** 从 TriggerEvent 抽出 amount — 仅 encounter.closed / billing.consumed / billing.recharged 三种事件携带 */
+function getEventAmount(event: TriggerEvent): number | undefined {
+  switch (event.type) {
+    case "encounter.closed":
+    case "billing.consumed":
+    case "billing.recharged":
+      return event.amount;
+    default:
+      return undefined;
+  }
 }
 
 export async function checkTierUpgrade(patientId: string, additionalSpent = 0): Promise<void> {

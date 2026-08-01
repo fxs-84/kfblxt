@@ -13,10 +13,10 @@ import {
 import {
   TRIGGER_LABEL,
   TRIGGER_TYPES,
-  CONDITION_FIELDS,
   CONDITION_OPS,
   CONDITION_FIELD_LABEL,
   CONDITION_OP_LABEL,
+  conditionFieldsForTrigger,
   MEMBER_TIERS,
   type PointsRule,
   type RuleCondition,
@@ -99,22 +99,29 @@ export function RuleEditPage() {
 
       <Field label="条件(全部满足才触发)">
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {rule.conditions.map((c, i) => (
-            <div key={i} style={{ display: "flex", gap: 4 }}>
-              <select value={c.field} onChange={e => updateCondition(i, { ...c, field: e.target.value as typeof c.field })} style={selectStyle}>
-                {CONDITION_FIELDS.map(f => <option key={f} value={f}>{CONDITION_FIELD_LABEL[f]}</option>)}
-              </select>
-              <select value={c.op} onChange={e => updateCondition(i, { ...c, op: e.target.value as typeof c.op })} style={selectStyle}>
-                {CONDITION_OPS.map(o => <option key={o} value={o}>{CONDITION_OP_LABEL[o]}</option>)}
-              </select>
-              <input
-                value={String(c.value)}
-                onChange={e => updateCondition(i, { ...c, value: isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value) })}
-                style={inputStyle}
-              />
-              <button type="button" onClick={() => removeCondition(i)} style={{ ...btnGhost, color: "var(--color-abnormal)" }}>✕</button>
-            </div>
-          ))}
+          {(() => {
+            const allowed = conditionFieldsForTrigger(rule.trigger);
+            return rule.conditions.map((c, i) => {
+              const mismatched = !allowed.includes(c.field);
+              return (
+                <div key={i} style={{ display: "flex", gap: 4, alignItems: "center", background: mismatched ? "var(--color-warning-bg, #FFF7E6)" : undefined, padding: mismatched ? "4px 6px" : undefined, borderRadius: mismatched ? 4 : undefined }}>
+                  <select value={c.field} onChange={e => updateCondition(i, { ...c, field: e.target.value as typeof c.field })} style={selectStyle} title={mismatched ? "当前触发器不读此字段,请切换或修改" : undefined}>
+                    {allowed.map(f => <option key={f} value={f}>{CONDITION_FIELD_LABEL[f]}</option>)}
+                    {mismatched && <option value={c.field}>{CONDITION_FIELD_LABEL[c.field]}</option>}
+                  </select>
+                  <select value={c.op} onChange={e => updateCondition(i, { ...c, op: e.target.value as typeof c.op })} style={selectStyle}>
+                    {CONDITION_OPS.map(o => <option key={o} value={o}>{CONDITION_OP_LABEL[o]}</option>)}
+                  </select>
+                  <input
+                    value={String(c.value)}
+                    onChange={e => updateCondition(i, { ...c, value: isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value) })}
+                    style={inputStyle}
+                  />
+                  <button type="button" onClick={() => removeCondition(i)} style={{ ...btnGhost, color: "var(--color-abnormal)" }}>✕</button>
+                </div>
+              );
+            });
+          })()}
           <button type="button" onClick={addCondition} style={{ ...btnGhost, alignSelf: "flex-start" }}>+ 添加条件</button>
         </div>
       </Field>
