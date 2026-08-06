@@ -9,10 +9,10 @@ import {
   type BrainRegionId,
   type RegionSeverity,
 } from "../scales/brain-region";
-import type { AssessmentRecord } from "../assessment.types";
 import type { BrainAssessmentRecordRow } from "../assessment.repository";
 import { formatDate } from "../../../lib/format";
 import { useDeleteAssessment } from "../useAssessments";
+import { BrainRegionDetailModal } from "./BrainRegionDetailModal";
 
 interface BrainRegionResultProps {
   record: BrainAssessmentRecordRow;
@@ -29,6 +29,7 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
   const { score, phoneEar, responses, note } = record;
   const deleteAssessment = useDeleteAssessment();
   const [confirming, setConfirming] = useState(false);
+  const [detailRegionId, setDetailRegionId] = useState<BrainRegionId | null>(null);
 
   const handleDelete = async () => {
     await deleteAssessment.mutateAsync({
@@ -116,10 +117,14 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
             const severity: RegionSeverity = score.severityByRegion[def.id] ?? "normal";
             const isAffected = severity !== "normal";
             return (
-              <div
+              <button
                 key={def.id}
-                className={`brain-region-bar brain-region-bar--${severity}`}
-                title={`${def.label}: ${sub}/${max} (${pct}%) — ${REGION_SEVERITY_LABELS[severity]}`}
+                type="button"
+                className={`brain-region-bar brain-region-bar--${severity} brain-region-bar--button`}
+                title={`${def.label}: ${sub}/${max} (${pct}%) — ${REGION_SEVERITY_LABELS[severity]} — 点击查看做题详情`}
+                aria-label={`查看 ${def.label} 分区做题详情,${sub}/${max} 分,${REGION_SEVERITY_LABELS[severity]}`}
+                data-testid={`brain-region-bar-${def.id}`}
+                onClick={() => setDetailRegionId(def.id)}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "var(--text-xs)", marginBottom: 4 }}>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: isAffected ? 700 : 400, color: severity === "severe" ? "var(--color-abnormal)" : severity === "moderate" ? "#c45a00" : severity === "mild" ? "#d68a1a" : "inherit" }}>
@@ -138,7 +143,7 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
                   />
                 </div>
                 <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 3, textAlign: "right" }}>{sub} / {max}</div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -180,6 +185,13 @@ export function BrainRegionResult({ record, onDeleted }: BrainRegionResultProps)
           </div>
         )}
       </div>
+
+      {/* 分区做题详情弹窗(点击分区条触发) */}
+      <BrainRegionDetailModal
+        record={record}
+        regionId={detailRegionId}
+        onClose={() => setDetailRegionId(null)}
+      />
     </div>
   );
 }

@@ -1,0 +1,14 @@
+{
+  "name": "kfblxt-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "康复训练游戏 — 根目录 scripts 转发到 app/ 子项目",
+  "scripts": {
+    "dev": "npm --prefix app run dev",
+    "build": "npm --prefix app run build",
+    "typecheck": "npm --prefix app run typecheck",
+    "test": "npm --prefix app run test",
+    "lint": "npm --prefix app run lint",
+    "coverage": "npm --prefix app run coverage"
+  }
+}
