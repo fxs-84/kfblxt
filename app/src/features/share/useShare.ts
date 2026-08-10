@@ -1,11 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { shareRepository, findSharesByEncounter, findShareByToken } from "./share.repository";
-import { createSupabaseShare } from "./share-supabase";
+import { createSupabaseShare, createSupabaseAssessmentShare, findAssessmentSharesByEncounterDual, revokeShareSupabase } from "./share-supabase";
+import type { ScaleId } from "./share.types";
 
 export function useSharesByEncounter(encounterId: string | undefined) {
   return useQuery({
     queryKey: ["shares", encounterId],
     queryFn: () => findSharesByEncounter(encounterId as string),
+    enabled: Boolean(encounterId),
+  });
+}
+
+/** 该 encounter 下 mode=assessment 的分享(供 AssessmentSharePanel 列出;Supabase 优先) */
+export function useAssessmentSharesByEncounter(encounterId: string | undefined) {
+  return useQuery({
+    queryKey: ["shares", "assessment", encounterId],
+    queryFn: () => findAssessmentSharesByEncounterDual(encounterId as string),
     enabled: Boolean(encounterId),
   });
 }
@@ -31,6 +41,24 @@ export function useCreateShare() {
       createSupabaseShare(input),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["shares", vars.encounterId] });
+      qc.invalidateQueries({ queryKey: ["shares", "assessment", vars.encounterId] });
+    },
+  });
+}
+
+/** 创建自评量表二维码分发 */
+export function useCreateAssessmentShare() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      encounterId: string;
+      patientId: string;
+      mode: "assessment";
+      scales: ScaleId[];
+      message?: string;
+    }) => createSupabaseAssessmentShare(input),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["shares", "assessment", vars.encounterId] });
     },
   });
 }
@@ -38,16 +66,18 @@ export function useCreateShare() {
 export function useRevokeShare() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const found = await shareRepository.findById(id);
-      if (found) {
-        await shareRepository.update(id, { revoked: true });
-        return found.encounterId;
-      }
-      return null;
+    // 统一按 token 撤销(本地/云端都识别 token;云端 id 是 DB uuid,不能当 token)
+    mutationFn: async (vars: { token: string; encounterId?: string }) => {
+      await revokeShareSupabase(vars.token);
+      const local = await findShareByToken(vars.token);
+      if (local) await shareRepository.update(local.id, { revoked: true });
+      return vars.encounterId ?? local?.encounterId ?? null;
     },
     onSuccess: (encounterId) => {
-      if (encounterId) qc.invalidateQueries({ queryKey: ["shares", encounterId] });
+      if (encounterId) {
+        qc.invalidateQueries({ queryKey: ["shares", encounterId] });
+        qc.invalidateQueries({ queryKey: ["shares", "assessment", encounterId] });
+      }
     },
   });
 }

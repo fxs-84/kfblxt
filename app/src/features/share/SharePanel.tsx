@@ -137,7 +137,7 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
                   <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
                     {!s.revoked && (
                       <button type="button" className="btn btn--ghost" style={{ fontSize: "var(--text-xs)", color: "var(--color-abnormal)" }}
-                        onClick={() => revokeShare.mutate(s.id)}>撤销分享</button>
+                        onClick={() => revokeShare.mutate({ token: s.token, encounterId: s.encounterId })}>撤销分享</button>
                     )}
                     {!showForm && (
                       <button type="button" className="btn btn--primary" style={{ fontSize: "var(--text-xs)" }}

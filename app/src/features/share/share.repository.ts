@@ -15,6 +15,8 @@ export interface ShareInput {
   nextVisit?: Date;
   message?: string;
   hashData?: string;
+  mode?: "summary" | "assessment";
+  scales?: ("brain_region" | "pain_assessment")[];
 }
 
 export const shareRepository: Repository<ShareRecord, ShareInput> =

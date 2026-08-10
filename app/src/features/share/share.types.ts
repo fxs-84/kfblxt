@@ -4,6 +4,12 @@
  * shareToken = 加密随机串,mock 阶段用 UUID,接 Supabase 后加 JWT 签名防篡改。
  */
 
+/** 自评量表 ID(对应 assessments.type) */
+export type ScaleId = "brain_region" | "pain_assessment";
+
+/** 分享模式:诊治摘要(只读) / 自评量表(可填) */
+export type ShareMode = "summary" | "assessment";
+
 export interface ShareLink {
   id: string;
   encounterId: string;
@@ -26,6 +32,10 @@ export interface ShareLink {
   snapshot?: ShareSnapshot | null;
   /** URL hash 编码的临床数据 — 客户扫码直接解码渲染,无需 Supabase */
   hashData?: string;
+  /** 分享模式:summary(默认) 或 assessment(自评量表) */
+  mode?: ShareMode;
+  /** mode=assessment 时勾选的量表 ID 数组 */
+  scales?: ScaleId[];
 }
 
 export type ShareInterventionDose = {

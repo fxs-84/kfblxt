@@ -9,7 +9,7 @@ import { getSupabase } from "../../lib/supabase";
 import { shareRepository, generateToken, defaultExpiry } from "./share.repository";
 import type { ShareRecord } from "./share.repository";
 import { buildShareSnapshot } from "./build-snapshot";
-import type { ShareSnapshot } from "./share.types";
+import type { ScaleId, ShareSnapshot } from "./share.types";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
@@ -98,6 +98,119 @@ export async function createSupabaseShare(input: {
   } as ShareRecord;
 }
 
+/**
+ * 创建自评量表二维码分发。
+ * - 不打 snapshot(顾客要做的不是回顾,是要填新数据)
+ * - 写入 mode='assessment' + scales 数组
+ * - token 进 URL,顾客扫码 → AssessmentFormPage
+ */
+export async function createSupabaseAssessmentShare(input: {
+  encounterId: string;
+  patientId: string;
+  mode: "assessment";
+  scales: ScaleId[];
+  message?: string;
+}): Promise<ShareRecord> {
+  if (!isSupabaseReady()) {
+    return shareRepository.create({
+      encounterId: input.encounterId,
+      patientId: input.patientId,
+      orgId: "00000000-0000-4000-8000-0000000000f0",
+      token: generateToken(),
+      revoked: false,
+      expiresAt: defaultExpiry(),
+      message: input.message,
+      mode: "assessment",
+      scales: input.scales,
+    });
+  }
+
+  const supabase = getSupabase()!;
+  const token = generateToken();
+  const row: Record<string, unknown> = {
+    encounter_id: input.encounterId,
+    patient_id: input.patientId,
+    org_id: "00000000-0000-4000-8000-0000000000f0",
+    token,
+    revoked: false,
+    expires_at: defaultExpiry().toISOString(),
+    mode: "assessment",
+    scales: input.scales,
+    message: input.message ?? null,
+  };
+
+  const { error } = await supabase.from("shares").insert(row);
+  if (error) throw new Error(`Supabase 创建量表分享失败: ${error.message}`);
+
+  return {
+    id: token,
+    encounterId: input.encounterId,
+    patientId: input.patientId,
+    orgId: "00000000-0000-4000-8000-0000000000f0",
+    token,
+    revoked: false,
+    expiresAt: defaultExpiry(),
+    message: input.message,
+    mode: "assessment",
+    scales: input.scales,
+    createdAt: new Date(),
+  } as ShareRecord;
+}
+
+/**
+ * 列出某 encounter 的自评量表分享(dual)。
+ * Supabase 可用时优先查云端(跨设备);否则回退 localStorage。
+ */
+export async function findAssessmentSharesByEncounterDual(
+  encounterId: string,
+): Promise<ShareRecord[]> {
+  const local = await shareRepository.findAll();
+  const localList = local
+    .filter((s) => s.encounterId === encounterId && s.mode === "assessment")
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  if (!isSupabaseReady()) return localList;
+
+  const supabase = getSupabase()!;
+  const { data, error } = await supabase
+    .from("shares")
+    .select("*")
+    .eq("encounter_id", encounterId)
+    .eq("mode", "assessment")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`查询量表分享失败: ${error.message}`);
+
+  const remoteList = (data ?? []).map((r) => mapShareRow(r));
+  const merged = new Map<string, ShareRecord>();
+  for (const r of remoteList) merged.set(r.id, r);
+  for (const l of localList) if (!merged.has(l.id)) merged.set(l.id, l);
+  return [...merged.values()];
+}
+
+/** DB 行 → ShareRecord(统一映射;scales/mode 做白名单收窄) */
+function mapShareRow(row: Record<string, unknown>): ShareRecord {
+  const rawScales = Array.isArray(row.scales) ? (row.scales as unknown[]) : [];
+  const scales = rawScales.filter(
+    (s): s is ScaleId => s === "brain_region" || s === "pain_assessment",
+  );
+  const rawMode = row.mode as string | undefined;
+  return {
+    id: String(row.id),
+    encounterId: String(row.encounter_id),
+    patientId: String(row.patient_id),
+    orgId: String(row.org_id),
+    token: String(row.token),
+    revoked: Boolean(row.revoked),
+    expiresAt: new Date(String(row.expires_at)),
+    homework: (row.homework as string | null) ?? undefined,
+    nextVisit: row.next_visit ? new Date(String(row.next_visit)) : undefined,
+    message: (row.message as string | null) ?? undefined,
+    mode: rawMode === "assessment" ? "assessment" : "summary",
+    scales: scales.length > 0 ? scales : undefined,
+    snapshot: (row.snapshot as ShareSnapshot | null) ?? null,
+    createdAt: new Date(String(row.created_at)),
+  } as ShareRecord;
+}
+
 /** 客户端按 token 查询分享(匿名,无需登录) */
 export async function findShareByTokenSupabase(token: string): Promise<ShareRecord | null> {
   if (!isSupabaseReady()) {
@@ -116,20 +229,7 @@ export async function findShareByTokenSupabase(token: string): Promise<ShareReco
 
   if (error || !data) return null;
 
-  return {
-    id: data.id,
-    encounterId: data.encounter_id,
-    patientId: data.patient_id,
-    orgId: data.org_id,
-    token: data.token,
-    revoked: data.revoked,
-    expiresAt: new Date(data.expires_at),
-    homework: data.homework ?? undefined,
-    nextVisit: data.next_visit ? new Date(data.next_visit) : undefined,
-    message: data.message ?? undefined,
-    snapshot: (data.snapshot as ShareSnapshot) ?? null,
-    createdAt: new Date(data.created_at),
-  } as ShareRecord;
+  return mapShareRow(data as Record<string, unknown>);
 }
 
 /** 撤销分享 */

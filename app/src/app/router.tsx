@@ -5,6 +5,7 @@ import { PatientListPage } from "../features/patients/pages/PatientListPage";
 import { PatientFormPage } from "../features/patients/pages/PatientFormPage";
 import { PatientDetailPage } from "../features/patients/pages/PatientDetailPage";
 import { PatientViewPage } from "../features/share/PatientViewPage";
+import { AssessmentFormPage } from "../features/share/AssessmentFormPage";
 import { MembershipEngineBootstrap } from "../features/membership/MembershipEngineBootstrap";
 import { RulesListPage } from "../features/membership/pages/RulesListPage";
 import { RuleEditPage } from "../features/membership/pages/RuleEditPage";
@@ -24,12 +25,12 @@ const basename = location.hostname.includes("github.io") ? "/kfblxt/" : "/";
 
 /**
  * 根路由分流:
- * - ?share=<token> → 直接渲染 PatientViewPage,不经过 AppLayout(无侧栏/header)
+ * - ?share=<token> → 直接渲染 AssessmentFormPage(含顾客自评问卷 + 摘要两种模式),不经过 AppLayout(无侧栏/header)
  * - 无 share 参数 → AppLayout 正常渲染,Outlet 走子路由
  */
 function LayoutGate() {
   const [searchParams] = useSearchParams();
-  if (searchParams.get("share")) return <PatientViewPage />;
+  if (searchParams.get("share")) return <AssessmentFormPage />;
   return (
     <>
       <MembershipEngineBootstrap />
@@ -67,7 +68,7 @@ export const router = createBrowserRouter(
       ],
     },
     // 老链接 /share/<token> 保留
-    { path: "/share/:token", element: <PatientViewPage /> },
+    { path: "/share/:token", element: <AssessmentFormPage /> },
   ],
   { basename },
 );

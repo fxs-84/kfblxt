@@ -24,6 +24,7 @@ import { CollapseCard } from "../../../components/ui/CollapseCard";
 import { TrendSummaryCard } from "../../learning/TrendSummaryCard";
 import { FollowupPanel } from "../../followup/FollowupPanel";
 import { SharePanel } from "../../share/SharePanel";
+import { AssessmentSharePanel } from "../../share/AssessmentSharePanel";
 import { BrainRegionPanel } from "../../assessments/components/BrainRegionPanel";
 import { PainAssessmentForm } from "../../assessments/components/PainAssessmentForm";
 import { PainAssessmentList } from "../../assessments/components/PainAssessmentList";
@@ -270,6 +271,7 @@ export function PatientDetailPage() {
               <DiagnosisPanel key={examEncounterId} encounterId={examEncounterId} />
               <AttachmentPanel encounterId={examEncounterId} patientId={patient.id} />
               <SharePanel encounterId={examEncounterId} patientId={patient.id} />
+              <AssessmentSharePanel encounterId={examEncounterId} patientId={patient.id} />
 
               {/* 结束就诊按钮 */}
               <div style={{ textAlign: "right", marginTop: "var(--space-4)" }}>
