@@ -14,6 +14,7 @@ import { PainAssessmentForm } from "../../assessments/components/PainAssessmentF
 import { DiagnosisPanel } from "../../diagnosis/components/DiagnosisPanel";
 import { AttachmentPanel } from "../../attachments/components/AttachmentPanel";
 import { SharePanel } from "../../share/SharePanel";
+import { AssessmentSharePanel } from "../../share/AssessmentSharePanel";
 
 interface NewEncounterPageProps {
   patientId: string;
@@ -153,10 +154,11 @@ export function NewEncounterPage({ patientId, onDone }: NewEncounterPageProps) {
         </div>
       </FoldSection>
 
-      {/* 分享 */}
-      <FoldSection title="🔗 分享" open={!!expanded.share} onToggle={() => toggle("share")}>
+      {/* 分享(摘要)+ 扫码填表分发 */}
+      <FoldSection title="🔗 分享 / 扫码填表" open={!!expanded.share} onToggle={() => toggle("share")}>
         <div className="card" style={{ marginBottom: "var(--space-4)", borderTopLeftRadius: 0, borderTopRightRadius: 0, border: "1px solid var(--color-border)" }}>
           <SharePanel encounterId={encounterId} patientId={patientId} />
+          <AssessmentSharePanel encounterId={encounterId} patientId={patientId} />
         </div>
       </FoldSection>
 

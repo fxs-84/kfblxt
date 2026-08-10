@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useEncounterAssessments } from "../useAssessments";
 import { formatDate } from "../../../lib/format";
 import type { PainAssessmentRecordRow } from "../assessment.repository";
 import { CSI_SEVERITY_LABELS } from "../scales/csi";
 import { SLANSS_THRESHOLD } from "../scales/slanss";
+import { PainAssessmentDetailModal } from "./PainAssessmentDetailModal";
 
 interface Props {
   patientId: string;
@@ -11,10 +13,12 @@ interface Props {
 
 /**
  * 疼痛评估历史列表 — 展示某客户/某次就诊已保存的 CSI + S-LANSS 记录。
- * 治疗师完成评估后,可在此查阅历史打分。
+ * 治疗师完成评估后,可在此查阅历史打分;点击卡片弹层查看逐题作答详情
+ * (与大脑区域定位表的分区详情同一交互)。
  */
 export function PainAssessmentList({ patientId, encounterId }: Props) {
   const { data: records } = useEncounterAssessments(encounterId, patientId);
+  const [detail, setDetail] = useState<PainAssessmentRecordRow | null>(null);
   const list: PainAssessmentRecordRow[] = (records ?? []).filter((r) => r.type === "pain_assessment");
 
   if (list.length === 0) {
@@ -28,19 +32,28 @@ export function PainAssessmentList({ patientId, encounterId }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       {list.map((r) => (
-        <div
+        <button
           key={r.id}
+          type="button"
+          onClick={() => setDetail(r)}
+          aria-label={`查看 ${formatDate(r.createdAt)} 的疼痛评估做题详情`}
+          data-testid={`pain-record-card-${r.id}`}
           style={{
             padding: "var(--space-3) var(--space-4)",
             border: "1px solid var(--color-border)",
             borderRadius: "var(--radius-md)",
             background: "var(--color-surface)",
+            cursor: "pointer",
+            textAlign: "left",
+            font: "inherit",
+            width: "100%",
           }}
+          title="点击查看做题详情"
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
             <b style={{ fontSize: "var(--text-sm)" }}>📋 疼痛评估 · {formatDate(r.createdAt)}</b>
             <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-              记录人:{r.createdBy ?? "系统"}
+              记录人:{r.createdBy ?? "系统"} · 点击查看详情
             </span>
           </div>
           <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap", fontSize: "var(--text-sm)" }}>
@@ -57,8 +70,11 @@ export function PainAssessmentList({ patientId, encounterId }: Props) {
                 : <span className="brain-severity brain-severity--normal" style={{ marginLeft: 6 }}>阴性</span>}
             </span>
           </div>
-        </div>
+        </button>
       ))}
+
+      {/* 做题详情弹层(点击记录卡片触发) */}
+      <PainAssessmentDetailModal record={detail} onClose={() => setDetail(null)} />
     </div>
   );
 }
