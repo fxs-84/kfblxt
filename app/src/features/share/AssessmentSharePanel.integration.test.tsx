@@ -15,6 +15,8 @@ import { AssessmentSharePanel } from "./AssessmentSharePanel";
 
 vi.mock("../../lib/supabase", () => ({
   getSupabase: vi.fn(),
+  // buildShareUrl 用到:测试环境无 Supabase 配置,返回 null(链接不带 ref)
+  getSupabaseProjectRef: () => null,
 }));
 
 import { getSupabase } from "../../lib/supabase";

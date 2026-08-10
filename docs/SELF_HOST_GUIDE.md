@@ -78,6 +78,16 @@ npm run build
 # - 您诊所本机的 nginx
 ```
 
+> **客户扫码免配置(两条路线,按需二选一):**
+> - **share-gateway 公共函数(推荐,key 不上公网):** 在您的 Supabase 项目部署
+>   `app/supabase/functions/share-gateway/` 函数后,二维码链接自带项目 ref,
+>   客户设备读写都走该函数,bundle 里一个字母的 key 都没有。
+>   部署步骤见 `docs/SHARE_GATEWAY.md`。
+> - **构建时注入(传统 Supabase 模式):** 构建前配好 `VITE_SUPABASE_URL` +
+>   `VITE_SUPABASE_ANON_KEY`(本地用 `app/.env.local`;Docker 用 `--build-arg`)。
+>   anon key 会出现在公开 bundle 中——这是 Supabase 官方设计,安全靠 RLS。
+>   未注入的构建才会在首访时弹向导让用户自己填(BYOS 兜底)。
+
 ### 步骤 6:医生/治疗师注册
 - 管理员进入"成员管理"页面,创建医生/治疗师账号
 - 或者:让员工自己注册,管理员后台批准角色

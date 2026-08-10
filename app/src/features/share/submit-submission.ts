@@ -1,16 +1,18 @@
 import { getSupabase } from "../../lib/supabase";
+import { getShareRefFromUrl, gatewaySubmit } from "./share-gateway";
 import type { ScaleId } from "./share.types";
 
 /**
  * 顾客匿名提交自评量表结果。
  *
- * 顶层设计:
- *   - 直接 INSERT 到 assessment_submissions(anon RLS 允许)
- *   - 数据库触发器反查 shares 行校验 token/type/payload,并把权威
- *     租户字段写入 assessments 表,治疗师端立即可见
+ * 顶层设计(两条通道):
+ *   - 治疗师/已配置设备:直接 INSERT 到 assessment_submissions(anon RLS 允许)
+ *   - 客户无配置设备(方案二):走 share-gateway 公共函数,凭 URL 里的 ref +
+ *     token 提交,浏览器全程无 key
+ *   两通道最终都由数据库触发器反查 shares 校验 token/type/payload,并把权威
+ *   租户字段写入 assessments 表,治疗师端立即可见
  *
- * 前提:必须配 Supabase —— 单机模式(无 Supabase)下顾客设备与治疗师
- * 设备分离,结果无法回传,明确返回错误而非静默排队。
+ * 前提:两条通道都不通(无配置且链接缺 ref)时明确返回错误而非静默排队。
  */
 
 /** 量表元数据 — 单点维护(治疗师 UI + 顾客 UI 共用) */
@@ -55,6 +57,9 @@ export async function submitAssessmentSubmission(
 ): Promise<SubmissionResult> {
   const supabase = getSupabase();
   if (!supabase) {
+    // 客户扫码设备(无配置):链接带 ref → share-gateway 公共函数提交
+    const ref = getShareRefFromUrl();
+    if (ref) return gatewaySubmit(ref, token, data);
     // 单机模式:结果留在顾客设备上,治疗师无法看到 —— 明确报错而非静默排队
     return {
       ok: false,

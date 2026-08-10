@@ -18,6 +18,12 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
+      args:
+        # 把机构 Supabase 打进 bundle — 客户扫码填表免配 URL/key。
+        # 从 shell 环境或根目录 .env 读取;留空则沿用 app/.env.local,
+        # 再没有则首访用户走 BYOS 配置向导。
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     image: kfblxt-frontend:latest
     container_name: kfblxt-frontend
     ports:

@@ -10,6 +10,7 @@ import { getSession } from "../../lib/session";
 import { shareRepository, generateToken, defaultExpiry } from "./share.repository";
 import type { ShareRecord } from "./share.repository";
 import { buildShareSnapshot } from "./build-snapshot";
+import { getShareRefFromUrl, gatewayLookupRaw } from "./share-gateway";
 import type { ScaleId, ShareSnapshot } from "./share.types";
 
 function isSupabaseReady(): boolean {
@@ -245,6 +246,13 @@ function mapShareRow(row: Record<string, unknown>): ShareRecord {
 /** 客户端按 token 查询分享(匿名,无需登录) */
 export async function findShareByTokenSupabase(token: string): Promise<ShareRecord | null> {
   if (!isSupabaseReady()) {
+    // 无配置设备(客户扫码):链接带 ref 时走 share-gateway 公共函数,
+    // 客户浏览器不需要任何 Supabase key
+    const ref = getShareRefFromUrl();
+    if (ref) {
+      const row = await gatewayLookupRaw(ref, token);
+      if (row) return mapShareRow(row);
+    }
     const { findShareByToken } = await import("./share.repository");
     return findShareByToken(token);
   }

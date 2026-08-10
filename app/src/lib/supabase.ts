@@ -108,6 +108,24 @@ export function hasSupabaseConfig(): boolean {
   return resolveConfig() !== null;
 }
 
+/**
+ * 当前配置的 Supabase 项目 ref(`https://<ref>.supabase.co` 的 <ref> 段)。
+ * 自托管(自定义域名/IP)或未配置时返回 null —— 此时分享链接不带 ref,
+ * 客户设备也就不会走 share-gateway 公共函数。
+ */
+export function getSupabaseProjectRef(): string | null {
+  const cfg = resolveConfig();
+  if (!cfg) return null;
+  try {
+    const host = new URL(cfg.url).hostname.toLowerCase();
+    if (!host.endsWith(".supabase.co")) return null;
+    const ref = host.slice(0, -".supabase.co".length);
+    return ref || null;
+  } catch {
+    return null;
+  }
+}
+
 /** 为向后兼容保留,内部调用 getSupabase() */
 export const supabase = new Proxy({} as SupabaseClient, {
   get(_, prop) {

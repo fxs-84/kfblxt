@@ -6,6 +6,7 @@ import { useTreatmentPlans } from "../treatment/useTreatment";
 import { formatDate } from "../../lib/format";
 import { buildShareSnapshot } from "./build-snapshot";
 import { encodeSnapshot } from "./share-codec";
+import { buildShareUrl } from "./share-gateway";
 
 interface SharePanelProps { encounterId: string; patientId: string; interventionIds?: string[] }
 
@@ -50,14 +51,12 @@ export function SharePanel({ encounterId, patientId }: SharePanelProps) {
     setShowForm(false); setMessage(""); setHomework(""); setNextVisit("");
   };
 
-  /* 用 ?share=<token>#<snapshot> 形态:
-     - ?share=<token> 触发 PatientViewPage 路由
+  /* 用 ?share=<token>&ref=<项目ref>#<snapshot> 形态:
+     - ?share=<token> 触发 AssessmentFormPage 路由
+     - &ref= 让客户设备走 share-gateway 公共函数读写,无需任何 Supabase key
      - #<base64> 编码全部临床数据,客户设备直接解码渲染,无需 Supabase
      - GitHub Pages 对未知路径返回 404,querystring 形态走主站 200 */
-  const shareUrl = (token: string, hash?: string) => {
-    const base = `${window.location.origin}${import.meta.env.BASE_URL}?share=${token}`;
-    return hash ? `${base}#${hash}` : base;
-  };
+  const shareUrl = buildShareUrl;
 
   return (
     <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>

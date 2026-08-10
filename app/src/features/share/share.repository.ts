@@ -32,9 +32,9 @@ export async function findSharesByEncounter(encounterId: string): Promise<ShareR
   return all.filter((s) => s.encounterId === encounterId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-/** 生成短 token */
+/** 生成 token — 完整 UUID(122 位熵);网关公开后 token 是唯一凭证,长 token 防枚举 */
 export function generateToken(): string {
-  return `anrm-${crypto.randomUUID().slice(0, 8)}`;
+  return `anrm-${crypto.randomUUID()}`;
 }
 
 /** 30 天后过期 */

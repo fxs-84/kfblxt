@@ -2,6 +2,7 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCreateAssessmentShare, useAssessmentSharesByEncounter, useRevokeShare } from "./useShare";
 import { SCALE_OPTIONS } from "./submit-submission";
+import { buildShareUrl } from "./share-gateway";
 import { formatDate } from "../../lib/format";
 import type { ScaleId } from "./share.types";
 
@@ -51,8 +52,8 @@ export function AssessmentSharePanel({ encounterId, patientId }: AssessmentShare
     setMessage("");
   };
 
-  const shareUrl = (token: string) =>
-    `${window.location.origin}${import.meta.env.BASE_URL}?share=${token}`;
+  /* ?share=<token>&ref=<项目ref>:ref 让客户设备走 share-gateway 公共函数 */
+  const shareUrl = (token: string) => buildShareUrl(token);
 
   return (
     <div className="card panel" style={{ marginBottom: "var(--space-4)" }}>

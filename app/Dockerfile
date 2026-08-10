@@ -4,11 +4,24 @@
 FROM node:20-alpine AS build
 WORKDIR /src
 
+# 构建时注入机构 Supabase 连接(可选):
+#   docker build --build-arg VITE_SUPABASE_URL=https://xxxx.supabase.co \
+#                --build-arg VITE_SUPABASE_ANON_KEY=eyJ... 。
+# 注入后客户扫码填表免配 Supabase;留空则首访走 BYOS 配置向导。
+ARG VITE_SUPABASE_URL=""
+ARG VITE_SUPABASE_ANON_KEY=""
+
 # 装依赖(分层缓存)
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
 COPY . .
+# 显式传了 build-arg 才覆盖 .env.local;不传则沿用构建上下文里已有的
+# .env.local(若存在),两者都没有 → 构建产物走 BYOS 配置向导。
+RUN if [ -n "$VITE_SUPABASE_URL" ]; then \
+      printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_ANON_KEY=%s\n' \
+        "$VITE_SUPABASE_URL" "$VITE_SUPABASE_ANON_KEY" > .env.local; \
+    fi
 RUN npm run build
 
 # Stage 2: serve via nginx (极薄镜像)
