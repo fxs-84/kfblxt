@@ -7,7 +7,7 @@ import "./styles/tokens.css";
 import "./styles/layout.css";
 import "./styles/print.css";
 import { router } from "./app/router";
-import { SetupWizard, readStoredConfig, type SupabaseConfig } from "./components/SetupWizard";
+import { SetupWizard, readStoredConfig, isSupabaseSkipped, type SupabaseConfig } from "./components/SetupWizard";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
  */
 function Root() {
   const [configState, setConfigState] = useState<"pending" | "skipped" | "ready">(() =>
-    readStoredConfig() ? "ready" : "pending",
+    readStoredConfig() ? "ready" : isSupabaseSkipped() ? "skipped" : "pending",
   );
 
   if (configState === "pending") {

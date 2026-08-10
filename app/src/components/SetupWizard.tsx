@@ -19,10 +19,36 @@ import { useFieldA11y } from "../hooks/useFieldA11y";
 import { FieldError } from "./ui/FieldError";
 
 const STORAGE_KEY = "kfblxt:supabase:config";
+const SKIP_KEY = "kfblxt:supabase:skipped";
 
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
+}
+
+/** 用户点"暂时跳过(单机演示)"时持久化标记,刷新后不再弹向导,且 resolveConfig 走单机 */
+export function markSupabaseSkipped(): void {
+  try {
+    localStorage.setItem(SKIP_KEY, "1");
+  } catch {
+    /* noop */
+  }
+}
+
+export function isSupabaseSkipped(): boolean {
+  try {
+    return localStorage.getItem(SKIP_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function clearSupabaseSkipped(): void {
+  try {
+    localStorage.removeItem(SKIP_KEY);
+  } catch {
+    /* noop */
+  }
 }
 
 export function readStoredConfig(): SupabaseConfig | null {
@@ -47,6 +73,7 @@ export function readStoredConfig(): SupabaseConfig | null {
 export function clearStoredConfig(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    clearSupabaseSkipped();
   } catch {
     /* noop */
   }
@@ -220,7 +247,10 @@ export function SetupWizard({ onConfigured, onSkip }: SetupWizardProps) {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={onSkip}
+            onClick={() => {
+              markSupabaseSkipped();
+              onSkip();
+            }}
           >
             暂时跳过(单机演示)
           </button>

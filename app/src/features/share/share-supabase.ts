@@ -6,6 +6,7 @@
  *       其余调用方(createShare/revokeShare/PatientViewPage)无需改动。
  */
 import { getSupabase } from "../../lib/supabase";
+import { getSession } from "../../lib/session";
 import { shareRepository, generateToken, defaultExpiry } from "./share.repository";
 import type { ShareRecord } from "./share.repository";
 import { buildShareSnapshot } from "./build-snapshot";
@@ -13,6 +14,34 @@ import type { ScaleId, ShareSnapshot } from "./share.types";
 
 function isSupabaseReady(): boolean {
   return getSupabase() !== null;
+}
+
+/**
+ * 生成分享时使用的 org_id:
+ *  - 优先取当前会话机构(getSession().orgId),Supabase 模式下登录用户
+ *    的 org 与 shares 表 RLS(org_id = current_org_id())一致,INSERT 才能通过
+ *  - 匿名会话回退到 ANONYMOUS org(单机模式)
+ */
+function resolveOrgId(): string {
+  try {
+    return getSession().orgId;
+  } catch {
+    return "00000000-0000-4000-8000-0000000000f0";
+  }
+}
+
+/** 把 RLS 拒绝翻译成用户可理解的提示(常见根因:未登录 Supabase 账号) */
+function friendlyInsertError(err: unknown, action: string): Error {
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === "object" && err !== null && "message" in err
+        ? String((err as { message: unknown }).message)
+        : String(err);
+  if (/row-level security|policy|permission denied/i.test(msg)) {
+    return new Error(`${action}失败:需要先登录账号(Supabase 模式按机构隔离数据)。请在右上角登录后再试。`);
+  }
+  return err instanceof Error ? err : new Error(`${action}失败: ${msg}`);
 }
 
 export async function createSupabaseShare(input: {
@@ -23,12 +52,13 @@ export async function createSupabaseShare(input: {
   message?: string;
   hashData?: string;
 }): Promise<ShareRecord> {
+  const orgId = resolveOrgId();
   if (!isSupabaseReady()) {
     // 回退到 localStorage
     return shareRepository.create({
       encounterId: input.encounterId,
       patientId: input.patientId,
-      orgId: "00000000-0000-4000-8000-0000000000f0",
+      orgId,
       token: generateToken(),
       revoked: false,
       expiresAt: defaultExpiry(),
@@ -54,7 +84,7 @@ export async function createSupabaseShare(input: {
   const row: Record<string, unknown> = {
     encounter_id: input.encounterId,
     patient_id: input.patientId,
-    org_id: "00000000-0000-4000-8000-0000000000f0",
+    org_id: orgId,
     token,
     revoked: false,
     expires_at: defaultExpiry().toISOString(),
@@ -74,7 +104,7 @@ export async function createSupabaseShare(input: {
     error = retry.error;
   }
 
-  if (error) throw new Error(`Supabase 创建分享失败: ${error.message}`);
+  if (error) throw friendlyInsertError(error, "创建分享");
 
   // 触发积分引擎:share.sent (分享奖励)
   try {
@@ -111,11 +141,12 @@ export async function createSupabaseAssessmentShare(input: {
   scales: ScaleId[];
   message?: string;
 }): Promise<ShareRecord> {
+  const orgId = resolveOrgId();
   if (!isSupabaseReady()) {
     return shareRepository.create({
       encounterId: input.encounterId,
       patientId: input.patientId,
-      orgId: "00000000-0000-4000-8000-0000000000f0",
+      orgId,
       token: generateToken(),
       revoked: false,
       expiresAt: defaultExpiry(),
@@ -130,7 +161,7 @@ export async function createSupabaseAssessmentShare(input: {
   const row: Record<string, unknown> = {
     encounter_id: input.encounterId,
     patient_id: input.patientId,
-    org_id: "00000000-0000-4000-8000-0000000000f0",
+    org_id: orgId,
     token,
     revoked: false,
     expires_at: defaultExpiry().toISOString(),
@@ -140,7 +171,7 @@ export async function createSupabaseAssessmentShare(input: {
   };
 
   const { error } = await supabase.from("shares").insert(row);
-  if (error) throw new Error(`Supabase 创建量表分享失败: ${error.message}`);
+  if (error) throw friendlyInsertError(error, "生成量表分享");
 
   return {
     id: token,

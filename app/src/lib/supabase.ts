@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { loadEnv } from "./env";
-import { readStoredConfig, type SupabaseConfig } from "../components/SetupWizard";
+import { readStoredConfig, isSupabaseSkipped, type SupabaseConfig } from "../components/SetupWizard";
 
 let client: SupabaseClient | null = null;
 let initError: string | null = null;
@@ -8,9 +8,29 @@ let initError: string | null = null;
 /**
  * 解析运行时 Supabase 配置(优先级):
  *   1. 浏览器 localStorage(用户在 SetupWizard 填的,各自独立)
- *   2. .env / 构建时 env vars(开发者预设)
- *   3. 都没有 → null(走单机版)
+ *   2. 用户点过"暂时跳过" → null(单机版,持久化标记)
+ *   3. .env / 构建时 env vars(开发者预设;识别占位符则忽略)
+ *   4. 都没有 → null(走单机版)
  */
+/** 占位符域名(模板/示例值,不是真实 Supabase 项目)—— 识别后走单机,避免全应用打到不存在的域名 */
+export function isPlaceholderSupabaseUrl(url: string | undefined): boolean {
+  if (!url) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (
+      host.startsWith("your-project-ref") ||
+      host.startsWith("example.") ||
+      host.startsWith("your-project") ||
+      host === "supabase.co"
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return true; // 无法解析的 URL 视为不可用
+  }
+}
+
 /** Supabase 项目 ref — 从 localStorage key 提取,用于从 Auth 会话重建配置 */
 function detectProjectRef(): string | null {
   try {
@@ -27,9 +47,15 @@ function detectProjectRef(): string | null {
 function resolveConfig(): SupabaseConfig | null {
   const stored = readStoredConfig();
   if (stored) return stored;
+  // 用户明确选择单机模式(持久化标记),即使 env 里有占位符也不再走云端
+  if (isSupabaseSkipped()) return null;
   try {
     const env = loadEnv();
-    if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
+    if (
+      env.VITE_SUPABASE_URL &&
+      env.VITE_SUPABASE_ANON_KEY &&
+      !isPlaceholderSupabaseUrl(env.VITE_SUPABASE_URL)
+    ) {
       return {
         url: env.VITE_SUPABASE_URL,
         anonKey: env.VITE_SUPABASE_ANON_KEY,
@@ -44,7 +70,7 @@ function resolveConfig(): SupabaseConfig | null {
     const anonKey = typeof import.meta.env !== "undefined"
       ? import.meta.env.VITE_SUPABASE_ANON_KEY
       : undefined;
-    if (typeof anonKey === "string" && anonKey) {
+    if (typeof anonKey === "string" && anonKey && !isPlaceholderSupabaseUrl(`https://${ref}.supabase.co`)) {
       return {
         url: `https://${ref}.supabase.co`,
         anonKey,
