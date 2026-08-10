@@ -232,16 +232,11 @@ function devApiProxy(): Plugin {
           return;
         }
 
-        const match = url.match(/^\/api\/(deepseek|anthropic|openai)(\/.*)?$/);
+        const match = url.match(/^\/api\/deepseek(\/.*)?$/);
         if (!match) return next();
 
-        const [, provider, rest] = match;
-        const targetMap: Record<string, string> = {
-          deepseek: 'https://api.deepseek.com',
-          anthropic: 'https://api.anthropic.com',
-          openai: 'https://api.openai.com',
-        };
-        const target = targetMap[provider] + (rest || '');
+        const [, rest] = match;
+        const target = 'https://api.deepseek.com' + (rest || '');
         const method = req.method || 'GET';
 
         const chunks: Buffer[] = [];
@@ -249,13 +244,13 @@ function devApiProxy(): Plugin {
         const body = Buffer.concat(chunks);
 
         const start = Date.now();
-        console.log(`[api-proxy] ▶ ${method} /api/${provider}${rest || ''} → ${target}`);
+        console.log(`[api-proxy] ▶ ${method} /api/deepseek${rest || ''} → ${target}`);
 
         try {
           const upstream = await fetch(target, {
             method,
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': req.headers['content-type'] || 'application/json',
               'Authorization': String(req.headers['authorization'] || ''),
               'x-api-key': String(req.headers['x-api-key'] || ''),
               'anthropic-version': String(req.headers['anthropic-version'] || ''),

@@ -1,8 +1,8 @@
 /**
  * llm-client 纯函数单测 — 覆盖 URL 纠错 + URL 解析(不打网络)
  */
-import { describe, it, expect } from "vitest";
-import { cleanApiUrl, resolveFetchUrl, LLMCallError } from "./llm-client";
+import { describe, it, expect, vi } from "vitest";
+import { cleanApiUrl, resolveFetchUrl, pingLLM, LLMCallError } from "./llm-client";
 
 describe("cleanApiUrl", () => {
   it("补全缺失的 https:// 协议", () => {
@@ -50,15 +50,12 @@ describe("resolveFetchUrl — dev 模式", () => {
     expect(r.url).toBe("/api/deepseek/v1/chat");
     expect(r.viaProxy).toBe(true);
   });
-  it("anthropic → /api/anthropic", () => {
-    const r = resolveFetchUrl("https://api.anthropic.com/v1/messages", undefined);
-    expect(r.url).toBe("/api/anthropic/v1/messages");
+  it("国内非 deepseek(智谱/通义/月之暗面/硅基流动)→ /api/proxy/<urlencoded> 兜底", () => {
+    // 海外 provider(anthropic/openai)已全链路砍掉,但国内非 deepseek 仍走通用代理
+    const r = resolveFetchUrl("https://open.bigmodel.cn/api/paas/v4/chat/completions", undefined);
+    expect(r.url).toMatch(/^\/api\/proxy\//);
     expect(r.viaProxy).toBe(true);
-  });
-  it("openai → /api/openai", () => {
-    const r = resolveFetchUrl("https://api.openai.com/v1/chat/completions", undefined);
-    expect(r.url).toBe("/api/openai/v1/chat/completions");
-    expect(r.viaProxy).toBe(true);
+    expect(decodeURIComponent(r.url.slice("/api/proxy/".length))).toBe("https://open.bigmodel.cn/api/paas/v4/chat/completions");
   });
   it("未知 provider → /api/proxy/<urlencoded>", () => {
     const r = resolveFetchUrl("https://api.custom.com/v1/chat", undefined);
@@ -134,5 +131,41 @@ describe("LLMCallError", () => {
     const e = new LLMCallError("config", "x");
     expect(e.hint).toBe("");
     expect(e.status).toBeUndefined();
+  });
+});
+
+describe("pingLLM — PingResult 失败时也带 resolvedUrl 字段", () => {
+  /**
+   * 用户的痛点:测试按钮失败时,UI 没显示"实际请求发到哪了",
+   * 导致用户不知道是 CORS/key/网络哪一层失败。
+   * 这里要求 PingResult 即使失败也要保留 resolvedUrl 字段(可能为空)。
+   */
+  it("网络层失败时 PingResult.ok=false 且 error.kind ∈ {cors,network}", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    try {
+      const r = await pingLLM({
+        apiUrl: "https://api.example.com/v1/chat",
+        apiKey: "sk-x",
+        model: "any-model",
+      });
+      expect(r.ok).toBe(false);
+      expect(r.error).toBeDefined();
+      expect(["cors", "network"]).toContain(r.error!.kind);
+      // 关键: resolvedUrl 字段必须存在,即使为空
+      expect("resolvedUrl" in r).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("config 错误(URL 不合法)时 PingResult 不抛异常", async () => {
+    const r = await pingLLM({
+      apiUrl: "not a url with spaces",
+      apiKey: "sk-x",
+      model: "any",
+    });
+    expect(r.ok).toBe(false);
+    expect(r.error?.kind).toBe("config");
   });
 });

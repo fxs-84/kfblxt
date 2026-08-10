@@ -83,11 +83,11 @@ export function resolveFetchUrl(cleanedUrl: string, corsProxy?: string): { url: 
     (location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]");
 
   if (isDev) {
-    // 已知 provider 精确代理
+    // 已知 provider 精确代理 — 只留 DeepSeek(国内主力)。
+    // 其他国内 provider(智谱/通义/月之暗面/硅基流动)走下面 /api/proxy 兜底,
+    // 都对开发体验无影响。
     const knownProviders: Array<{ host: string; prefix: string }> = [
       { host: "api.deepseek.com", prefix: "/api/deepseek" },
-      { host: "api.anthropic.com", prefix: "/api/anthropic" },
-      { host: "api.openai.com", prefix: "/api/openai" },
     ];
     for (const { host, prefix } of knownProviders) {
       const idx = cleanedUrl.indexOf(host);
@@ -95,7 +95,7 @@ export function resolveFetchUrl(cleanedUrl: string, corsProxy?: string): { url: 
         return { url: prefix + cleanedUrl.slice(idx + host.length), viaProxy: true };
       }
     }
-    // 兜底:任意 OpenAI/Anthropic 兼容 API → 通用 URL 编码代理
+    // 兜底:任意 OpenAI 兼容 API → 通用 URL 编码代理(走 vite.config.ts 的 /api/proxy/<urlencoded>)
     // 用 encodeURIComponent 而不是 base64,避免 btoa 产生的 + / = 等 URL 不安全字符
     return {
       url: `/api/proxy/${encodeURIComponent(cleanedUrl)}`,
@@ -289,10 +289,17 @@ export async function pingLLM(
   opts: FetchOptions = {},
 ): Promise<PingResult> {
   const startedAt = performance.now();
+  /* 即使失败也要带"实际请求 URL/走的代理"信息,
+     用户卡住时能看到请求发到哪、走的哪条路径(CORS 直连/通用代理/精确代理)。 */
+  let fetchUrl: string | undefined;
+  let viaProxy: boolean | undefined;
+  let apiType: ApiType | undefined;
   try {
     const url = cleanApiUrl(cfg.apiUrl);
-    const { url: fetchUrl, viaProxy } = resolveFetchUrl(url, cfg.corsProxy);
-    const apiType = detectApiType(url);
+    const resolved = resolveFetchUrl(url, cfg.corsProxy);
+    fetchUrl = resolved.url;
+    viaProxy = resolved.viaProxy;
+    apiType = detectApiType(url);
     const headers = buildApiHeaders(cfg.apiKey, url);
 
     const body: Record<string, unknown> =
@@ -329,6 +336,11 @@ export async function pingLLM(
     return {
       ok: false,
       latencyMs: Math.round(performance.now() - startedAt),
+      model: cfg.model,
+      apiType,
+      viaProxy,
+      // 注意:URL 解析失败时 fetchUrl 仍是 undefined,UI 用「—」展示即可
+      resolvedUrl: fetchUrl,
       error: err,
     };
   }

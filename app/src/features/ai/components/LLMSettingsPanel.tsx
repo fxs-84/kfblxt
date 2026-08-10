@@ -11,25 +11,31 @@ import { LLMCallError, type PingResult } from "../llm-client";
 import { getExtConfig, saveExtConfig, type ExtConfig } from "../../agent/tools/ext-config";
 import { btnGhost, btnPrimary, inputStyle, labelStyle, overlayPanelStyle } from "../../agent/ui-styles";
 
-const MODEL_PRESETS = [
-  { label: "🟢 DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat", region: "国内" },
-  { label: "🟢 DeepSeek-R1", url: "https://api.deepseek.com/chat/completions", model: "deepseek-reasoner", region: "国内" },
-  { label: "🟢 智谱 GLM-4", url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: "glm-4-plus", region: "国内" },
-  { label: "🟢 通义千问", url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", model: "qwen-plus", region: "国内" },
-  { label: "🟢 月之暗面", url: "https://api.moonshot.cn/v1/chat/completions", model: "moonshot-v1-32k", region: "国内" },
-  { label: "🟢 硅基流动", url: "https://api.siliconflow.cn/v1/chat/completions", model: "Qwen/Qwen2.5-72B-Instruct", region: "国内" },
-  { label: "🟠 Anthropic", url: "https://api.anthropic.com/v1/messages", model: "claude-haiku-4-5-20251001", region: "海外" },
-  { label: "🟠 OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini", region: "海外" },
-  { label: "🟠 Groq", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", region: "海外" },
-  { label: "🟠 OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", model: "anthropic/claude-3.5-sonnet", region: "海外" },
+/* 仅国内 provider — 海外 provider(Anthropic/OpenAI/Groq/OpenRouter)已全链路砍掉。
+   排序:DeepSeek 优先(性价比最高 + 直连最稳),其余按"开箱即用度"排。 */
+type ModelPreset = { label: string; url: string; model: string };
+
+const MODEL_PRESETS: readonly ModelPreset[] = [
+  { label: "🟢 DeepSeek", url: "https://api.deepseek.com/chat/completions", model: "deepseek-chat" },
+  { label: "🟢 DeepSeek-R1", url: "https://api.deepseek.com/chat/completions", model: "deepseek-reasoner" },
+  { label: "🟢 通义千问(阿里)", url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", model: "qwen-plus" },
+  { label: "🟢 智谱 GLM-4", url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: "glm-4-plus" },
+  { label: "🟢 月之暗面", url: "https://api.moonshot.cn/v1/chat/completions", model: "moonshot-v1-32k" },
+  { label: "🟢 硅基流动", url: "https://api.siliconflow.cn/v1/chat/completions", model: "Qwen/Qwen2.5-72B-Instruct" },
 ];
 
+/* 国内 provider 默认都是 OpenAI 兼容协议,无需 CORS 代理。
+   国内对国内都是直连,GitHub Pages 部署也不需要代理。
+   兜底:用户填了一个奇怪自定义 URL,加点简单代理提示即可。 */
 const PROXY_PRESETS = [
-  { label: "🚫 留空(直连)", url: "" },
-  { label: "🌐 corsproxy.io", url: "https://corsproxy.io/?" },
-  { label: "🌐 allorigins", url: "https://api.allorigins.win/raw?url=" },
-  { label: "🌐 cors.sh", url: "https://proxy.cors.sh/" },
+  { label: "🚫 留空(直连 — 推荐)", url: "" },
 ];
+
+/* 默认 URL:DeepSeek — 国内可直连、价格低、对 ANRM 临床推理足够。 */
+function pickDefaultPresetUrl(): string {
+  return "https://api.deepseek.com/chat/completions";
+}
+const DEFAULT_MODEL = "deepseek-chat";
 
 interface Props {
   onClose: () => void;
@@ -53,9 +59,9 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
     void (async () => {
       const c = await getLLMConfig();
       setLlmForm({
-        apiUrl: c?.apiUrl ?? "https://api.anthropic.com/v1/messages",
+        apiUrl: c?.apiUrl ?? pickDefaultPresetUrl(),
         apiKey: "",
-        model: c?.model ?? "claude-haiku-4-5",
+        model: c?.model ?? DEFAULT_MODEL,
         corsProxy: c?.corsProxy ?? "",
       });
       setKeyAlreadySet(Boolean(c?.apiKey));
@@ -81,7 +87,7 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
       await saveLLMConfig({
         apiUrl: urlOk,
         apiKey: finalKey,
-        model: llmForm.model.trim() || "claude-haiku-4-5",
+        model: llmForm.model.trim() || DEFAULT_MODEL,
         corsProxy: llmForm.corsProxy.trim() || undefined,
       });
       saveExtConfig(extCfg);
@@ -104,7 +110,7 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
     const r = await pingLLM({
       apiUrl: urlOk,
       apiKey: finalKey,
-      model: llmForm.model.trim() || "claude-haiku-4-5",
+      model: llmForm.model.trim() || DEFAULT_MODEL,
       corsProxy: llmForm.corsProxy.trim() || undefined,
     });
     setLlmTestResult(r);
@@ -140,7 +146,7 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
       <div style={{ marginBottom: 8, fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600 }}>⚡ 快速预设</div>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {MODEL_PRESETS.map((p) => (
-          <button type="button" key={p.label} onClick={() => setLlmForm((f) => ({ ...f, apiUrl: p.url, model: p.model }))} title={`${p.region} · ${p.model}`} style={{
+          <button type="button" key={p.label} onClick={() => setLlmForm((f) => ({ ...f, apiUrl: p.url, model: p.model }))} title={`${p.model}`} style={{
             padding: "4px 10px", fontSize: 11, border: "1px solid var(--color-border)", borderRadius: 4,
             background: llmForm.apiUrl === p.url ? "var(--color-accent-weak, #e6f0fa)" : "transparent",
             cursor: "pointer",
@@ -167,12 +173,12 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
       </div>
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>模型</label>
-        <input value={llmForm.model} onChange={(e) => setLlmForm((f) => ({ ...f, model: e.target.value }))} placeholder="claude-haiku-4-5 / deepseek-chat / ..." style={inputStyle} />
+        <input value={llmForm.model} onChange={(e) => setLlmForm((f) => ({ ...f, model: e.target.value }))} placeholder="deepseek-chat / deepseek-reasoner / qwen-plus / ..." style={inputStyle} />
       </div>
       <div style={{ marginBottom: 8, fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600 }}>
         🌐 CORS 代理
         <span style={{ fontSize: 10, marginLeft: 6, color: "var(--color-text-muted)" }}>
-          国内访问海外 API / GitHub Pages 部署时必填
+          国内 provider 默认直连 — 只在你用自定义海外 URL 时填
         </span>
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
@@ -188,7 +194,7 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
         <input
           value={llmForm.corsProxy}
           onChange={(e) => setLlmForm((f) => ({ ...f, corsProxy: e.target.value }))}
-          placeholder="或自定义: https://corsproxy.io/?  /  https://api.allorigins.win/raw?url="
+          placeholder="或自定义: https://corsproxy.io/?  /  https://proxy.cors.sh/"
           style={inputStyle}
         />
       </div>
@@ -284,11 +290,14 @@ export function LLMSettingsPanel({ onClose, onConfiguredChange, variant = "overl
             <>
               ✅ 连接成功 — {llmTestResult.latencyMs}ms
               {"\n"}API 类型: {llmTestResult.apiType} | 模型: {llmTestResult.model}
-              {llmTestResult.viaProxy ? "\n🔀 走代理: " + llmTestResult.resolvedUrl : ""}
+              {llmTestResult.viaProxy ? "\n🔀 走代理: " + llmTestResult.resolvedUrl : "\n🔗 直连: " + (llmTestResult.resolvedUrl ?? "—")}
             </>
           ) : (
             <>
               ❌ {llmTestResult.error?.message ?? "连接失败"}
+              {llmTestResult.error?.status ? `\nHTTP ${llmTestResult.error.status}` : ""}
+              {llmTestResult.resolvedUrl ? `\n🔗 请求发到: ${llmTestResult.resolvedUrl}` : "\n🔗 请求未发出(URL 不合法或 key 缺失)"}
+              {llmTestResult.viaProxy ? " (走代理)" : " (直连)"}
               {llmTestResult.error?.hint ? "\n💡 " + llmTestResult.error.hint : ""}
             </>
           )}

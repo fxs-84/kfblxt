@@ -108,6 +108,13 @@ async function decryptData(encrypted: string): Promise<string> {
   return new TextDecoder().decode(plain);
 }
 
+/* Anthropic 官方 model 名带日期后缀 — 不带日期后缀的"claude-haiku-4-5"
+   实际会被 API 拒绝。这里作为"用户没填 model"时的兜底,
+   保证保存后立即可调通,而不是让用户在 401/404 后才发现自己填错字段。
+   其他 provider(DeepSeek/OpenAI 等)的预设会在 UI 层给具体 model,
+   不依赖这个默认值。 */
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
+
 export async function getLLMConfig(): Promise<LLMConfig | null> {
   try {
     const raw = localStorage.getItem(LLM_CONFIG_KEY);
@@ -119,7 +126,7 @@ export async function getLLMConfig(): Promise<LLMConfig | null> {
     return {
       apiUrl: parsed.apiUrl,
       apiKey,
-      model: parsed.model || "claude-haiku-4-5",
+      model: parsed.model || DEFAULT_MODEL,
       corsProxy: parsed.corsProxy,
     };
   } catch {
@@ -133,7 +140,7 @@ export function getLLMConfigSync(): { apiUrl: string; model: string; corsProxy?:
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LLMConfig>;
     if (!parsed.apiUrl) return null;
-    return { apiUrl: parsed.apiUrl, model: parsed.model || "claude-haiku-4-5", corsProxy: parsed.corsProxy };
+    return { apiUrl: parsed.apiUrl, model: parsed.model || DEFAULT_MODEL, corsProxy: parsed.corsProxy };
   } catch {
     return null;
   }
@@ -153,9 +160,10 @@ export async function saveLLMConfig(cfg: LLMConfig): Promise<void> {
     localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify({
       apiUrl: url,
       apiKey: encKey,
-      model: cfg.model || "claude-haiku-4-5",
+      model: cfg.model || DEFAULT_MODEL,
       corsProxy: cfg.corsProxy,
     }));
+    resetLastLLMFailed();
     notifyLLMConfigChanged();
   } catch (e) {
     console.error("[llm-engine] 保存 LLM 配置失败:", e);
@@ -232,6 +240,11 @@ export type AnalyzeResult = Awaited<ReturnType<typeof import("./reasoning-engine
 
 /** 防止未配置 LLM 时反复重试 */
 let _lastLLMFailed = false;
+
+/** 配置/网络恢复时让下次推理重新尝试 LLM(不再卡在失败缓存上)。 */
+export function resetLastLLMFailed(): void {
+  _lastLLMFailed = false;
+}
 
 export async function analyzeAsync(ctx: ClinicalContext): Promise<AnalyzeResult> {
   if (isLLMConfigured() && !_lastLLMFailed) {
