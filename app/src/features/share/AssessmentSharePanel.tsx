@@ -17,6 +17,7 @@ export function AssessmentSharePanel({ encounterId, patientId }: AssessmentShare
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<Set<ScaleId>>(new Set());
   const [message, setMessage] = useState("");
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const saving = createShare.isPending;
 
@@ -31,13 +32,20 @@ export function AssessmentSharePanel({ encounterId, patientId }: AssessmentShare
 
   const handleGenerate = async () => {
     if (selected.size === 0) return;
-    await createShare.mutateAsync({
-      encounterId,
-      patientId,
-      mode: "assessment",
-      scales: Array.from(selected),
-      message: message.trim() || undefined,
-    });
+    setGenerateError(null);
+    try {
+      await createShare.mutateAsync({
+        encounterId,
+        patientId,
+        mode: "assessment",
+        scales: Array.from(selected),
+        message: message.trim() || undefined,
+      });
+    } catch (e) {
+      // 失败必须可见(如 Supabase 迁移未跑导致 shares.mode 列不存在)
+      setGenerateError(e instanceof Error ? e.message : "生成失败,请重试");
+      return;
+    }
     setShowForm(false);
     setSelected(new Set());
     setMessage("");
@@ -127,6 +135,21 @@ export function AssessmentSharePanel({ encounterId, patientId }: AssessmentShare
                 }}
               />
             </div>
+            {generateError && (
+              <p
+                data-testid="generate-error"
+                style={{
+                  color: "var(--color-abnormal)",
+                  fontSize: "var(--text-xs)",
+                  margin: 0,
+                  padding: "var(--space-2) var(--space-3)",
+                  background: "var(--color-abnormal-weak)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                ⚠ 生成失败:{generateError}
+              </p>
+            )}
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
               <button
                 type="button"
@@ -143,6 +166,7 @@ export function AssessmentSharePanel({ encounterId, patientId }: AssessmentShare
                 onClick={() => {
                   setShowForm(false);
                   setSelected(new Set());
+                  setGenerateError(null);
                 }}
               >
                 取消
