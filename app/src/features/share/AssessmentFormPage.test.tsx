@@ -3,12 +3,12 @@
  *
  * 契约:
  *   - token 无效/不存在 → 错误屏
- *   - mode=assessment 且有 scales → 渲染问卷(量表名 + 提交按钮)
+ *   - mode=assessment 且有 scales → 渲染一次一题向导(量表名 + 进度 + 导航;答完才出现提交按钮)
  *   - mode=summary/缺失 → 渲染 PatientViewPage(只读摘要)
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { AssessmentFormPage } from "./AssessmentFormPage";
 
@@ -62,16 +62,37 @@ describe("AssessmentFormPage", () => {
     expect(screen.getByText(/链接无效或已过期/)).toBeInTheDocument();
   });
 
-  it("mode=assessment + scales:渲染问卷标题 + 提交按钮", () => {
+  it("mode=assessment + scales:向导首屏(标题 + 第 1 题 + 进度 + 导航)", () => {
     useShareByTokenMock.mockReturnValue({
       data: makeShare(),
       isLoading: false,
     });
     render(<AssessmentFormPage />);
     expect(screen.getByText(/自评量表/)).toBeInTheDocument();
-    expect(screen.getByTestId("submit-assessment-btn")).toBeInTheDocument();
     // 量表名来自 SCALE_LABEL
     expect(screen.getByText(/大脑区域定位表/)).toBeInTheDocument();
+    // 一次一题向导:第 1 / 100 题,首屏只有导航没有提交按钮
+    expect(screen.getByText(/第 1 \/ 100 题/)).toBeInTheDocument();
+    expect(screen.getByTestId("next-question-btn")).toBeInTheDocument();
+    expect(screen.queryByTestId("submit-assessment-btn")).not.toBeInTheDocument();
+  });
+
+  it("答完全部必答题走到最后一题:出现提交按钮且可点", () => {
+    useShareByTokenMock.mockReturnValue({
+      data: makeShare(),
+      isLoading: false,
+    });
+    render(<AssessmentFormPage />);
+    // 脑区 99 道必答题:选第一个选项 → 点"下一题"
+    for (let i = 0; i < 99; i++) {
+      fireEvent.click(screen.getAllByTestId("wizard-option")[0]);
+      fireEvent.click(screen.getByTestId("next-question-btn"));
+    }
+    // 第 100 题(Q46 电话偏好,选答)
+    expect(screen.getByText(/第 100 \/ 100 题/)).toBeInTheDocument();
+    const submit = screen.getByTestId("submit-assessment-btn");
+    expect(submit).toBeInTheDocument();
+    expect(submit).toBeEnabled();
   });
 
   it("mode=summary(旧分享):渲染 PatientViewPage 摘要", () => {

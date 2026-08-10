@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useShareByToken } from "./useShare";
 import { BRAIN_REGION_ITEMS, PHONE_EAR_OPTIONS, scoreBrainRegion, type BrainRegionResponses, type PhoneEarPreference } from "../assessments/scales/brain-region";
@@ -65,7 +65,31 @@ function LoadingScreen() {
   );
 }
 
-/** ============ 主导表:遍历 scales 渲染各表 ============ */
+/** ============ 主导表:一次一题向导,答完自动跳下一题 ============ */
+
+interface WizardOption { value: number | string; label: string; sub?: string }
+interface WizardQuestion {
+  key: string;
+  text: string;
+  badge?: { text: string; color: string; bg: string };
+  hint?: string;
+  options: WizardOption[];
+  required: boolean;
+  selected: number | string | undefined;
+  onSelect: (v: number | string) => void;
+}
+
+/** 选项选中后到自动跳题的延迟——让客户看到选中高亮,又不至于等太久 */
+const AUTO_ADVANCE_MS = 280;
+
+/** jsdom 没有 scrollTo 实现,包一层防测试报错 */
+function scrollTop() {
+  try {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch {
+    /* noop */
+  }
+}
 
 function AssessmentRunner({ share }: { share: NonNullable<ReturnType<typeof useShareByToken>["data"]> }) {
   const scales = share.scales ?? [];
@@ -82,19 +106,71 @@ function AssessmentRunner({ share }: { share: NonNullable<ReturnType<typeof useS
   const totalSteps = scales.length;
   const isLastStep = step === totalSteps - 1;
 
-  /** 当前量表已作答数 / 必答数(未答完禁止提交,防止空记录污染临床数据) */
-  const completion = useMemo(() => {
+  /** 当前量表的扁平题目列表:脑区 = 99 计分题 + Q46 电话偏好(选答);疼痛 = CSI 25 + S-LANSS 7 */
+  const questions = useMemo<WizardQuestion[]>(() => {
     if (currentScale === "brain_region") {
       const scored = BRAIN_REGION_ITEMS.filter((i) => i.index !== 46);
-      const answered = scored.filter((it) => brainResponses.items[it.index] !== undefined).length;
-      return { answered, total: scored.length };
+      const q46 = BRAIN_REGION_ITEMS.find((i) => i.index === 46);
+      const list: WizardQuestion[] = scored.map((it) => ({
+        key: `br-${it.index}`,
+        text: `Q${it.index} ${it.text}`,
+        badge:
+          it.side === "L"
+            ? { text: "左半球", color: "#0284c7", bg: "#e0f2fe" }
+            : it.side === "R"
+              ? { text: "右半球", color: "#ea580c", bg: "#ffedd5" }
+              : undefined,
+        options: BRAIN_SCORE_LABELS.map((o) => ({ value: o.value, label: `${o.value} · ${o.label}`, sub: o.desc })),
+        required: true,
+        selected: brainResponses.items[it.index],
+        onSelect: (v) =>
+          setBrainResponses((r) => ({ ...r, items: { ...r.items, [it.index]: v as number } })),
+      }));
+      if (q46) {
+        list.push({
+          key: "br-46",
+          text: `Q46 ${q46.text}`,
+          hint: "📞 电话偏好侧(选答,不计入总分)",
+          options: PHONE_EAR_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+          required: false,
+          selected: brainResponses.phoneEar ?? undefined,
+          onSelect: (v) => setBrainResponses((r) => ({ ...r, phoneEar: v as PhoneEarPreference })),
+        });
+      }
+      return list;
     }
-    const csiAnswered = Object.keys(csiAnswers).length;
-    const slanssAnswered = Object.keys(slanssAnswers).length;
-    return { answered: csiAnswered + slanssAnswered, total: CSI_ITEMS.length + SLANSS_ITEMS.length };
+    // pain_assessment
+    return [
+      ...CSI_ITEMS.map((it): WizardQuestion => ({
+        key: `csi-${it.index}`,
+        text: `Q${it.index} ${it.text}`,
+        options: CSI_CHOICES.map((o) => ({ value: o.value, label: `${o.value} · ${o.label}` })),
+        required: true,
+        selected: csiAnswers[it.index],
+        onSelect: (v) => setCsiAnswers((a) => ({ ...a, [it.index]: v as number })),
+      })),
+      ...SLANSS_ITEMS.map((it): WizardQuestion => {
+        const [noLabel, yesLabel] = it.options;
+        const [noScore, yesScore] = it.scores;
+        return {
+          key: `sl-${it.index}`,
+          text: `Q${it.index} ${it.question}`,
+          options: [
+            { value: noScore, label: `否:${noLabel}` },
+            { value: yesScore, label: `是:${yesLabel}` },
+          ],
+          required: true,
+          selected: slanssAnswers[it.index],
+          onSelect: (v) => setSlanssAnswers((a) => ({ ...a, [it.index]: v as number })),
+        };
+      }),
+    ];
   }, [currentScale, brainResponses, csiAnswers, slanssAnswers]);
 
-  const isComplete = completion.answered >= completion.total;
+  /** 必答题完成度(未答完禁止提交,防止空记录污染临床数据) */
+  const requiredQuestions = questions.filter((q) => q.required);
+  const requiredAnswered = requiredQuestions.filter((q) => q.selected !== undefined).length;
+  const isComplete = requiredAnswered >= requiredQuestions.length;
 
   const submitOne = async (scale: ScaleId): Promise<{ ok: boolean; err?: string }> => {
     if (scale === "brain_region") {
@@ -150,7 +226,7 @@ function AssessmentRunner({ share }: { share: NonNullable<ReturnType<typeof useS
       return;
     }
     setStep((s) => s + 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollTop();
   };
 
   const allSubmitted = scales.every((s) => submitted[s]);
@@ -161,7 +237,7 @@ function AssessmentRunner({ share }: { share: NonNullable<ReturnType<typeof useS
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-6) var(--space-4)", fontFamily: "var(--font-sans)" }}>
       {/* 头部 */}
-      <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
+      <div style={{ textAlign: "center", marginBottom: "var(--space-5)" }}>
         <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 800, margin: "0 0 var(--space-1)" }}>
           📋 自评量表
         </h1>
@@ -175,61 +251,187 @@ function AssessmentRunner({ share }: { share: NonNullable<ReturnType<typeof useS
         )}
       </div>
 
-      {/* 进度条 */}
-      <div style={{ display: "flex", gap: 6, marginBottom: "var(--space-5)" }}>
-        {scales.map((s, i) => (
-          <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? "var(--color-accent)" : "var(--color-border)" }} />
-        ))}
-      </div>
+      {/* 份量表进度 */}
+      {totalSteps > 1 && (
+        <div style={{ display: "flex", gap: 6, marginBottom: "var(--space-4)" }}>
+          {scales.map((s, i) => (
+            <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? "var(--color-accent)" : "var(--color-border)" }} />
+          ))}
+        </div>
+      )}
 
-      {/* 当前量表 */}
-      <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-5)" }}>
-        <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)" }}>
-          {SCALE_LABEL[currentScale]}
-        </h2>
-        {currentScale === "brain_region" ? (
-          <BrainRegionCustomer
-            responses={brainResponses}
-            onChange={setBrainResponses}
-          />
-        ) : (
-          <PainAssessmentCustomer
-            csiAnswers={csiAnswers}
-            slanssAnswers={slanssAnswers}
-            onCsiChange={setCsiAnswers}
-            onSlanssChange={setSlanssAnswers}
-          />
-        )}
-      </div>
-
-      {/* 提交按钮 */}
-      <div style={{ textAlign: "center" }}>
-        {!isComplete && (
-          <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-2)", fontSize: "var(--text-sm)" }}>
-            还剩 {completion.total - completion.answered} 题未作答,全部答完才能提交
-          </p>
-        )}
-        {submitError && (
-          <p style={{ color: "var(--color-abnormal)", marginBottom: "var(--space-2)", fontSize: "var(--text-sm)" }}>
-            ⚠ {submitError}
-          </p>
-        )}
-        <button
-          type="button"
-          className="btn btn--primary"
-          style={{ fontSize: "var(--text-base)", padding: "var(--space-3) var(--space-6)" }}
-          disabled={submitting || !isComplete}
-          onClick={handleSubmitCurrent}
-          data-testid="submit-assessment-btn"
-        >
-          {submitting ? "提交中…" : isLastStep ? "✅ 提交全部量表" : "提交并继续下一份 →"}
-        </button>
-      </div>
+      {/* 一次一题向导(key=scale:份量表切换时重置题号) */}
+      <ScaleWizard
+        key={currentScale}
+        scaleLabel={SCALE_LABEL[currentScale]}
+        questions={questions}
+        onSubmit={handleSubmitCurrent}
+        submitting={submitting}
+        submitError={submitError}
+        submitLabel={isLastStep ? "✅ 提交全部量表" : "提交并继续下一份 →"}
+        requiredAnswered={requiredAnswered}
+        requiredTotal={requiredQuestions.length}
+      />
     </div>
   );
 }
 
-/** ============ Brain Region 顾客版 ============ */
+/** 一次一题向导:选中自动跳下一题,可回退修改,最后一题才出现提交 */
+function ScaleWizard({ scaleLabel, questions, onSubmit, submitting, submitError, submitLabel, requiredAnswered, requiredTotal }: {
+  scaleLabel: string;
+  questions: WizardQuestion[];
+  onSubmit: () => void;
+  submitting: boolean;
+  submitError: string | null;
+  submitLabel: string;
+  requiredAnswered: number;
+  requiredTotal: number;
+}) {
+  const [index, setIndex] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+  useEffect(() => clearTimer, []);
+
+  const q = questions[index];
+  const isLast = index === questions.length - 1;
+  const canNext = q.selected !== undefined || !q.required;
+
+  const go = (i: number) => {
+    clearTimer();
+    setIndex(i);
+    scrollTop();
+  };
+
+  const handleSelect = (v: number | string) => {
+    q.onSelect(v);
+    clearTimer();
+    if (!isLast) {
+      timerRef.current = setTimeout(() => {
+        setIndex((i) => Math.min(i + 1, questions.length - 1));
+        scrollTop();
+      }, AUTO_ADVANCE_MS);
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: "var(--space-5)", marginBottom: "var(--space-5)" }}>
+      {/* 题号 + 题目进度条 */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-2)" }}>
+        <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: 0 }}>{scaleLabel}</h2>
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+          第 {index + 1} / {questions.length} 题
+        </span>
+      </div>
+      <div style={{ height: 6, borderRadius: 3, background: "var(--color-border)", marginBottom: "var(--space-4)", overflow: "hidden" }}>
+        <div style={{ width: `${((index + 1) / questions.length) * 100}%`, height: "100%", background: "var(--color-accent)", transition: "width 0.2s" }} />
+      </div>
+
+      {/* 当前题 */}
+      <div style={{ fontSize: "var(--text-base)", fontWeight: 600, lineHeight: 1.6, marginBottom: "var(--space-4)" }}>
+        {q.badge && (
+          <span style={{ marginRight: 8, fontSize: 11, color: q.badge.color, background: q.badge.bg, padding: "1px 6px", borderRadius: 4 }}>
+            {q.badge.text}
+          </span>
+        )}
+        {q.text}
+        {q.hint && (
+          <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", fontWeight: 400, marginTop: 4 }}>{q.hint}</div>
+        )}
+      </div>
+
+      {/* 选项(大按钮,移动端好点) */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", marginBottom: "var(--space-5)" }}>
+        {q.options.map((opt) => {
+          const cur = q.selected === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              data-testid="wizard-option"
+              onClick={() => handleSelect(opt.value)}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                width: "100%",
+                padding: "14px 16px",
+                border: cur ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
+                background: cur ? "var(--color-accent)" : "transparent",
+                color: cur ? "#fff" : "var(--color-text)",
+                borderRadius: 10,
+                cursor: "pointer",
+                fontSize: 15,
+                textAlign: "left",
+              }}
+            >
+              <span>{opt.label}</span>
+              {opt.sub && (
+                <span style={{ fontSize: 12, opacity: 0.75, marginLeft: 8 }}>{opt.sub}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 底部导航 / 提交 */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--space-2)" }}>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          data-testid="prev-question-btn"
+          disabled={index === 0}
+          onClick={() => go(index - 1)}
+        >
+          ← 上一题
+        </button>
+        {!isLast && (
+          <button
+            type="button"
+            className="btn btn--primary"
+            data-testid="next-question-btn"
+            disabled={!canNext}
+            onClick={() => go(index + 1)}
+          >
+            下一题 →
+          </button>
+        )}
+      </div>
+
+      {isLast && (
+        <div style={{ textAlign: "center", marginTop: "var(--space-4)" }}>
+          {requiredAnswered < requiredTotal && (
+            <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-2)", fontSize: "var(--text-sm)" }}>
+              还剩 {requiredTotal - requiredAnswered} 题未作答,全部答完才能提交(可点"上一题"回去补答)
+            </p>
+          )}
+          {submitError && (
+            <p style={{ color: "var(--color-abnormal)", marginBottom: "var(--space-2)", fontSize: "var(--text-sm)" }}>
+              ⚠ {submitError}
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn btn--primary"
+            style={{ fontSize: "var(--text-base)", padding: "var(--space-3) var(--space-6)" }}
+            disabled={submitting || requiredAnswered < requiredTotal}
+            onClick={onSubmit}
+            data-testid="submit-assessment-btn"
+          >
+            {submitting ? "提交中…" : submitLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** ============ 选项常量(向导题面用) ============ */
 
 const BRAIN_SCORE_LABELS: ReadonlyArray<{ value: number; label: string; desc: string }> = [
   { value: 0, label: "无症状", desc: "0% 的时间" },
@@ -239,83 +441,6 @@ const BRAIN_SCORE_LABELS: ReadonlyArray<{ value: number; label: string; desc: st
   { value: 4, label: "总是", desc: "100% 的时间" },
 ];
 
-function BrainRegionCustomer({ responses, onChange }: { responses: BrainRegionResponses; onChange: (r: BrainRegionResponses) => void }) {
-  const scored = BRAIN_REGION_ITEMS.filter((i) => i.index !== 46);
-  const answered = useMemo(() => scored.filter((it) => responses.items[it.index] !== undefined).length, [responses]);
-
-  return (
-    <div>
-      <div style={{ padding: "var(--space-2) var(--space-3)", background: "var(--color-accent-weak)", borderRadius: "var(--radius-sm)", marginBottom: "var(--space-3)", fontSize: "var(--text-sm)" }}>
-        已作答 {answered} / {scored.length} 题 · 第 46 题(电话偏好侧)在最下方
-      </div>
-      {scored.map((it) => {
-        const cur = responses.items[it.index];
-        return (
-          <div key={it.index} style={{ padding: "var(--space-3) 0", borderBottom: "1px solid var(--color-border)" }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>
-              <span style={{ color: "var(--color-text-muted)", marginRight: 8 }}>Q{it.index}</span>
-              {it.text}
-              {it.side === "L" && <span style={{ marginLeft: 8, fontSize: 11, color: "#0284c7", background: "#e0f2fe", padding: "1px 6px", borderRadius: 4 }}>左半球</span>}
-              {it.side === "R" && <span style={{ marginLeft: 8, fontSize: 11, color: "#ea580c", background: "#ffedd5", padding: "1px 6px", borderRadius: 4 }}>右半球</span>}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {BRAIN_SCORE_LABELS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => onChange({ ...responses, items: { ...responses.items, [it.index]: opt.value } })}
-                  style={{
-                    padding: "6px 12px",
-                    border: cur === opt.value ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-                    background: cur === opt.value ? "var(--color-accent)" : "transparent",
-                    color: cur === opt.value ? "#fff" : "var(--color-text)",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: 13,
-                  }}
-                >
-                  {opt.value} · {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* 第 46 题 */}
-      <div style={{ padding: "var(--space-3)", background: "#f0fdfa", borderRadius: "var(--radius-md)", marginTop: "var(--space-3)" }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>
-          <span style={{ color: "#0d9488", marginRight: 8 }}>Q46</span>
-          {BRAIN_REGION_ITEMS.find((i) => i.index === 46)?.text}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>📞 电话偏好侧(不计入总分)</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {PHONE_EAR_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange({ ...responses, phoneEar: opt.value as PhoneEarPreference })}
-              style={{
-                padding: "8px 14px",
-                border: responses.phoneEar === opt.value ? "2px solid #0d9488" : "1px solid var(--color-border)",
-                background: responses.phoneEar === opt.value ? "#0d9488" : "transparent",
-                color: responses.phoneEar === opt.value ? "#fff" : "var(--color-text)",
-                borderRadius: 6,
-                cursor: "pointer",
-                fontSize: 13,
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** ============ CSI + S-LANSS 顾客版 ============ */
-
 const CSI_CHOICES: ReadonlyArray<{ value: number; label: string }> = [
   { value: 0, label: "从不" },
   { value: 1, label: "罕见" },
@@ -323,111 +448,6 @@ const CSI_CHOICES: ReadonlyArray<{ value: number; label: string }> = [
   { value: 3, label: "经常" },
   { value: 4, label: "总是" },
 ];
-
-function PainAssessmentCustomer({ csiAnswers, slanssAnswers, onCsiChange, onSlanssChange }: {
-  csiAnswers: Record<number, number>;
-  slanssAnswers: Record<number, number>;
-  onCsiChange: (r: Record<number, number>) => void;
-  onSlanssChange: (r: Record<number, number>) => void;
-}) {
-  const csiAnswered = Object.keys(csiAnswers).length;
-  const slanssAnswered = Object.keys(slanssAnswers).length;
-  return (
-    <div>
-      {/* CSI */}
-      <div style={{ marginBottom: "var(--space-5)" }}>
-        <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: "0 0 var(--space-2)" }}>
-          📋 CSI 中枢敏感性量表({csiAnswered}/25)
-        </h3>
-        {CSI_ITEMS.map((it) => {
-          const cur = csiAnswers[it.index];
-          return (
-            <div key={it.index} style={{ padding: "var(--space-2) 0", borderBottom: "1px solid var(--color-border)" }}>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: "var(--color-text-muted)", marginRight: 8 }}>Q{it.index}</span>
-                {it.text}
-              </div>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {CSI_CHOICES.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => onCsiChange({ ...csiAnswers, [it.index]: opt.value })}
-                    style={{
-                      padding: "4px 10px",
-                      border: cur === opt.value ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-                      background: cur === opt.value ? "var(--color-accent)" : "transparent",
-                      color: cur === opt.value ? "#fff" : "var(--color-text)",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      fontSize: 12,
-                    }}
-                  >
-                    {opt.value} · {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* S-LANSS */}
-      <div>
-        <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: "0 0 var(--space-2)" }}>
-          🩹 S-LANSS 神经病理性疼痛({slanssAnswered}/7)
-        </h3>
-        {SLANSS_ITEMS.map((it) => {
-          const cur = slanssAnswers[it.index];
-          const [noLabel, yesLabel] = it.options;
-          const [noScore, yesScore] = it.scores;
-          return (
-            <div key={it.index} style={{ padding: "var(--space-2) 0", borderBottom: "1px solid var(--color-border)" }}>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ color: "var(--color-text-muted)", marginRight: 8 }}>Q{it.index}</span>
-                {it.question}
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => onSlanssChange({ ...slanssAnswers, [it.index]: noScore })}
-                  style={{
-                    flex: 1,
-                    padding: "6px 12px",
-                    border: cur === noScore ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-                    background: cur === noScore ? "var(--color-accent)" : "transparent",
-                    color: cur === noScore ? "#fff" : "var(--color-text)",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: 13,
-                  }}
-                >
-                  否:{noLabel}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSlanssChange({ ...slanssAnswers, [it.index]: yesScore })}
-                  style={{
-                    flex: 1,
-                    padding: "6px 12px",
-                    border: cur === yesScore ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-                    background: cur === yesScore ? "var(--color-accent)" : "transparent",
-                    color: cur === yesScore ? "#fff" : "var(--color-text)",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: 13,
-                  }}
-                >
-                  是:{yesLabel}
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 /** ============ 提交完成 ============ */
 
