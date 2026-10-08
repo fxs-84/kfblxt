@@ -18,6 +18,7 @@ import { MembershipCenterPage } from "../features/membership/pages/MembershipCen
 import { PointsHistoryPage } from "../features/membership/pages/PointsHistoryPage";
 import { RedeemCreatePage } from "../features/membership/pages/RedeemCreatePage";
 import { CashierPage } from "../features/billing/pages/CashierPage";
+import { AppointmentsPage } from "../features/appointments/AppointmentsPage";
 import { PatientMembershipRoutePage } from "../features/membership/pages/PatientMembershipRoutePage";
 import { MigratePage } from "./pages/MigratePage";
 
@@ -51,6 +52,7 @@ export const router = createBrowserRouter(
         { path: "patients/:id", element: <PatientDetailPage /> },
         { path: "patients/:id/edit", element: <PatientFormPage /> },
         { path: "cashier", element: <CashierPage /> },
+        { path: "appointments", element: <AppointmentsPage /> },
         { path: "migrate", element: <MigratePage /> },
         { path: "patients/:id/membership", element: <PatientMembershipRoutePage /> },
         { path: "membership/rules", element: <RulesListPage /> },

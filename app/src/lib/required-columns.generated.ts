@@ -6,6 +6,14 @@
  */
 
 export const REQUIRED_COLUMNS: ReadonlyArray<{ table: string; column: string }> = [
+  { table: "appointments", column: "created_at" },
+  { table: "appointments", column: "duration_min" },
+  { table: "appointments", column: "note" },
+  { table: "appointments", column: "org_id" },
+  { table: "appointments", column: "patient_id" },
+  { table: "appointments", column: "project_name" },
+  { table: "appointments", column: "start_at" },
+  { table: "appointments", column: "therapist_id" },
   { table: "assessments", column: "encounter_id" },
   { table: "assessments", column: "patient_id" },
   { table: "attachments", column: "category" },

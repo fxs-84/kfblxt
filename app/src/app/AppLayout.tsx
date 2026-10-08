@@ -34,6 +34,13 @@ const NAV: NavItem[] = [
     icon: "M17 9V7a2 2 0 00-2-2H9a2 2 0 00-2 2v2m0 0a2 2 0 100 4m0-4V7m0 4h6m0-4v4m0 0a2 2 0 100 4m0-4v4",
   },
   {
+    to: "/appointments",
+    label: "预约看板",
+    end: false,
+    // 日历图标
+    icon: "M8 2v4m8-4v4M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+  },
+  {
     to: "/membership/dashboard",
     label: "会员中心",
     end: false,

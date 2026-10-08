@@ -9,6 +9,8 @@ import { regionLabel } from "../../components/bodymap/regions";
 import { MyWorkStats } from "../../components/auth/MyWorkStats";
 import { hasSupabaseConfig } from "../../lib/supabase";
 import { hasLocalData } from "../../lib/migrate";
+import { useAppointments } from "../appointments/useAppointments";
+import { getUrgency } from "../appointments/appointment.types";
 
 function isThisMonth(d: Date): boolean {
   const now = new Date();
@@ -36,12 +38,21 @@ export function DashboardPage() {
   const { data: patients = [] } = usePatients();
   const { data: encounters = [] } = useAllEncounters();
   const { data: pendingFollowups = [] } = usePendingFollowups();
+  const { data: allAppointments = [] } = useAppointments();
 
   const monthEncounters = encounters.filter((e) => isThisMonth(e.encounterDate));
   const todayEncounters = encounters.filter((e) => isToday(e.encounterDate));
   const highRisk = encounters.filter((e) => e.chiefComplaint.vas >= 7).length;
 
   const { regions, intensity } = aggregateRegions(encounters);
+
+  // 预约统计
+  const todayAppointments = allAppointments.filter(
+    (a) => getUrgency(a.startAt) === "today" && a.status !== "completed" && a.status !== "cancelled",
+  ).length;
+  const upcomingAppointments = allAppointments.filter(
+    (a) => (getUrgency(a.startAt) === "today" || getUrgency(a.startAt) === "soon") && a.status !== "completed" && a.status !== "cancelled",
+  ).length;
 
   // 最近就诊(全部,前 8 条)
   const recentEncounters = [...encounters]
@@ -56,6 +67,8 @@ export function DashboardPage() {
     { label: "今日就诊", value: todayEncounters.length, accent: "normal" },
     { label: "当月就诊", value: monthEncounters.length, accent: "caution" },
     { label: "高痛就诊(VAS≥7)", value: highRisk, accent: "abnormal" },
+    { label: "今日预约", value: todayAppointments, accent: "accent", href: "/appointments" },
+    { label: "24h 内预约", value: upcomingAppointments, accent: "caution", href: "/appointments" },
   ] as const;
 
   return (
@@ -93,7 +106,11 @@ export function DashboardPage() {
           <div
             key={t.label}
             className={`tile tile--${t.accent}`}
-            style={{ paddingLeft: 60 }}
+            style={{ paddingLeft: 60, cursor: "href" in t && t.href ? "pointer" : undefined }}
+            onClick={() => { if ("href" in t && t.href) navigate(t.href); }}
+            role={"href" in t && t.href ? "link" : undefined}
+            tabIndex={"href" in t && t.href ? 0 : undefined}
+            onKeyDown={"href" in t && t.href ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(t.href as string); } } : undefined}
           >
             <span className="tile__value">{t.value}</span>
             <span className="tile__label">{t.label}</span>

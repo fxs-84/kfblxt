@@ -2105,3 +2105,377 @@ body {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ===== 预约看板(Kanban) ===== */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.kanban-column {
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast), background var(--duration-fast);
+}
+
+.kanban-column--drop-target {
+  border-color: var(--color-accent);
+  background: var(--color-accent-weak, #e6f0fa);
+  box-shadow: 0 0 0 2px var(--color-accent-glow, rgba(42,147,189,0.18));
+}
+
+.kanban-column--disabled {
+  opacity: 0.5;
+}
+
+.kanban-column__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.kanban-column__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.kanban-column__count {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+}
+
+.kanban-column__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow-y: auto;
+}
+
+.kanban-column__empty {
+  padding: var(--space-4);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+/* 列头颜色(对齐状态语义) */
+.kanban-column--pending    .kanban-column__title { color: var(--color-caution); }
+.kanban-column--confirmed  .kanban-column__title { color: var(--color-accent); }
+.kanban-column--checked_in .kanban-column__title { color: var(--color-normal); }
+.kanban-column--completed  .kanban-column__title { color: var(--color-text-muted); }
+.kanban-column--cancelled  .kanban-column__title { color: var(--color-abnormal); }
+
+/* 卡片 */
+.kanban-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  cursor: grab;
+  transition: box-shadow var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast);
+  position: relative;
+  font-size: var(--text-sm);
+}
+
+.kanban-card:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.kanban-card:active { cursor: grabbing; }
+
+.kanban-card--dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.kanban-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.kanban-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: 2px;
+}
+
+.kanban-card__patient {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-card__urgent {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.kanban-card__urgent--overdue {
+  background: var(--color-abnormal);
+  box-shadow: 0 0 0 3px var(--color-abnormal-weak);
+}
+
+.kanban-card__urgent--today {
+  background: var(--color-caution);
+  box-shadow: 0 0 0 3px var(--color-caution-weak);
+}
+
+.kanban-card__project {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.kanban-card__meta {
+  display: flex;
+  gap: var(--space-1);
+  font-size: 11px;
+  color: var(--color-text);
+  flex-wrap: wrap;
+}
+
+.kanban-card__meta--muted {
+  color: var(--color-text-muted);
+}
+
+.kanban-card__note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 顶部提醒条 */
+.appointment-reminder-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: linear-gradient(135deg, #fff8e1, #ffffff);
+  border: 1px solid var(--color-caution);
+  border-left: 4px solid var(--color-caution);
+  border-radius: var(--radius-md);
+}
+
+.appointment-reminder-bar__icon { font-size: 20px; }
+
+.appointment-reminder-bar__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.appointment-reminder-bar__text b { font-size: var(--text-sm); }
+
+.appointment-reminder-bar__hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.appointment-reminder-bar__list {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-left: auto;
+  align-items: center;
+}
+
+.appointment-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.appointment-reminder:hover {
+  border-color: var(--color-caution);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.appointment-reminder--overdue {
+  border-color: var(--color-abnormal);
+  background: var(--color-abnormal-weak);
+}
+
+.appointment-reminder--today {
+  border-color: var(--color-caution);
+}
+
+.appointment-reminder__time { font-weight: 700; color: var(--color-caution); }
+.appointment-reminder--overdue .appointment-reminder__time { color: var(--color-abnormal); }
+.appointment-reminder__patient { font-weight: 600; }
+.appointment-reminder__project { color: var(--color-text-muted); }
+
+.appointment-reminder-bar__more {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 2px 8px;
+}
+
+@media (max-width: 1100px) {
+  .kanban-board {
+    grid-template-columns: repeat(5, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .kanban-board {
+    grid-template-columns: 1fr;
+  }
+  .kanban-column { min-height: auto; }
+  .appointment-reminder-bar { flex-direction: column; align-items: flex-start; }
+  .appointment-reminder-bar__list { margin-left: 0; }
+}
+
+/* ===== 客户选择 combobox(预约表单用) ===== */
+.patient-combobox { position: relative; }
+
+.patient-combobox input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.patient-combobox input:focus {
+  outline: none;
+  border-color: var(--color-accent-light);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+}
+
+.patient-combobox__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-combobox__empty {
+  padding: var(--space-3);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.patient-combobox__option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.patient-combobox__option:hover { background: var(--color-accent-weak, #e6f0fa); }
+
+.patient-combobox__option-name { font-weight: 600; }
+
+.patient-combobox__option-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.patient-combobox__create {
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.patient-combobox__create:hover { background: var(--color-accent-weak, #e6f0fa); }
+
+.patient-combobox__selected {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.patient-combobox__chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-accent-weak, #e6f0fa);
+  border: 1px solid var(--color-accent-light);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.patient-combobox__chip-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.patient-combobox__create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-accent-light);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-weak, #f0f7fa);
+}
