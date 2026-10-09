@@ -157,9 +157,6 @@ export function PatientFormPage() {
               placeholder="如:29"
               {...register("age")} />
             <FieldError id="patient-age-error" message={errors.age?.message} />
-            <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
-              只需填整数年龄,系统自动换算出生日期;之后每年年龄自动增长,无需回来改。
-            </span>
           </div>
           <div className="field">
             <label htmlFor="phone">联系电话</label>
