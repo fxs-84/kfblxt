@@ -9,6 +9,24 @@ export function calcAge(birthDate: Date, now: Date = new Date()): number {
   return age;
 }
 
+/**
+ * 年龄 → 出生日期(取「age 年前的今天」)。
+ *
+ * 为什么这样设计:建档时用户只报年龄(如 29 岁),没有确切生日。
+ * 取「age 年前的今天」意味着假设生日就是今天,于是:
+ *   - 今天 calcAge = age(与口头年龄一致)
+ *   - 明年同一天 calcAge = age + 1(自动长一岁,无需维护)
+ * 配合 calcAge 的显示侧实时计算,年龄永远跟日历走。
+ */
+export function birthDateFromAge(age: number, now: Date = new Date()): Date {
+  if (!Number.isInteger(age) || age < 0 || age > 150) {
+    throw new Error("年龄必须是 0-150 的整数");
+  }
+  const d = new Date(now);
+  d.setFullYear(d.getFullYear() - age);
+  return d;
+}
+
 export function formatDate(date: Date): string {
   return date.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
 }

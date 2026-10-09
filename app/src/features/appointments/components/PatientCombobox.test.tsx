@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { PatientCombobox } from "./PatientCombobox";
+import { calcAge } from "../../../lib/format";
 import type { PatientRecord } from "../../patients/patient.repository";
 
 const P1: PatientRecord = {
@@ -108,27 +109,27 @@ describe("PatientCombobox", () => {
     fireEvent.focus(screen.getByTestId("pc-input"));
     fireEvent.click(screen.getByTestId("pc-create"));
     fireEvent.change(screen.getByTestId("pc-create-name"), { target: { value: "王芳" } });
-    fireEvent.change(screen.getByTestId("pc-create-birth"), { target: { value: "1985-03-01" } });
+    fireEvent.change(screen.getByTestId("pc-create-age"), { target: { value: "29" } });
     fireEvent.click(screen.getByTestId("pc-create-save"));
     await waitFor(() => {
       expect(createMutateAsync).toHaveBeenCalledTimes(1);
     });
-    expect(createMutateAsync.mock.calls[0][0]).toMatchObject({
-      name: "王芳",
-      sex: "male",
-    });
+    const payload = createMutateAsync.mock.calls[0][0];
+    expect(payload).toMatchObject({ name: "王芳", sex: "male" });
+    // 年龄反推出生日期:calcAge(birthDate) 应该正好等于 29
+    expect(calcAge(payload.birthDate)).toBe(29);
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith("p-new");
     });
   });
 
-  it("新建缺出生日期 → 显示错误,不提交", () => {
+  it("新建缺年龄 → 显示错误,不提交", () => {
     render(<PatientCombobox value="" onChange={() => {}} data-testid="pc" />);
     fireEvent.focus(screen.getByTestId("pc-input"));
     fireEvent.click(screen.getByTestId("pc-create"));
     fireEvent.change(screen.getByTestId("pc-create-name"), { target: { value: "王芳" } });
     fireEvent.click(screen.getByTestId("pc-create-save"));
-    expect(screen.getByTestId("pc-create-error")).toHaveTextContent("出生日期");
+    expect(screen.getByTestId("pc-create-error")).toHaveTextContent("年龄");
     expect(createMutateAsync).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcAge, vasSeverity } from "./format";
+import { calcAge, vasSeverity, birthDateFromAge } from "./format";
 
 describe("calcAge", () => {
   const now = new Date("2026-07-01");
@@ -14,6 +14,32 @@ describe("calcAge", () => {
 
   it("生日当天计入整岁", () => {
     expect(calcAge(new Date("1990-07-01"), now)).toBe(36);
+  });
+});
+
+describe("birthDateFromAge", () => {
+  const now = new Date("2026-10-09");
+
+  it("29 岁 → 出生日期取 29 年前的今天,立即算回 29", () => {
+    const bd = birthDateFromAge(29, now);
+    expect(calcAge(bd, now)).toBe(29);
+  });
+
+  it("明年同一天自动 +1 岁(无需维护)", () => {
+    const bd = birthDateFromAge(29, now);
+    const nextYear = new Date("2027-10-09");
+    expect(calcAge(bd, nextYear)).toBe(30);
+  });
+
+  it("0 岁新生儿 → 出生日期 = 今天", () => {
+    const bd = birthDateFromAge(0, now);
+    expect(calcAge(bd, now)).toBe(0);
+  });
+
+  it("拒绝非法年龄", () => {
+    expect(() => birthDateFromAge(-1, now)).toThrow();
+    expect(() => birthDateFromAge(151, now)).toThrow();
+    expect(() => birthDateFromAge(29.5, now)).toThrow();
   });
 });
 

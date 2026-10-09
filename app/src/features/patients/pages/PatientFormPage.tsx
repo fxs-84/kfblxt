@@ -3,13 +3,36 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
-import { patientSchema } from "../patient.schema";
 import { useCreatePatient, useUpdatePatient, usePatient } from "../usePatients";
 import { getSession } from "../../../lib/session";
 import { FieldError } from "../../../components/ui/FieldError";
+import { birthDateFromAge, calcAge } from "../../../lib/format";
 
-// 机构 org_id 由会话注入,不作为表单字段
-const formSchema = patientSchema.omit({ id: true, createdAt: true, orgId: true });
+// 机构 org_id 由会话注入,不作为表单字段。
+// 存储仍是 birthDate,但表单对用户暴露「年龄」— 保存时反推出生日期(取 age 年前的今天),
+// 显示侧统一走 calcAge(birthDate),年龄随日历自动增长,无需每年手动维护。
+const formSchema = z.object({
+  medicalRecordNo: z
+    .string()
+    .trim()
+    .max(64, "病历号过长")
+    .optional()
+    .or(z.literal("")),
+  name: z.string().trim().min(1, "姓名不能为空").max(80),
+  sex: z.enum(["male", "female", "other"]),
+  age: z.coerce
+    .number({ message: "年龄必须是数字" })
+    .int("年龄必须是整数")
+    .min(0, "年龄不能为负")
+    .max(150, "年龄超出合理范围"),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[0-9+\-() ]{5,20}$/u, "联系电话格式不正确")
+    .optional()
+    .or(z.literal("")),
+  dominantHand: z.enum(["left", "right", "ambidextrous"]).optional().or(z.literal("")),
+});
 type FormValues = z.input<typeof formSchema>;
 
 export function PatientFormPage() {
@@ -32,14 +55,14 @@ export function PatientFormPage() {
     defaultValues: { sex: "male" },
   });
 
-  // 编辑模式:加载已有数据填入表单
+  // 编辑模式:加载已有数据填入表单(birthDate → 年龄展示)
   useEffect(() => {
     if (isEdit && existing) {
       reset({
         medicalRecordNo: existing.medicalRecordNo ?? "",
         name: existing.name ?? "",
         sex: existing.sex as "male" | "female" | "other",
-        birthDate: existing.birthDate,
+        age: calcAge(existing.birthDate),
         phone: existing.phone ?? "",
         dominantHand: (existing.dominantHand as "left" | "right" | "ambidextrous" | "") ?? "",
       });
@@ -50,9 +73,23 @@ export function PatientFormPage() {
     setSubmitError(null);
     try {
       const parsed = formSchema.parse(values);
+      // 年龄 → birthDate。编辑模式若年龄未变,保留原 birthDate(避免生日漂移到"今天")
+      const birthDate =
+        isEdit && existing && calcAge(existing.birthDate) === parsed.age
+          ? existing.birthDate
+          : birthDateFromAge(parsed.age);
+      const payload = {
+        medicalRecordNo: parsed.medicalRecordNo,
+        name: parsed.name,
+        sex: parsed.sex,
+        birthDate,
+        phone: parsed.phone,
+        dominantHand: parsed.dominantHand,
+        orgId: getSession().orgId,
+      };
       if (isEdit && id) {
         updatePatient.mutate(
-          { id, patch: { ...parsed, orgId: getSession().orgId } },
+          { id, patch: payload },
           {
             onSuccess: () => navigate(`/patients/${id}`),
             onError: (e: unknown) => {
@@ -62,16 +99,13 @@ export function PatientFormPage() {
           },
         );
       } else {
-        createPatient.mutate(
-          { ...parsed, orgId: getSession().orgId },
-          {
-            onSuccess: (created) => navigate(`/patients/${created.id}`),
-            onError: (e) => {
-              console.error("[新建客户] 保存失败:", e);
-              setSubmitError(e instanceof Error ? e.message : String(e));
-            },
+        createPatient.mutate(payload, {
+          onSuccess: (created) => navigate(`/patients/${created.id}`),
+          onError: (e) => {
+            console.error("[新建客户] 保存失败:", e);
+            setSubmitError(e instanceof Error ? e.message : String(e));
           },
-        );
+        });
       }
     } catch (e: unknown) {
       console.error("[客户表单] 校验失败:", e);
@@ -117,12 +151,15 @@ export function PatientFormPage() {
             </select>
           </div>
           <div className="field">
-            <label htmlFor="birthDate">出生日期</label>
-            <input id="birthDate" type="date" aria-invalid={Boolean(errors.birthDate)}
-              aria-describedby={errors.birthDate ? "patient-birth-error" : undefined}
-              autoComplete="bday"
-              {...register("birthDate")} />
-            <FieldError id="patient-birth-error" message={errors.birthDate?.message} />
+            <label htmlFor="age">年龄(岁)</label>
+            <input id="age" type="number" min={0} max={150} step={1} aria-invalid={Boolean(errors.age)}
+              aria-describedby={errors.age ? "patient-age-error" : undefined}
+              placeholder="如:29"
+              {...register("age")} />
+            <FieldError id="patient-age-error" message={errors.age?.message} />
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+              只需填整数年龄,系统自动换算出生日期;之后每年年龄自动增长,无需回来改。
+            </span>
           </div>
           <div className="field">
             <label htmlFor="phone">联系电话</label>

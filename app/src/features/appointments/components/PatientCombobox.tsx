@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCreatePatient, usePatients } from "../../patients/usePatients";
 import type { PatientRecord } from "../../patients/patient.repository";
 import { getSession } from "../../../lib/session";
-import { SEX_LABELS } from "../../../lib/format";
+import { SEX_LABELS, birthDateFromAge } from "../../../lib/format";
 import type { Sex } from "../../patients/patient.schema";
 
 interface PatientComboboxProps {
@@ -18,7 +18,7 @@ interface PatientComboboxProps {
  * 三种状态:
  *   1. 未选中: 搜索输入框 + 下拉候选(按姓名/病历号过滤),末尾固定「+ 新建客户」入口
  *   2. 已选中: chip 展示 + 「更换」按钮回到搜索态
- *   3. 新建中: 内嵌简版表单(姓名/性别/出生日期/电话),保存后自动选中新客户
+ *   3. 新建中: 内嵌简版表单(姓名/性别/年龄/电话),保存后自动选中新客户
  *
  * 设计说明:
  *   - 新建走 useCreatePatient(与 /patients/new 同一入口,病历号自动生成、RBAC 一致)
@@ -36,10 +36,10 @@ export function PatientCombobox({ value, onChange, "data-testid": testId }: Pati
   const [createError, setCreateError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // 新建表单字段
+  // 新建表单字段(年龄输入 → 保存时反推出生日期)
   const [newName, setNewName] = useState("");
   const [newSex, setNewSex] = useState<Sex>("male");
-  const [newBirth, setNewBirth] = useState("");
+  const [newAge, setNewAge] = useState("");
   const [newPhone, setNewPhone] = useState("");
 
   // 点击组件外 → 收起下拉(新建态不收起,避免误触丢失输入)
@@ -87,7 +87,7 @@ export function PatientCombobox({ value, onChange, "data-testid": testId }: Pati
   const startCreate = () => {
     setNewName(query.trim());
     setNewSex("male");
-    setNewBirth("");
+    setNewAge("");
     setNewPhone("");
     setCreateError(null);
     setCreating(true);
@@ -96,15 +96,17 @@ export function PatientCombobox({ value, onChange, "data-testid": testId }: Pati
   const handleCreate = async () => {
     setCreateError(null);
     if (!newName.trim()) { setCreateError("请填写姓名"); return; }
-    if (!newBirth) { setCreateError("请选择出生日期"); return; }
-    const birth = new Date(newBirth);
-    if (Number.isNaN(birth.getTime())) { setCreateError("出生日期格式不正确"); return; }
+    const age = Number(newAge);
+    if (!newAge || !Number.isInteger(age) || age < 0 || age > 150) {
+      setCreateError("请填写 0-150 的整数年龄");
+      return;
+    }
     try {
       const created = await createPatient.mutateAsync({
         orgId: getSession().orgId,
         name: newName.trim(),
         sex: newSex,
-        birthDate: birth,
+        birthDate: birthDateFromAge(age),
         phone: newPhone.trim() || "",
         medicalRecordNo: "", // 留空自动生成
         dominantHand: "",
@@ -219,13 +221,17 @@ export function PatientCombobox({ value, onChange, "data-testid": testId }: Pati
               </select>
             </div>
             <div className="field">
-              <label htmlFor="pc-birth">出生日期 *</label>
+              <label htmlFor="pc-age">年龄(岁) *</label>
               <input
-                id="pc-birth"
-                type="date"
-                value={newBirth}
-                onChange={(e) => setNewBirth(e.target.value)}
-                data-testid={`${testId}-create-birth`}
+                id="pc-age"
+                type="number"
+                min={0}
+                max={150}
+                step={1}
+                value={newAge}
+                onChange={(e) => setNewAge(e.target.value)}
+                placeholder="如:29"
+                data-testid={`${testId}-create-age`}
               />
             </div>
           </div>
